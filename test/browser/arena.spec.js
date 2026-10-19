@@ -138,10 +138,10 @@ test("passive teleport uses world taps with an informational button and no coold
       y: __arena.game.player.y,
     })),
   ).toEqual(before);
-  await worldTap(page, 520, 340);
+  await worldTap(page, 480, 340);
   await expect
     .poll(() => page.evaluate(() => Math.round(__arena.game.player.x)))
-    .toBe(520);
+    .toBe(480);
   await worldTap(page, 390, 340);
   await expect
     .poll(() => page.evaluate(() => Math.round(__arena.game.player.x)))
@@ -167,6 +167,77 @@ test("rock shield renders and persists through a long mouse hold", async ({
   expect(
     await page.evaluate(() => __arena.game.player.utilityCd),
   ).toBeGreaterThan(0);
+});
+test("arena taps prepare a bounded, vulnerable teleport before arrival", async ({
+  page,
+}) => {
+  await begin(page, { mode: "fused3", element: "multi-dimensional" });
+  await stillRival(page);
+  await page.evaluate(() => {
+    const g = __arena.game;
+    g.player.x = 330;
+    g.player.y = 340;
+    window.balanceStep = g.update.bind(g);
+    g.update = () => {};
+  });
+  await worldTap(page, 800, 340);
+  const pending = await page.evaluate(() => ({
+    x: __arena.game.player.x,
+    blink: __arena.game.player.blink,
+  }));
+  expect(pending.x).toBe(330);
+  expect(pending.blink.x).toBeCloseTo(510, 0);
+  await page.evaluate(() => {
+    for (let i = 0; i < 3; i++) balanceStep(0.05, { x: 1, y: 0 }, false);
+  });
+  expect(await page.evaluate(() => __arena.game.player.x)).toBe(330);
+  await page.evaluate(() => {
+    const g = __arena.game;
+    g.damage(g.fighters[1], g.player, 14);
+    balanceStep(0.05, { x: 0, y: 0 }, false);
+  });
+  expect(await page.evaluate(() => __arena.game.player.hp)).toBeLessThan(120);
+  expect(await page.evaluate(() => __arena.game.player.x)).toBeCloseTo(510, 0);
+  expect(await page.evaluate(() => __arena.game.player.blink)).toBe(null);
+  await worldTap(page, 690, 340);
+  await page.evaluate(() => {
+    for (let i = 0; i < 4; i++) balanceStep(0.05, { x: 0, y: 0 }, false);
+  });
+  expect(await page.evaluate(() => __arena.game.player.x)).toBeCloseTo(690, 0);
+});
+test("portal taps enforce clearance and a harmless opening warning", async ({
+  page,
+}) => {
+  await begin(page, { mode: "fused", element: "spirit" });
+  await stillRival(page);
+  await page.evaluate(() => {
+    const g = __arena.game;
+    g.player.x = 330;
+    g.player.y = 340;
+    g.update = () => {};
+  });
+  await page.locator("#utility-btn").click();
+  await worldTap(page, 330, 340);
+  expect(await page.evaluate(() => __arena.game.portals.portals.length)).toBe(
+    0,
+  );
+  await worldTap(page, 460, 340);
+  expect(await page.evaluate(() => __arena.game.portals.portals.length)).toBe(
+    1,
+  );
+  expect(
+    await page.evaluate(() =>
+      __arena.game.portals.active(__arena.game.portals.portals[0]),
+    ),
+  ).toBe(false);
+  await page.evaluate(() => {
+    Object.assign(__arena.game.fighters[1], { x: 460, y: 340 });
+  });
+  await worldTap(page, 460, 340);
+  expect(await page.evaluate(() => __arena.game.portals.portals.length)).toBe(
+    0,
+  );
+  expect(await page.evaluate(() => __arena.game.fighters[1].alive)).toBe(true);
 });
 test.describe("phone controls", () => {
   test.use({
@@ -422,11 +493,10 @@ test.describe("level III phone controls", () => {
         expect(b.x + b.width).toBeLessThanOrEqual(size.width + 1);
         expect(b.y + b.height).toBeLessThanOrEqual(size.height + 1);
       }
-      await worldTap(page, 580, 350);
-      expect(await page.evaluate(() => __arena.game.player.x)).toBeCloseTo(
-        580,
-        0,
-      );
+      await worldTap(page, 470, 350);
+      await expect
+        .poll(() => page.evaluate(() => Math.round(__arena.game.player.x)))
+        .toBe(470);
       await page.locator('[data-form="light"]').click();
       await expect(page.locator("#ability-name")).toHaveText("Healing");
       await page.locator('[data-form="multi-dimensional"]').click();

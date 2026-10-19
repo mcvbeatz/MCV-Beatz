@@ -45,31 +45,56 @@ export class PortalSystem {
       this.game.event("LEAVE SPACE BETWEEN PORTALS");
       return false;
     }
-    const p = { id: ++this.nextId, owner: owner.id, x, y, r: 25 };
+    if (
+      this.game.fighters.some(
+        (a) =>
+          (a.alive || a.ghost) &&
+          inWorld(a) &&
+          Math.hypot(a.x - x, a.y - y) < 40,
+      )
+    ) {
+      this.game.event("LEAVE SPACE AROUND FIGHTERS");
+      return false;
+    }
+    const p = {
+      id: ++this.nextId,
+      owner: owner.id,
+      x,
+      y,
+      r: 25,
+      opensAt: this.game.time + 0.5,
+    };
     owner.reveal = 0.45;
     this.portals.push(p);
     const pair = this.owned(owner);
-    if (pair.length === 2) {
-      this.placing = null;
-      for (const entity of this.travellers()) {
-        if (
-          entity.dimension &&
-          pair.some((q) => q.id === entity.dimension.portal)
-        ) {
-          const entry = pair.find((q) => q.id === entity.dimension.portal),
-            exit = pair.find((q) => q !== entry);
-          const d = entity.dimension;
-          this.exit(entity, exit, d.dx, d.dy);
-        }
-      }
-    }
+    if (pair.length === 2) this.placing = null;
     this.game.event(
-      pair.length === 1 ? "PLACE THE SECOND PORTAL" : "PORTALS LINKED",
+      pair.length === 1
+        ? "OPENING · PLACE THE SECOND PORTAL"
+        : "PORTALS OPENING",
       "#b7dcf3",
       x,
       y,
     );
     return true;
+  }
+  active(portal) {
+    return this.game.time + 1e-9 >= portal.opensAt;
+  }
+  update() {
+    for (const entity of this.travellers()) {
+      if (!entity.dimension) continue;
+      const entry = this.portals.find(
+        (p) => p.id === entity.dimension.portal && this.active(p),
+      );
+      const exit =
+        entry &&
+        this.portals.find(
+          (p) => p.owner === entry.owner && p !== entry && this.active(p),
+        );
+      if (exit)
+        this.exit(entity, exit, entity.dimension.dx, entity.dimension.dy);
+    }
   }
   travellers() {
     return [
@@ -90,9 +115,7 @@ export class PortalSystem {
       const trapped = e.dimension?.portal === id;
       const crossing =
         e.transit && (e.transit.entry === id || e.transit.exit === id);
-      const onPortal =
-        inWorld(e) && Math.hypot(e.x - portal.x, e.y - portal.y) < portal.r;
-      if (!trapped && !crossing && !onPortal) continue;
+      if (!trapped && !crossing) continue;
       if (e.hp !== undefined) {
         e.x = portal.x;
         e.y = portal.y;
@@ -184,14 +207,18 @@ export class PortalSystem {
   }
   enter(e, previous) {
     if (!inWorld(e) || e.portalCooldown > 0) return false;
-    const p = this.portals.find((p) => segmentDistance(p, previous, e) <= p.r);
+    const p = this.portals.find(
+      (p) => this.active(p) && segmentDistance(p, previous, e) <= p.r,
+    );
     if (!p) return false;
     const dx = e.x - previous.x,
       dy = e.y - previous.y;
     const len = Math.hypot(dx, dy);
     const dirX = len ? dx / len : e.fx || 1,
       dirY = len ? dy / len : e.fy || 0;
-    const exit = this.portals.find((q) => q.owner === p.owner && q.id !== p.id);
+    const exit = this.portals.find(
+      (q) => q.owner === p.owner && q.id !== p.id && this.active(q),
+    );
     e.x = p.x;
     e.y = p.y;
     if (exit)
@@ -205,6 +232,7 @@ export class PortalSystem {
     else e.dimension = { portal: p.id, depth: 30, dx: dirX, dy: dirY, age: 0 };
     if (e.hp !== undefined) {
       e.vx = e.vy = 0;
+      e.blink = null;
       e.lock = null;
     }
     return true;

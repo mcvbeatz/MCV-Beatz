@@ -491,7 +491,27 @@ export class Renderer {
       c.restore();
     }
     for (const p of game.portals.portals) {
-      const pair = game.portals.portals.filter((q) => q.owner === p.owner);
+      if (!game.portals.active(p)) {
+        c.save();
+        c.strokeStyle = "#e2c8ff";
+        c.fillStyle = "#b295e533";
+        c.lineWidth = 3;
+        c.setLineDash([5, 5]);
+        c.beginPath();
+        c.ellipse(p.x, p.y, 30, 17, 0, 0, Math.PI * 2);
+        c.fill();
+        c.stroke();
+        c.setLineDash([]);
+        c.fillStyle = "#eee0ff";
+        c.font = "10px monospace";
+        c.textAlign = "center";
+        c.fillText("OPENING", p.x, p.y - 28);
+        c.restore();
+        continue;
+      }
+      const pair = game.portals.portals.filter(
+        (q) => q.owner === p.owner && game.portals.active(q),
+      );
       c.save();
       c.translate(p.x, p.y - 12);
       c.shadowBlur = 17;
@@ -531,6 +551,35 @@ export class Renderer {
         0,
         49,
       );
+      c.restore();
+    }
+    for (const a of game.fighters) {
+      if (!a.alive || !inWorld(a) || !a.blink) continue;
+      const p = a.blink;
+      c.save();
+      c.strokeStyle = "#e4c4ff";
+      c.fillStyle = "#c599f044";
+      c.lineWidth = 2;
+      c.setLineDash([5, 4]);
+      c.beginPath();
+      c.moveTo(a.x, a.y);
+      c.lineTo(p.x, p.y);
+      c.stroke();
+      c.setLineDash([]);
+      c.beginPath();
+      c.arc(p.x, p.y, 22, 0, Math.PI * 2);
+      c.fill();
+      c.stroke();
+      c.beginPath();
+      c.moveTo(p.x - 30, p.y);
+      c.lineTo(p.x + 30, p.y);
+      c.moveTo(p.x, p.y - 30);
+      c.lineTo(p.x, p.y + 30);
+      c.stroke();
+      c.fillStyle = "#f1deff";
+      c.font = "9px monospace";
+      c.textAlign = "center";
+      c.fillText("ARRIVING", p.x, p.y - 34);
       c.restore();
     }
     for (const token of game.visibleTokens()) {

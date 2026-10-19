@@ -32,6 +32,7 @@ function portals(
 ) {
   assert.ok(g.portals.begin(g.player));
   for (const [x, y] of points) assert.ok(g.portals.place(g.player, x, y));
+  advance(g, 0.5);
   return g.portals.portals;
 }
 function remoteSpirit() {
@@ -147,14 +148,14 @@ test("charge strengthens skills and enforces cooldown", () => {
 test("same-element resistance and hierarchy remain explicit", () => {
   assert.equal(multiplier("water", "water"), 0.5);
   assert.equal(multiplier("water", "water", false), 1);
-  assert.equal(multiplier("water", "fire"), 1.5);
-  assert.equal(multiplier("fire", "earth"), 1.5);
+  assert.equal(multiplier("water", "fire"), 1.2);
+  assert.equal(multiplier("fire", "earth"), 1.2);
 });
 test("water ability damage against Fire is reduced by exactly 30%", () => {
   const g = duel("water", "fire"),
     [a, b] = g.fighters;
   const hit = g.damage(a, b, 23 * 2, true);
-  assert.ok(Math.abs(hit - 23 * 2 * 1.5 * 0.7) < 1e-9);
+  assert.ok(Math.abs(hit - 23 * 2 * 1.2 * 0.7) < 1e-9);
 });
 test("automatic token touch fuses once, pushes both teams, and hides rival tokens", () => {
   const g = duel(),
@@ -207,7 +208,7 @@ test("skill switching keeps fused identity, passives and cooldowns", () => {
   const b = g.fighters[1],
     hp = b.hp;
   g.damage(b, a, 20, true);
-  assert.equal(a.hp, 120);
+  assert.equal(a.hp, 111);
   assert.ok(b.hp < hp);
 });
 test("level-three compatible fusion preserves all origin skill sets", () => {
@@ -350,15 +351,17 @@ test("a lone portal traps a fighter; reversing movement returns them", () => {
   assert.equal(g.player.dimension, null);
   assert.ok(g.player.x < 400);
 });
-test("opening the second portal immediately releases trapped entrants", () => {
+test("the second portal releases trapped entrants after its opening warning", () => {
   const g = remoteSpirit();
   portals(g, [[400, 300]]);
-  const b = g.fighters[1];
+  const b = g.player;
   b.x = 400;
   b.y = 300;
   advance(g, 0.01);
   assert.ok(b.dimension);
   assert.ok(g.portals.place(g.player, 650, 300));
+  assert.equal(inWorld(b), false);
+  advance(g, 0.5);
   assert.ok(inWorld(b));
   assert.equal(Math.abs(b.x - 650), 49);
 });
@@ -497,13 +500,17 @@ test("Angel guard is controllable after death and blocks only enemy melee", () =
   assert.equal(ally.hp, 110);
   assert.equal(g.strike(ghost), false);
 });
-test("Multi-Dimensional teleport is passive, immediate, unlimited, and inherited", () => {
+test("Multi-Dimensional teleport is passive, delayed, repeatable, and inherited", () => {
   const g = duel("multi-dimensional");
   g.switchForm(g.player, "earth");
   assert.equal(skillsFor("multi-dimensional")[1], null);
-  assert.ok(g.teleport(g.player, 600, 400));
-  assert.ok(g.teleport(g.player, 200, 200));
-  assert.equal(g.player.x, 200);
+  assert.ok(g.teleport(g.player, 500, 300));
+  assert.equal(g.player.x, 400);
+  advance(g, 0.2);
+  assert.equal(g.player.x, 500);
+  assert.ok(g.teleport(g.player, 400, 300));
+  advance(g, 0.2);
+  assert.equal(g.player.x, 400);
   assert.equal(g.player.abilityCd, 0);
   assert.equal(g.teleport(g.player, 0, 0), false);
 });
@@ -568,6 +575,7 @@ test("off-screen projectiles and ground effects pause their lifetimes until rele
   assert.equal(p.life, life);
   assert.equal(h.life, 2);
   g.portals.place(g.player, 650, 300);
+  advance(g, 0.5);
   assert.ok(inWorld(p));
   assert.ok(inWorld(h));
 });

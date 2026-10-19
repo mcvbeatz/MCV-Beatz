@@ -116,6 +116,7 @@ export const EDGES = [
   ["air", "cloud"],
   ["cloud", "smoke"],
 ];
+export const TELEPORT_RANGE = 180;
 export const STRIKE_RANGE = 69,
   TOKEN_TOUCH_RANGE = 27;
 export const nameOf = (e) =>
@@ -155,7 +156,7 @@ const clamp = (v, min, max) => Math.max(min, Math.min(max, v));
 export function multiplier(source, target, ability = true) {
   return (
     (ability && source === target ? 0.5 : 1) *
-    (EDGES.some(([a, b]) => a === source && b === target) ? 1.5 : 1)
+    (EDGES.some(([a, b]) => a === source && b === target) ? 1.2 : 1)
   );
 }
 export function canHit(a, b, range = STRIKE_RANGE) {
@@ -207,6 +208,7 @@ export function makeFighter(id, element, team, x, y) {
     burstHits: new Set(),
     reveal: 0,
     hurtReveal: 0,
+    blink: null,
     movingTime: 0,
     burn: 0,
     venom: 0,
@@ -322,7 +324,8 @@ export class Combat {
   }
   move(a, dx, dy, dt) {
     if ((!a.alive && !a.ghost) || !inWorld(a)) return;
-    if (this.isShocked(a)) {
+    if (a.blink && Math.hypot(a.knockX, a.knockY) > 1) a.blink = null;
+    if (a.blink || this.isShocked(a)) {
       a.vx = a.vy = a.knockX = a.knockY = a.burst = a.movingTime = 0;
       return;
     }
@@ -414,6 +417,7 @@ export class Combat {
   fell(a, { lost = false } = {}) {
     if (!a.alive && !a.ghost) return;
     a.hp = 0;
+    a.blink = null;
     a.burst = 0;
     a.movingTime = 0;
     a.alive = false;
@@ -469,15 +473,18 @@ export class Combat {
       this.event("DODGED", "#b8a1df", b.x, b.y);
       return 0;
     }
-    if (!reflected && hasPassive(a, "invincible")) amount *= 2;
-    if (ability && hasPassive(b, "mirror") && !reflected && a.id !== b.id) {
-      this.event("REFLECT", "#fff", b.x, b.y);
-      return this.damage(b, a, amount, true, true, sourceElement);
-    }
+    // Split the incoming ability before either recipient's defenses. The
+    // reflected portion retains the original matchup modifier and cannot bounce.
     let hit =
       amount *
-      multiplier(sourceElement, b.element, ability) *
-      (b.parts.includes("earth") ? 0.75 : 1);
+      (!ability && hasPassive(a, "invincible") ? 2 : 1) *
+      (reflected ? 1 : multiplier(sourceElement, b.element, ability));
+    if (ability && hasPassive(b, "mirror") && !reflected && a.id !== b.id) {
+      this.event("REFLECT 40%", "#fff", b.x, b.y);
+      this.damage(b, a, hit * 0.4, true, true, sourceElement);
+      hit *= 0.6;
+    }
+    hit *= b.parts.includes("earth") ? 0.75 : 1;
     if (ability && sourceElement === "water" && b.parts.includes("fire"))
       hit *= 0.7;
     if (b.shield) {
@@ -746,7 +753,7 @@ export class Combat {
           a.x + 30 + i * 12,
           a.y + 30,
         );
-        minion.hp = minion.maxHp = 1;
+        minion.hp = minion.maxHp = e === "demonic" ? 8 : 1;
         minion.life = 9;
         minion.echo = true;
         minion.summoner = a.id;
@@ -998,6 +1005,7 @@ export class Combat {
     if (
       !a.alive ||
       !inWorld(a) ||
+      a.blink ||
       !hasPassive(a, "multi-dimensional") ||
       this.isShocked(a) ||
       x < 135 ||
@@ -1006,9 +1014,35 @@ export class Combat {
       y > 560
     )
       return false;
-    const old = { x: a.x, y: a.y };
-    a.x = x;
-    a.y = y;
+    const d = Math.hypot(x - a.x, y - a.y);
+    if (d < 1) return false;
+    const scale = Math.min(1, TELEPORT_RANGE / d);
+    a.blink = {
+      x: a.x + (x - a.x) * scale,
+      y: a.y + (y - a.y) * scale,
+      remaining: 0.2,
+    };
+    a.vx = a.vy = 0;
+    return true;
+  }
+  updateTeleport(a, dt) {
+    if (!a.blink) return;
+    if (
+      !a.alive ||
+      !inWorld(a) ||
+      this.isShocked(a) ||
+      Math.hypot(a.knockX, a.knockY) > 1
+    ) {
+      a.blink = null;
+      return;
+    }
+    a.blink.remaining -= dt;
+    if (a.blink.remaining > 1e-9) return;
+    const old = { x: a.x, y: a.y },
+      destination = a.blink;
+    a.blink = null;
+    a.x = destination.x;
+    a.y = destination.y;
     a.vx = a.vy = a.knockX = a.knockY = 0;
     for (const p of [old, a])
       this.effects.push({
@@ -1023,7 +1057,6 @@ export class Combat {
     this.autoLock(a);
     this.touchTokens(a);
     this.portals.enter(a, a);
-    return true;
   }
   healingTarget(a) {
     return this.fighters
@@ -1375,6 +1408,7 @@ export class Combat {
       w.y = w.originY + w.fy * w.radius;
       // A portal anywhere along the fan's leading edge accepts the wave.
       const gate = this.portals.portals.find((p) => {
+        if (!this.portals.active(p)) return false;
         const dx = p.x - w.originX,
           dy = p.y - w.originY,
           d = Math.hypot(dx, dy);
@@ -1430,7 +1464,11 @@ export class Combat {
           immune = hasPassive(b, "divine");
         if (h.kind === "flood") {
           if (!flying) b.slow = 0.4;
-          if (b.parts.includes("fire")) this.fell(b);
+          h.floodHits ??= new Set();
+          if (b.parts.includes("fire") && !h.floodHits.has(b.id)) {
+            h.floodHits.add(b.id);
+            this.damage(h.owner, b, b.maxHp * 0.25, true, false, "cloud");
+          }
         } else if (h.kind === "gravity") {
           if (b.team !== h.owner.team && !hasPassive(b, "apparition"))
             b.slow = 0.5;
@@ -1469,6 +1507,7 @@ export class Combat {
     if (this.finished) return;
     dt = Math.min(dt, 0.05);
     this.time += dt;
+    this.portals.update();
     for (const a of this.fighters) {
       if (!a.alive && !a.ghost) continue;
       if (this.portals.tick(a, dt, a.id === "player" ? input : undefined))
@@ -1544,6 +1583,7 @@ export class Combat {
         }
       }
     }
+    for (const a of this.fighters) this.updateTeleport(a, dt);
     for (const e of this.effects) e.life -= dt;
     this.effects = this.effects.filter((e) => e.life > 0);
     this.events = this.events.filter((e) => this.time - e.time < 1.4);

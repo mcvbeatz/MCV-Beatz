@@ -46,14 +46,14 @@ test("Lightning strikes hit immediately without charging and respect range and c
   assert.ok(g.startCharge(a));
   assert.equal(a.charging, false);
   assert.equal(a.charge, 0);
-  assert.equal(b.hp, 81); // 26 base × hierarchy advantage 1.5.
+  assert.ok(Math.abs(b.hp - 88.8) < 1e-9); // 26 base × hierarchy advantage 1.2.
   assert.equal(a.abilityCd, 4.5);
   assert.equal(g.projectiles.length, 0);
   assert.ok(g.effects.some((e) => e.kind === "lightning"));
   assert.equal(g.startCharge(a), false);
-  assert.equal(b.hp, 81);
+  assert.ok(Math.abs(b.hp - 88.8) < 1e-9);
   g.releaseCharge(a);
-  assert.equal(b.hp, 81);
+  assert.ok(Math.abs(b.hp - 88.8) < 1e-9);
   a.abilityCd = 0;
   b.x = 800;
   assert.equal(g.startCharge(a), false);
@@ -109,7 +109,7 @@ test("Shock is inherited, affects allies, blocks teleport, and respects Divine i
   divine.move(divine.player, 1, 0, 0.05);
   assert.ok(divine.player.x > 300);
 });
-test("Invincible doubles melee and inherited ability damage without doubling reflected damage again", () => {
+test("Invincible doubles melee only; partial reflections cannot bounce again", () => {
   const g = arena("invincible", "water"),
     a = g.player,
     b = g.fighters[1];
@@ -120,7 +120,7 @@ test("Invincible doubles melee and inherited ability damage without doubling ref
   b.hp = 120;
   g.switchForm(a, "fire");
   g.damage(a, b, 22, true);
-  assert.equal(b.hp, 76);
+  assert.equal(b.hp, 98);
   g.damage(b, a, 14);
   assert.equal(a.hp, 109.5); // Still takes melee damage, with hard skin.
   assert.deepEqual(skillsFor("invincible"), [null, null]);
@@ -128,8 +128,8 @@ test("Invincible doubles melee and inherited ability damage without doubling ref
   g.fighters.push(mirror);
   const hp = a.hp;
   g.damage(a, mirror, 10, true);
-  assert.equal(a.hp, hp - 15);
-  assert.equal(mirror.hp, 120); // 10×2×.75, not doubled twice.
+  assert.equal(a.hp, hp - 3);
+  assert.equal(mirror.hp, 115.5); // 60% taken, 40% returned; each applies hard skin.
 });
 test("burn ends immediately on separation while Mud venom persists for five seconds", () => {
   const fire = arena("fire", "light"),
@@ -245,8 +245,10 @@ test("Multi-Dimensional has no Rift and teleport needs neither a skill activatio
   assert.deepEqual(skillsFor(a.element), [null, null]);
   assert.equal(g.startCharge(a), false);
   assert.equal(g.cast(a, 1), false);
-  assert.ok(g.teleport(a, 500, 400));
+  assert.ok(g.teleport(a, 400, 300));
+  advance(g, 0.2);
   assert.ok(g.teleport(a, 300, 300));
+  advance(g, 0.2);
   assert.equal(g.projectiles.length, 0);
   assert.equal(a.abilityCd, 0);
 });
