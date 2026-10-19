@@ -46,6 +46,7 @@ export class PortalSystem {
       return false;
     }
     const p = { id: ++this.nextId, owner: owner.id, x, y, r: 25 };
+    owner.reveal = 0.45;
     this.portals.push(p);
     const pair = this.owned(owner);
     if (pair.length === 2) {
@@ -84,6 +85,7 @@ export class PortalSystem {
       (p) => p.id === id && p.owner === owner.id,
     );
     if (!portal) return false;
+    owner.reveal = 0.45;
     for (const e of this.travellers()) {
       const trapped = e.dimension?.portal === id;
       const crossing =

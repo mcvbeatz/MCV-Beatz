@@ -81,9 +81,9 @@ export const FUSED = {
   spirit: ["Revival", "Portals"],
   mirror: [null, null],
   sun: ["Laser beam", "Heatwave"],
-  blaze: ["Flame burst", "Speed burst"],
+  blaze: [null, "Speed burst"],
   cloud: ["Tornado", "Flood"],
-  smoke: ["Vog", "Smoke veil"],
+  smoke: ["Vog", null],
   gravity: ["Telekinesis", "Gravity field"],
   apparition: ["Doppelgänger", "Phase"],
   demonic: ["Minions", "Death"],
@@ -129,6 +129,9 @@ export const recipe = (e) =>
 export const LEVEL_TWO = Object.values(COMBOS).filter(
   (e) => recipe(e).length === 2,
 );
+export const LEVEL_THREE = Object.values(COMBOS).filter(
+  (e) => recipe(e).length === 3,
+);
 export const activeForm = (a) => a.forms[a.form] || a.element;
 export const skillsFor = (e) =>
   ELEMENTS[e]
@@ -136,6 +139,13 @@ export const skillsFor = (e) =>
     : FUSED[e] || [null, null];
 export const hasPassive = (a, form) =>
   a.parts.includes(form) || recipe(form).every((e) => a.parts.includes(e));
+export const burnImmune = (a) =>
+  hasPassive(a, "fire") || hasPassive(a, "water") || hasPassive(a, "divine");
+export function visibility(a) {
+  if (a.ghost || !hasPassive(a, "divine")) return 1;
+  if (a.reveal > 0 || a.charging || a.shield || a.swing > 0) return 0.3;
+  return a.movingTime >= 1 && a.movingTime % 1 < 0.15 ? 0.1 : 0;
+}
 const clamp = (v, min, max) => Math.max(min, Math.min(max, v));
 export function multiplier(source, target, ability = true) {
   return (
@@ -188,6 +198,10 @@ export function makeFighter(id, element, team, x, y) {
     shieldTime: 0,
     dodge: 0,
     boost: 0,
+    burst: 0,
+    burstHits: new Set(),
+    reveal: 0,
+    movingTime: 0,
     burn: 0,
     venom: 0,
     slow: 0,
@@ -222,8 +236,14 @@ export class Combat {
     this.sequence = 0;
     this.portals = new PortalSystem(this);
     const n = mode === "team" ? size : 1,
-      pool = mode === "fused" ? LEVEL_TWO : Object.keys(ELEMENTS);
-    if (mode === "fused" && !LEVEL_TWO.includes(element)) element = "spirit";
+      pool =
+        mode === "fused"
+          ? LEVEL_TWO
+          : mode === "fused3"
+            ? LEVEL_THREE
+            : Object.keys(ELEMENTS);
+    if (["fused", "fused3"].includes(mode) && !pool.includes(element))
+      element = pool[0];
     for (let i = 0; i < n; i++) {
       this.fighters.push(
         makeFighter(
@@ -253,7 +273,9 @@ export class Combat {
     return a.parts.includes("air");
   }
   target(a) {
-    return this.fighters.find((b) => b.id === a.lock && b.alive && inWorld(b));
+    return this.fighters.find(
+      (b) => b.id === a.lock && b.alive && inWorld(b) && visibility(b) > 0,
+    );
   }
   autoLock(a) {
     a.lock = null;
@@ -263,6 +285,7 @@ export class Combat {
         (b) =>
           b.alive &&
           inWorld(b) &&
+          visibility(b) > 0 &&
           b.team !== a.team &&
           distance(a, b) <= STRIKE_RANGE,
       )
@@ -278,6 +301,7 @@ export class Combat {
   }
   move(a, dx, dy, dt) {
     if ((!a.alive && !a.ghost) || !inWorld(a)) return;
+    const old = { x: a.x, y: a.y };
     const length = Math.hypot(dx, dy),
       magnitude = Math.min(1, length);
     if (length) {
@@ -295,10 +319,18 @@ export class Combat {
     const blend = this.flying(a) ? Math.min(1, dt * 4) : 1;
     a.vx += (dx * speed * magnitude - a.vx) * blend;
     a.vy += (dy * speed * magnitude - a.vy) * blend;
+    if (a.burst > 0) {
+      a.vx = a.burstX * 650;
+      a.vy = a.burstY * 650;
+    }
     a.x = clamp(a.x + (a.vx + a.knockX) * dt, 135, 889);
     a.y = clamp(a.y + (a.vy + a.knockY) * dt, 175, 560);
     a.knockX *= Math.exp(-7 * dt);
     a.knockY *= Math.exp(-7 * dt);
+    a.movingTime =
+      (length || a.burst > 0) && distance(old, a) > 0.05
+        ? a.movingTime + dt
+        : 0;
     if (length) {
       a.fx = dx;
       a.fy = dy;
@@ -311,6 +343,7 @@ export class Combat {
     this.autoLock(a);
     a.attackCd = 0.43;
     a.swing = 0.22;
+    a.reveal = 0.45;
     this.pending.push({ id: ++this.sequence, who: a, at: this.time + 0.11 });
     return true;
   }
@@ -346,6 +379,8 @@ export class Combat {
   fell(a, { lost = false } = {}) {
     if (!a.alive && !a.ghost) return;
     a.hp = 0;
+    a.burst = 0;
+    a.movingTime = 0;
     a.alive = false;
     a.charging = false;
     a.shield = 0;
@@ -474,6 +509,10 @@ export class Combat {
         continue;
       }
       this.autoLock(a);
+      if (a.aiControlled && !this.safeAttack(a, this.target(a))) {
+        remove.add(p.id);
+        continue;
+      }
       const clash = this.pending.find(
         (q) =>
           q.id !== p.id &&
@@ -593,18 +632,21 @@ export class Combat {
   cast(a, p) {
     const e = activeForm(a);
     if (!skillsFor(e)[0]) return false;
+    a.reveal = 0.45;
     if (e === "light" || e === "divine") {
-      a.hp = Math.min(a.maxHp, a.hp + 23 * p);
+      const recipient = this.healingTarget(a);
+      if (!recipient) return false;
+      recipient.hp = Math.min(recipient.maxHp, recipient.hp + 23 * p);
       this.effects.push({
         kind: "ring",
-        x: a.x,
-        y: a.y,
+        x: recipient.x,
+        y: recipient.y,
         color: "#fff3c4",
         r: 75,
         life: 0.7,
         max: 0.7,
       });
-      this.event("HEALED", "#c9ebbc", a.x, a.y - 30);
+      this.event("HEALED", "#c9ebbc", recipient.x, recipient.y - 30);
     } else if (e === "dark") {
       const t =
         this.target(a) ||
@@ -614,6 +656,7 @@ export class Combat {
               b.team !== a.team &&
               b.alive &&
               inWorld(b) &&
+              visibility(b) > 0 &&
               distance(a, b) < 245,
           )
           .sort((b, c) => distance(a, b) - distance(a, c))[0];
@@ -716,7 +759,22 @@ export class Combat {
       return;
     }
     if (!a.alive || !inWorld(a) || !skillsFor(e)[1]) return false;
-    if (e === "spirit") return this.portals.begin(a);
+    if (e === "blaze") {
+      // An active dash finishes before the next one begins; there is no recharge.
+      if (a.burst > 0) return true;
+      const speed = Math.hypot(a.vx, a.vy);
+      a.burstX = speed > 15 ? a.vx / speed : a.fx;
+      a.burstY = speed > 15 ? a.vy / speed : a.fy;
+      a.burst = 0.3;
+      a.burstHits = new Set();
+      a.reveal = 0.45;
+      return true;
+    }
+    if (e === "spirit") {
+      const begun = this.portals.begin(a);
+      if (begun) a.reveal = 0.45;
+      return begun;
+    }
     if (e === "earth") {
       if (a.utilityCd > 0 || a.shieldHp <= 0) return false;
       a.charging = false;
@@ -725,6 +783,7 @@ export class Combat {
       return true;
     }
     if (a.utilityCd > 0) return false;
+    a.reveal = 0.45;
     a.utilityCd = 7;
     if (e === "fire") this.area(a, 1, "magma", 66, Infinity);
     else if (e === "light") {
@@ -752,7 +811,7 @@ export class Combat {
     } else if (e === "dark" || e === "apparition") {
       a.dodge = 4;
       this.event("SHADOW STEP");
-    } else if (e === "air" || e === "blaze") {
+    } else if (e === "air") {
       a.boost = 2;
       this.effects.push({
         kind: "ring",
@@ -766,7 +825,6 @@ export class Combat {
     } else if (e === "cloud") this.area(a, 1, "flood", 500, 8);
     else if (e === "gravity") this.area(a, 1, "gravity", 150, 6);
     else if (e === "sun") this.area(a, 1, "heatwave", 300, 5);
-    else if (e === "smoke") this.area(a, 1, "vog", 130, 5);
     else if (e === "demonic") {
       const token = this.tokens
         .filter((t) => t.team !== a.team)
@@ -905,89 +963,284 @@ export class Combat {
     this.portals.enter(a, a);
     return true;
   }
+  healingTarget(a) {
+    return this.fighters
+      .filter((b) => b.alive && !b.echo && inWorld(b) && b.team === a.team)
+      .sort((b, c) => b.hp - c.hp || distance(a, b) - distance(a, c))[0];
+  }
+  enemies(a) {
+    return this.fighters.filter(
+      (b) =>
+        b.alive &&
+        inWorld(b) &&
+        b.team !== a.team &&
+        visibility(b) > 0 &&
+        (a.blind <= 0 || distance(a, b) < 45),
+    );
+  }
+  // Restraint is an AI decision, not friendly-fire immunity. Players can still
+  // strike allies, and attacks already in flight can still catch a moving ally.
+  safeAttack(a, target, kind = "melee", form = activeForm(a)) {
+    if (!target) return false;
+    const enemies = this.enemies(a);
+    const nearestEnemy = Math.min(...enemies.map((b) => distance(a, b)));
+    const allies = this.fighters.filter(
+      (b) => b.id !== a.id && b.alive && inWorld(b) && b.team === a.team,
+    );
+    if (allies.some((b) => distance(a, b) < nearestEnemy)) return false;
+    const d = distance(a, target) || 1;
+    const dx = (target.x - a.x) / d,
+      dy = (target.y - a.y) / d;
+    return !allies.some((b) => {
+      const bd = distance(a, b),
+        along = (b.x - a.x) * dx + (b.y - a.y) * dy;
+      if (kind === "melee") return canHit(a, b);
+      if (form === "light") return bd < 260;
+      if (form === "gravity") return kind === "utility" ? false : bd < 200;
+      if (form === "cloud" && kind === "utility") return true;
+      if (form === "sun" && kind === "utility") return bd < 380;
+      if (
+        ["mud", "smoke"].includes(form) ||
+        (form === "fire" && kind === "utility")
+      )
+        return distance(b, { x: a.x + dx * 70, y: a.y + dy * 70 }) < 105;
+      if (form === "air" && kind === "ability")
+        return bd < 380 && along / (bd || 1) > Math.cos(0.65);
+      if (["dark", "apparition", "demonic", "spirit", "divine"].includes(form))
+        return false;
+      const reach = form === "sun" ? 1000 : form === "blaze" ? 230 : 540;
+      return (
+        along > 0 &&
+        along < reach &&
+        segmentDistance(b, a, { x: a.x + dx * reach, y: a.y + dy * reach }) < 60
+      );
+    });
+  }
   ai(a, dt) {
+    const enemies = this.enemies(a);
+    const allies = this.fighters.filter(
+      (b) => b.id !== a.id && b.team === a.team && b.alive && inWorld(b),
+    );
     if (a.ghost) {
-      const ally = this.fighters
-        .filter((b) => b.team === a.team && b.alive && inWorld(b))
-        .sort((b, c) => distance(a, b) - distance(a, c))[0];
-      if (ally) {
-        const enemy = this.fighters
-          .filter((b) => b.team !== a.team && b.alive && inWorld(b))
-          .sort((b, c) => distance(ally, b) - distance(ally, c))[0];
-        if (enemy) {
-          const d = distance(ally, enemy) || 1,
-            spot = {
-              x: ally.x + ((enemy.x - ally.x) / d) * 25,
-              y: ally.y + ((enemy.y - ally.y) / d) * 25,
-            };
-          if (distance(a, spot) > 6)
-            this.move(a, spot.x - a.x, spot.y - a.y, dt);
+      const ally = allies.sort((b, c) => b.hp - c.hp)[0];
+      const enemy =
+        ally &&
+        enemies.sort((b, c) => distance(ally, b) - distance(ally, c))[0];
+      if (enemy) {
+        const d = distance(ally, enemy) || 1;
+        const spot = {
+          x: ally.x + ((enemy.x - ally.x) / d) * 25,
+          y: ally.y + ((enemy.y - ally.y) / d) * 25,
+        };
+        this.move(
+          a,
+          distance(a, spot) > 6 ? spot.x - a.x : 0,
+          distance(a, spot) > 6 ? spot.y - a.y : 0,
+          dt,
+        );
+      } else this.move(a, 0, 0, dt);
+      return;
+    }
+    a.aiControlled = true;
+    // Prefer a vulnerable nearby rival, especially one threatening a hurt ally.
+    const score = (b) =>
+      distance(a, b) +
+      b.hp * 0.3 -
+      (allies.some((c) => c.hp < 60 && distance(c, b) < 110) ? 90 : 0);
+    const target = enemies.sort((b, c) => score(b) - score(c))[0];
+    const patient = this.healingTarget(a);
+    const heal =
+      !a.echo &&
+      a.forms.includes("light") &&
+      patient &&
+      patient.hp < patient.maxHp - 18;
+    const revive =
+      !a.echo && a.forms.includes("spirit") && this.revivalTarget(a);
+    const d = target ? distance(a, target) : Infinity;
+    const fire = hasPassive(a, "fire"),
+      light = a.element === "light";
+    const aggressiveLight = light && target && a.hp >= target.hp + 15;
+    const desired =
+      a.hp < 30
+        ? 160
+        : fire && target && !burnImmune(target)
+          ? 22
+          : light && !aggressiveLight
+            ? 175
+            : 52;
+    let dx = 0,
+      dy = 0;
+    if (target) {
+      const nx = (target.x - a.x) / (d || 1),
+        ny = (target.y - a.y) / (d || 1);
+      const approach =
+        d > desired + (desired === 22 ? 4 : 10) ? 1 : d < desired - 10 ? -1 : 0;
+      dx = nx * approach;
+      dy = ny * approach;
+      // Take a side lane rather than attacking through the nearest teammate.
+      const blocker = allies.find((b) => distance(a, b) < Math.min(d, 110));
+      if (blocker) {
+        const side =
+          (blocker.x - a.x) * ny - (blocker.y - a.y) * nx >= 0 ? 1 : -1;
+        dx = nx * 0.25 - ny * side;
+        dy = ny * 0.25 + nx * side;
+      }
+      a.lastSeen = { x: target.x, y: target.y, until: this.time + 2 };
+    } else if (a.lastSeen?.until > this.time && distance(a, a.lastSeen) > 20) {
+      // Search the last observed spot, never a concealed opponent's live position.
+      dx = a.lastSeen.x - a.x;
+      dy = a.lastSeen.y - a.y;
+    }
+    for (const ally of allies) {
+      const gap = distance(a, ally);
+      if (gap < 75) {
+        dx += ((a.x - ally.x) / (gap || 1)) * 1.4;
+        dy += ((a.y - ally.y) / (gap || 1)) * 1.4;
+      }
+    }
+    // Step out of hostile floor effects and incoming attack lanes.
+    for (const h of this.hazards.filter(inWorld)) {
+      const harmful =
+        h.kind === "gravity"
+          ? h.owner.team !== a.team && !hasPassive(a, "apparition")
+          : h.kind === "quicksand"
+            ? !this.flying(a)
+            : ["magma", "heatwave", "vog"].includes(h.kind) && !burnImmune(a);
+      const gap = distance(a, h);
+      if (harmful && gap < h.r + 25) {
+        dx += ((a.x - h.x) / (gap || 1)) * 2;
+        dy += ((a.y - h.y) / (gap || 1)) * 2;
+      }
+    }
+    for (const p of this.projectiles.filter(inWorld)) {
+      if (p.owner.id === a.id || distance(a, p) > 160) continue;
+      const length = Math.hypot(p.dx, p.dy) || 1,
+        nx = p.dx / length,
+        ny = p.dy / length;
+      if (
+        segmentDistance(a, p, { x: p.x + nx * 150, y: p.y + ny * 150 }) <
+        p.r + 24
+      ) {
+        const side = (a.x - p.x) * -ny + (a.y - p.y) * nx >= 0 ? 1 : -1;
+        dx -= ny * side * 2;
+        dy += nx * side * 2;
+      }
+    }
+    this.move(a, dx, dy, dt);
+    if (a.shield && a.shieldTime > 0.8) this.utility(a, false);
+    a.aiTimer -= dt;
+    if (a.aiTimer > 0) return;
+    a.aiTimer = 0.18 + this.random() * 0.16;
+    if (target) {
+      const aim = distance(a, target) || 1;
+      a.fx = (target.x - a.x) / aim;
+      a.fy = (target.y - a.y) / aim;
+    }
+    if (a.charging) {
+      const form = activeForm(a),
+        support = ["light", "divine", "spirit"].includes(form);
+      if (a.charge >= (support && patient?.hp < 45 ? 0.25 : 0.7)) {
+        if (support || this.safeAttack(a, target, "ability"))
+          this.releaseCharge(a);
+        else {
+          a.charging = false;
+          a.charge = 0;
         }
       }
       return;
     }
-    const target = this.fighters
-      .filter((b) => b.alive && inWorld(b) && b.team !== a.team)
-      .sort((b, c) => distance(a, b) - distance(a, c))[0];
-    if (!target) {
-      this.move(a, 0, 0, dt);
+    if ((revive || heal) && a.abilityCd <= 0) {
+      this.switchForm(a, revive ? "spirit" : "light");
+      this.startCharge(a);
       return;
     }
-    const d = distance(a, target),
-      phase = Math.sin(this.time * 1.5 + a.x * 0.01);
-    let dx = (target.x - a.x) / (d || 1),
-      dy = (target.y - a.y) / (d || 1);
-    if (d < 49) {
-      dx = -dx * 0.45;
-      dy = -dy * 0.45;
-    } else if (d < 100) {
-      const ox = dx;
-      dx = dx * 0.3 - dy * phase * 0.5;
-      dy = dy * 0.3 + ox * phase * 0.5;
-    }
-    this.move(a, dx, dy, dt);
-    a.aiTimer -= dt;
-    if (a.aiTimer > 0) return;
-    a.aiTimer = 0.25 + this.random() * 0.4;
+    if (!target) return;
+    // Light flashes to escape pressure; do not blind nearby teammates.
     if (
-      a.forms.includes("spirit") &&
-      this.revivalTarget(a) &&
-      a.abilityCd <= 0
+      !a.echo &&
+      light &&
+      d < 160 &&
+      target.blind <= 0 &&
+      a.utilityCd <= 0 &&
+      this.safeAttack(a, target, "utility", "light")
+    )
+      this.utility(a);
+    if (
+      !a.echo &&
+      a.forms.includes("blaze") &&
+      d > 80 &&
+      d < 360 &&
+      a.burst <= 0 &&
+      this.safeAttack(a, target, "utility", "blaze")
     ) {
-      this.switchForm(a, "spirit");
-      this.cast(a, 1);
-      a.abilityCd = 4.5;
-      return;
+      this.switchForm(a, "blaze");
+      this.utility(a);
     }
-    if (!skillsFor(activeForm(a))[0] && a.forms.length > 1)
-      this.switchForm(a, a.parts[Math.floor(this.random() * a.parts.length)]);
-    if (d < 72) this.strike(a);
-    else if (
-      d < 300 &&
+    if (
+      d <= STRIKE_RANGE &&
+      (!light || aggressiveLight || d < 40) &&
+      this.safeAttack(a, target)
+    )
+      this.strike(a);
+    if (a.echo) return;
+    // Support waits for a healing opportunity instead of wasting its main skill.
+    if (light) return;
+    let attackForm = a.element;
+    if (!skillsFor(attackForm)[0] || ["spirit", "divine"].includes(attackForm))
+      attackForm = a.parts.find(
+        (e) => !["light"].includes(e) && skillsFor(e)[0],
+      );
+    if (
+      attackForm &&
       a.abilityCd <= 0 &&
-      !a.charging &&
-      this.random() < 0.28
+      d < 300 &&
+      this.safeAttack(a, target, "ability", attackForm)
     ) {
-      a.fx = (target.x - a.x) / (d || 1);
-      a.fy = (target.y - a.y) / (d || 1);
+      this.switchForm(a, attackForm);
       this.startCharge(a);
     }
-    if (a.utilityCd <= 0 && d < 130 && this.random() < 0.12) {
-      this.utility(a);
-      if (this.portals.placing === a.id) {
-        for (const p of [
-          { x: a.x - a.fx * 60, y: a.y - a.fy * 60 },
-          { x: target.x - target.fx * 80, y: target.y - target.fy * 80 },
-        ])
-          this.portals.place(a, clamp(p.x, 170, 850), clamp(p.y, 200, 530));
+    const form = activeForm(a);
+    if (
+      !a.charging &&
+      a.utilityCd <= 0 &&
+      d < 140 &&
+      this.safeAttack(a, target, "utility", form)
+    ) {
+      // Avoid flooding friendly Fire fighters or placing portals without a route.
+      if (!["light", "spirit", "blaze"].includes(form)) this.utility(a);
+    }
+  }
+  updateBurst(a, old, dt) {
+    if (a.burst <= 0 || !a.alive) return;
+    const steps = Math.max(1, Math.ceil(distance(old, a) / 9));
+    for (let i = 0; i < steps; i++)
+      this.effects.push({
+        kind: "flame-trail",
+        x: old.x + ((a.x - old.x) * i) / steps,
+        y: old.y + ((a.y - old.y) * i) / steps,
+        color: "#ff8b38",
+        life: 0.45,
+        max: 0.45,
+      });
+    for (const b of this.fighters) {
+      if (
+        !b.alive ||
+        !inWorld(b) ||
+        b.id === a.id ||
+        a.burstHits.has(b.id) ||
+        segmentDistance(b, old, a) > 28
+      )
+        continue;
+      a.burstHits.add(b.id);
+      const hp = b.hp;
+      this.damage(a, b, 22, true, false, "blaze");
+      if (b.alive && b.hp < hp && !burnImmune(b)) {
+        b.burn = 3;
+        b.burnSource = a;
       }
+      if (!a.alive) break;
     }
-    if (a.charging && a.charge > 0.6 + this.random() * 0.5) {
-      a.fx = (target.x - a.x) / (d || 1);
-      a.fy = (target.y - a.y) / (d || 1);
-      this.releaseCharge(a);
-    }
-    if (a.shield && a.shieldTime > 0.8) this.utility(a, false);
+    a.burst = Math.max(0, a.burst - dt);
   }
   updateProjectiles(dt) {
     for (const p of this.projectiles) {
@@ -1147,6 +1400,7 @@ export class Combat {
         "slow",
         "flash",
         "swing",
+        "reveal",
       ])
         a[key] = Math.max(0, a[key] - dt);
       if (a.life !== undefined && (a.life -= dt) <= 0) {
@@ -1158,10 +1412,14 @@ export class Combat {
       else a.shieldHp = Math.min(65, a.shieldHp + dt * 5);
       if (hasPassive(a, "divine")) a.venom = a.burn = a.blind = 0;
       if (a.venom > 0) this.damage(a, a, dt * 3, true);
+      if (a.burn > 0 && !burnImmune(a))
+        this.damage(a.burnSource || a, a, dt * 4, true, false, "blaze");
+      if (!a.alive && !a.ghost) continue;
       const old = { x: a.x, y: a.y };
       if (a.id === "player") this.move(a, input.x, input.y, dt);
       else if (runAI) this.ai(a, dt);
       else this.move(a, 0, 0, dt);
+      this.updateBurst(a, old, dt);
       if (this.portals.enter(a, old)) continue;
       this.touchTokens(a);
       if (a.alive && a.parts.includes("water"))

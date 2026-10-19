@@ -1,4 +1,4 @@
-import { inWorld } from "./combat.js";
+import { inWorld, visibility } from "./combat.js";
 const PALETTE = {
   light: "#f5edcf",
   dark: "#25232e",
@@ -8,6 +8,12 @@ const PALETTE = {
   fire: "#ca493a",
 };
 export function fighterColor(a) {
+  if (
+    a.parts.length === 2 &&
+    a.parts.includes("dark") &&
+    a.parts.includes("earth")
+  )
+    return "#9254ce";
   const colors = a.parts.map((e) => PALETTE[e] || "#c4ab77");
   const channels = colors.map((c) =>
     [1, 3, 5].map((i) => parseInt(c.slice(i, i + 2), 16)),
@@ -292,9 +298,10 @@ export class Renderer {
       px(3, -12, 1, 3, "#fff5d4");
     }
     if (a.flash > 0) {
-      c.globalAlpha = 0.65;
+      c.save();
+      c.globalAlpha *= 0.65;
       px(-5, -22, 10, 20, "#fff3d1");
-      c.globalAlpha = 1;
+      c.restore();
     }
     c.restore();
     c.save();
@@ -388,6 +395,15 @@ export class Renderer {
       c.beginPath();
       c.arc(0, -12, 42, angle - 0.5, angle + 0.5);
       c.stroke();
+    }
+    if (a.burn > 0) {
+      for (let i = 0; i < 3; i++) {
+        const height = 8 + Math.sin(time * 13 + i * 2) * 4;
+        c.fillStyle = "#f16b32";
+        c.fillRect(-15 + i * 13, -height, 6, height);
+        c.fillStyle = "#ffd175";
+        c.fillRect(-13 + i * 13, -height * 0.6, 2, height * 0.6);
+      }
     }
     if (a.id !== "player") {
       c.fillStyle = "#23332b";
@@ -537,6 +553,8 @@ export class Renderer {
     }
     const target = game.target(game.player);
     if (target && game.player.alive && inWorld(game.player)) {
+      c.save();
+      c.globalAlpha = visibility(target);
       c.strokeStyle = "#efd397";
       c.lineWidth = 2;
       const x = target.x,
@@ -554,12 +572,13 @@ export class Renderer {
         c.lineTo(x + dx * (s - 9), y + dy * s);
         c.stroke();
       }
+      c.restore();
     }
     for (const a of [...game.fighters]
-      .filter((a) => (a.alive || a.ghost) && inWorld(a))
+      .filter((a) => (a.alive || a.ghost) && inWorld(a) && visibility(a) > 0)
       .sort((a, b) => a.y - b.y)) {
       c.save();
-      if (a.ghost) c.globalAlpha = 0.38;
+      c.globalAlpha = a.ghost ? 0.38 : visibility(a);
       this.avatar(c, a, t);
       c.restore();
       if (a.ghost) {
@@ -636,6 +655,27 @@ export class Renderer {
     }
     for (const e of game.effects) {
       c.globalAlpha = e.life / e.max;
+      if (e.kind === "flame-trail") {
+        const flicker = Math.sin(e.x * 0.7 + e.y * 0.3 + t * 18);
+        const height = (10 + (23 * e.life) / e.max) * (0.85 + flicker * 0.35);
+        const lean = Math.cos(e.x * 0.4 + t * 12) * 6;
+        c.fillStyle = "#ef542d";
+        c.beginPath();
+        c.moveTo(e.x - 9, e.y + 3);
+        c.lineTo(e.x - 5, e.y - height * 0.6);
+        c.lineTo(e.x + lean, e.y - height);
+        c.lineTo(e.x + 4, e.y - height * 0.4);
+        c.lineTo(e.x + 9, e.y + 3);
+        c.fill();
+        c.fillStyle = "#ffd17b";
+        c.beginPath();
+        c.moveTo(e.x - 4, e.y + 2);
+        c.lineTo(e.x + lean * 0.3, e.y - height * 0.6);
+        c.lineTo(e.x + 5, e.y + 2);
+        c.fill();
+        c.globalAlpha = 1;
+        continue;
+      }
       c.strokeStyle = e.color;
       c.lineWidth = e.kind === "fusion" ? 9 : 4;
       c.beginPath();

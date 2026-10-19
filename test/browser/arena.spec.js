@@ -296,3 +296,121 @@ test("native fullscreen enters and exits without leaving the game trapped", asyn
     .toBe(true);
   expect(await page.evaluate(() => __arena.immersive)).toBe(false);
 });
+
+test("level III selector starts each fusion and Divine disappears completely at rest", async ({
+  page,
+}) => {
+  await page.goto("/");
+  await page.locator('[data-mode="fused3"]').click();
+  await expect(page.locator("[data-element]")).toHaveCount(3);
+  await expect(page.locator(".tier")).toHaveText("III");
+  for (const element of ["demonic", "divine", "multi-dimensional"])
+    await expect(page.locator(`[data-element="${element}"]`)).toBeVisible();
+  await page.locator('[data-element="divine"]').click();
+  await page.locator("#begin-btn").click();
+  await stillRival(page);
+  await expect(page.locator("[data-form]")).toHaveCount(4);
+  await expect(page.locator("#round-mode")).toContainText("FUSED III");
+  const pixels = await page.evaluate(() => {
+    const { game: g, renderer: r } = __arena,
+      a = g.player;
+    g.effects = [];
+    g.events = [];
+    a.reveal = 0;
+    a.movingTime = 0;
+    const draw = () => {
+      r.draw(g);
+      return r.ctx.getImageData(0, 0, r.canvas.width, r.canvas.height).data;
+    };
+    const hidden = draw();
+    a.alive = false;
+    const absent = draw();
+    a.alive = true;
+    a.reveal = 0.45;
+    const acting = draw();
+    a.reveal = 0;
+    return {
+      hiddenDifference: hidden.reduce(
+        (n, v, i) => n + Number(v !== absent[i]),
+        0,
+      ),
+      actionDifference: acting.reduce(
+        (n, v, i) => n + Number(v !== absent[i]),
+        0,
+      ),
+    };
+  });
+  expect(pixels.hiddenDifference).toBe(0);
+  expect(pixels.actionDifference).toBeGreaterThan(0);
+});
+
+test("Blaze has a repeatable zero-cooldown dash and Smoke only exposes Vog", async ({
+  page,
+}) => {
+  await begin(page, { mode: "fused", element: "blaze" });
+  await stillRival(page);
+  await expect(page.locator("#charge-btn")).toBeHidden();
+  await expect(page.locator("#utility-name")).toHaveText("Speed burst");
+  await page.evaluate(() => {
+    __arena.game.player.utilityCd = 5;
+  });
+  await expect(page.locator("#utility-btn")).toBeEnabled();
+  const x = await page.evaluate(() => __arena.game.player.x);
+  await page.locator("#utility-btn").click();
+  await expect
+    .poll(() => page.evaluate(() => __arena.game.player.x))
+    .toBeGreaterThan(x + 120);
+  await expect(page.locator("#utility-status")).toHaveText("0s cooldown");
+  await expect(page.locator("#utility-btn")).toBeEnabled();
+  await page.locator("#utility-btn").click();
+  await expect
+    .poll(() => page.evaluate(() => __arena.game.player.x))
+    .toBeGreaterThan(x + 250);
+  await begin(page, { mode: "fused", element: "smoke" });
+  await expect(page.locator("#ability-name")).toHaveText("Vog");
+  await expect(page.locator("#utility-btn")).toBeHidden();
+});
+
+test.describe("level III phone controls", () => {
+  test.use({
+    viewport: { width: 844, height: 390 },
+    isMobile: true,
+    hasTouch: true,
+  });
+  test("all four ability sets fit in landscape and portrait fallback", async ({
+    page,
+  }) => {
+    await page.addInitScript(() => {
+      HTMLElement.prototype.requestFullscreen = undefined;
+    });
+    await begin(page, { mode: "fused3", element: "multi-dimensional" });
+    await stillRival(page);
+    for (const size of [
+      { width: 844, height: 390 },
+      { width: 390, height: 844 },
+    ]) {
+      await page.setViewportSize(size);
+      await expect(page.locator("[data-form]")).toHaveCount(4);
+      for (const selector of [
+        "#joystick",
+        "#attack-btn",
+        "#charge-btn",
+        "#skill-switcher",
+      ]) {
+        const b = await page.locator(selector).boundingBox();
+        expect(b.x).toBeGreaterThanOrEqual(-1);
+        expect(b.y).toBeGreaterThanOrEqual(-1);
+        expect(b.x + b.width).toBeLessThanOrEqual(size.width + 1);
+        expect(b.y + b.height).toBeLessThanOrEqual(size.height + 1);
+      }
+      await worldTap(page, 580, 350);
+      expect(await page.evaluate(() => __arena.game.player.x)).toBeCloseTo(
+        580,
+        0,
+      );
+      await page.locator('[data-form="light"]').click();
+      await expect(page.locator("#ability-name")).toHaveText("Healing");
+      await page.locator('[data-form="multi-dimensional"]').click();
+    }
+  });
+});
