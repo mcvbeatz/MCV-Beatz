@@ -1,4 +1,4 @@
-import { ELEMENTS, distance } from "./combat.js";
+import { inWorld } from "./combat.js";
 const PALETTE = {
   light: "#f5edcf",
   dark: "#25232e",
@@ -300,11 +300,56 @@ export class Renderer {
     c.save();
     c.translate(a.x, a.y);
     if (a.shield) {
-      c.strokeStyle = "#c5b98d";
-      c.lineWidth = 5;
+      const rise = Math.min(1, a.shieldTime / 0.16);
+      c.save();
+      c.translate(0, 9);
+      c.scale(1, rise);
+      c.fillStyle = "#3a4231";
       c.beginPath();
-      c.arc(0, -16, 34, 0, Math.PI * 2);
-      c.stroke();
+      c.ellipse(0, -5, 34, 13, 0, 0, Math.PI * 2);
+      c.fill();
+      const rocks = [
+        [-29, -37, 20, 43],
+        [-14, -70, 24, 73],
+        [5, -66, 23, 71],
+        [20, -34, 16, 39],
+        [-20, -19, 24, 28],
+        [1, -22, 24, 31],
+      ];
+      for (let i = 0; i < rocks.length; i++) {
+        const [x, y, w, h] = rocks[i];
+        c.fillStyle = [
+          "#8a8160",
+          "#a79e78",
+          "#8e926e",
+          "#706d50",
+          "#aaa27d",
+          "#8f8b65",
+        ][i];
+        c.strokeStyle = "#4d533b";
+        c.lineWidth = 2;
+        c.beginPath();
+        c.moveTo(x, y + 9);
+        c.lineTo(x + w * 0.3, y);
+        c.lineTo(x + w - 3, y + 3);
+        c.lineTo(x + w, y + h - 6);
+        c.lineTo(x + w * 0.65, y + h);
+        c.lineTo(x, y + h - 3);
+        c.closePath();
+        c.fill();
+        c.stroke();
+        c.strokeStyle = "#d4c69366";
+        c.beginPath();
+        c.moveTo(x + 3, y + 10);
+        c.lineTo(x + w * 0.35, y + 3);
+        c.lineTo(x + w - 5, y + 6);
+        c.stroke();
+      }
+      c.restore();
+      c.fillStyle = "#24382b";
+      c.fillRect(-29, 15, 58, 5);
+      c.fillStyle = "#d4be8a";
+      c.fillRect(-29, 15, (58 * a.shieldHp) / 65, 5);
     }
     if (a.dodge > 0) {
       c.strokeStyle = "#c3a3ed88";
@@ -352,7 +397,17 @@ export class Renderer {
       c.fillStyle = a.team === 0 ? "#b5dec8" : "#e4ad8b";
       c.font = "8px monospace";
       c.textAlign = "center";
-      c.fillText(a.echo ? "ECHO" : a.team === 0 ? "ALLY" : "RIVAL", 0, -77);
+      c.fillText(
+        a.ghost
+          ? "ANGEL GUARD"
+          : a.echo
+            ? "ECHO"
+            : a.team === 0
+              ? "ALLY"
+              : "RIVAL",
+        0,
+        -77,
+      );
     } else {
       c.fillStyle = "#f5dc99";
       c.beginPath();
@@ -363,12 +418,35 @@ export class Renderer {
     }
     c.restore();
   }
+  worldPoint(x, y) {
+    const v = this.view || { scale: 1, tx: 0, ty: 0 };
+    return { x: (x - v.tx) / v.scale, y: (y - v.ty) / v.scale };
+  }
   draw(game, idle = false) {
-    const c = this.ctx;
-    c.clearRect(0, 0, 1024, 680);
+    const c = this.ctx,
+      w = this.canvas.clientWidth || 1024,
+      h = this.canvas.clientHeight || 680;
+    if (
+      this.canvas.width !== Math.round(w) ||
+      this.canvas.height !== Math.round(h)
+    ) {
+      this.canvas.width = Math.round(w);
+      this.canvas.height = Math.round(h);
+    }
+    c.setTransform(1, 0, 0, 1, 0, 0);
+    c.fillStyle = "#1a2c25";
+    c.fillRect(0, 0, w, h);
+    const scale = Math.min(w / 834, h / 530),
+      tx = (w - 834 * scale) / 2 - 95 * scale,
+      ty = (h - 530 * scale) / 2 - 100 * scale;
+    this.view = { scale, tx, ty };
+    c.save();
+    c.translate(tx, ty);
+    c.scale(scale, scale);
+    c.imageSmoothingEnabled = false;
     c.drawImage(this.background, 0, 0);
     const t = idle ? performance.now() / 1000 : game.time;
-    for (const h of game.hazards) {
+    for (const hazard of game.hazards.filter(inWorld)) {
       c.save();
       c.globalAlpha = 0.3 + 0.07 * Math.sin(t * 4);
       c.fillStyle = {
@@ -378,9 +456,17 @@ export class Renderer {
         flood: "#6cacd1",
         gravity: "#7462aa",
         heatwave: "#f4ad4f",
-      }[h.kind];
+      }[hazard.kind];
       c.beginPath();
-      c.ellipse(h.x, h.y, h.r, h.r * 0.7, 0, 0, Math.PI * 2);
+      c.ellipse(
+        hazard.x,
+        hazard.y,
+        hazard.r,
+        hazard.r * 0.7,
+        0,
+        0,
+        Math.PI * 2,
+      );
       c.fill();
       c.globalAlpha = 0.55;
       c.strokeStyle = c.fillStyle;
@@ -388,7 +474,50 @@ export class Renderer {
       c.stroke();
       c.restore();
     }
-    for (const token of game.tokens) {
+    for (const p of game.portals.portals) {
+      const pair = game.portals.portals.filter((q) => q.owner === p.owner);
+      c.save();
+      c.translate(p.x, p.y - 12);
+      c.shadowBlur = 17;
+      c.shadowColor = "#9aaff9";
+      c.fillStyle = "#151d38";
+      c.beginPath();
+      c.ellipse(0, 0, 25, 34, 0, 0, Math.PI * 2);
+      c.fill();
+      c.strokeStyle = p.owner === game.player.id ? "#c8c3ff" : "#9aceea";
+      c.lineWidth = 4;
+      c.stroke();
+      c.shadowBlur = 0;
+      c.strokeStyle = "#7d8fd4";
+      c.lineWidth = 2;
+      for (let j = 0; j < 3; j++) {
+        c.beginPath();
+        c.ellipse(
+          0,
+          0,
+          9 + j * 5,
+          13 + j * 6,
+          Math.sin(t * 2 + j) * 0.2,
+          t * 2 + j,
+          t * 2 + j + Math.PI * 1.4,
+        );
+        c.stroke();
+      }
+      c.fillStyle = "#d4dbfc";
+      c.font = "9px monospace";
+      c.textAlign = "center";
+      c.fillText(
+        pair.length === 1
+          ? "LONE PORTAL"
+          : pair.indexOf(p) === 0
+            ? "PORTAL A"
+            : "PORTAL B",
+        0,
+        49,
+      );
+      c.restore();
+    }
+    for (const token of game.visibleTokens()) {
       const color = fighterColor(token);
       c.save();
       c.translate(token.x, token.y - 9 + Math.sin(t * 3) * 4);
@@ -404,16 +533,11 @@ export class Renderer {
       c.fillStyle = "#e4d7a1";
       c.font = "9px monospace";
       c.textAlign = "center";
-      c.fillText(
-        token.team === 0 ? "ALLY TOKEN · F" : "RIVAL TOKEN",
-        token.x,
-        token.y + 22,
-      );
+      c.fillText("ALLY TOKEN", token.x, token.y + 22);
     }
     const target = game.target(game.player);
-    if (target && game.player.alive) {
-      c.strokeStyle =
-        distance(game.player, target) < 245 ? "#efd397" : "#efd39755";
+    if (target && game.player.alive && inWorld(game.player)) {
+      c.strokeStyle = "#efd397";
       c.lineWidth = 2;
       const x = target.x,
         y = target.y - 22,
@@ -432,28 +556,88 @@ export class Renderer {
       }
     }
     for (const a of [...game.fighters]
-      .filter((a) => a.alive)
-      .sort((a, b) => a.y - b.y))
+      .filter((a) => (a.alive || a.ghost) && inWorld(a))
+      .sort((a, b) => a.y - b.y)) {
+      c.save();
+      if (a.ghost) c.globalAlpha = 0.38;
       this.avatar(c, a, t);
-    for (const p of game.projectiles) {
+      c.restore();
+      if (a.ghost) {
+        c.save();
+        c.translate(a.x, a.y - 30);
+        c.strokeStyle = "#b8ede8bb";
+        c.lineWidth = 3;
+        c.beginPath();
+        c.moveTo(-8, -5);
+        c.quadraticCurveTo(-39, -43, -36, 1);
+        c.lineTo(-12, 12);
+        c.moveTo(8, -5);
+        c.quadraticCurveTo(39, -43, 36, 1);
+        c.lineTo(12, 12);
+        c.stroke();
+        c.restore();
+      }
+    }
+    for (const p of game.projectiles.filter(inWorld)) {
       c.save();
       c.translate(p.x, p.y - 12);
       c.rotate(Math.atan2(p.dy, p.dx));
-      c.fillStyle = fighterColor(p.owner);
-      c.shadowColor = c.fillStyle;
-      c.shadowBlur = 12;
-      c.globalAlpha = 0.8;
+      if (p.kind === "laser") {
+        for (const [width, color] of [
+          [20, "#ffe3a533"],
+          [9, "#ffd37e"],
+          [3, "#fffce5"],
+        ]) {
+          c.strokeStyle = color;
+          c.lineWidth = width;
+          c.lineCap = "round";
+          c.beginPath();
+          c.moveTo(-Math.max(20, p.trail), 0);
+          c.lineTo(15, 0);
+          c.stroke();
+        }
+      } else {
+        c.fillStyle = fighterColor(p.owner);
+        c.shadowColor = c.fillStyle;
+        c.shadowBlur = 12;
+        c.globalAlpha = 0.8;
+        c.beginPath();
+        c.ellipse(0, 0, p.r, p.r, 0, 0, Math.PI * 2);
+        c.fill();
+        c.fillStyle = "#fff3c9";
+        c.fillRect(-5, -3, 9, 6);
+      }
+      c.restore();
+    }
+    for (const wave of game.waves.filter(inWorld)) {
+      c.save();
+      c.translate(wave.originX, wave.originY - 12);
+      const a = Math.atan2(wave.fy, wave.fx),
+        r = wave.radius,
+        trail = Math.max(0, r - 24);
+      c.fillStyle = "#9eece02a";
       c.beginPath();
-      c.ellipse(0, 0, p.kind === "laser" ? 35 : p.r, p.r, 0, 0, Math.PI * 2);
+      c.moveTo(0, 0);
+      c.arc(0, 0, r, a - wave.halfAngle, a + wave.halfAngle);
+      c.closePath();
       c.fill();
-      c.fillStyle = "#fff3c9";
-      c.fillRect(-5, -3, 9, 6);
+      c.fillStyle = "#b1f9ec77";
+      c.beginPath();
+      c.arc(0, 0, r, a - wave.halfAngle, a + wave.halfAngle);
+      c.arc(0, 0, trail, a + wave.halfAngle, a - wave.halfAngle, true);
+      c.closePath();
+      c.fill();
+      c.strokeStyle = "#d3fff1";
+      c.lineWidth = 4;
+      c.beginPath();
+      c.arc(0, 0, r, a - wave.halfAngle, a + wave.halfAngle);
+      c.stroke();
       c.restore();
     }
     for (const e of game.effects) {
       c.globalAlpha = e.life / e.max;
       c.strokeStyle = e.color;
-      c.lineWidth = 4;
+      c.lineWidth = e.kind === "fusion" ? 9 : 4;
       c.beginPath();
       c.arc(e.x, e.y, e.r * (1 - e.life / e.max) + 10, 0, Math.PI * 2);
       c.stroke();
@@ -472,7 +656,6 @@ export class Renderer {
       c.fillText(e.text, e.x, e.y - 34 - age * 25);
       c.globalAlpha = 1;
     }
-    // Tiny amber torch sparks give the still arena some life.
     for (const [x, y] of [
       [210, 151],
       [814, 151],
@@ -488,17 +671,22 @@ export class Renderer {
       c.fillStyle = "#f6de9c";
       c.fillRect(x + Math.sin(t * 2) * 4, y - 20 - ((t * 9) % 15), 2, 2);
     }
-    if (game.player.blind > 0) {
+    c.restore();
+    if (game.player.blind > 0 && inWorld(game.player)) {
       c.fillStyle = game.fighters.some(
         (a) => a.element === "light" && a.team !== 0,
       )
         ? "#fff8dcaa"
         : "#070c15d9";
-      c.fillRect(0, 0, 1024, 680);
+      c.fillRect(0, 0, w, h);
       c.font = "16px monospace";
       c.textAlign = "center";
       c.fillStyle = "#dacfae";
-      c.fillText("VISION DISRUPTED", 512, 360);
+      c.fillText("VISION DISRUPTED", w / 2, h / 2);
+    }
+    if (game.player.dimension) {
+      c.fillStyle = "#11102a70";
+      c.fillRect(0, 0, w, h);
     }
   }
 }

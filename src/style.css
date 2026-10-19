@@ -1224,3 +1224,600 @@ dialog article h3 {
   height: 21px;
   transform: rotate(-45deg);
 }
+/* v0.2: the battle is a single touch surface, independent of the setup page. */
+[hidden] {
+  display: none !important;
+}
+.arena-tools {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.arena-tools > button {
+  font-size: 10px;
+  border: 1px solid #44554b;
+  border-radius: 4px;
+  padding: 5px 9px;
+  color: #bdc9b5;
+  min-height: 30px;
+}
+.arena-tools > .icon-button {
+  min-width: 32px;
+}
+.arena-panel {
+  min-width: 0;
+}
+.game-wrap {
+  aspect-ratio: 1.5;
+  min-height: 390px;
+  isolation: isolate;
+}
+#game {
+  height: 100%;
+  width: 100%;
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+}
+.game-hud {
+  top: 12px;
+  left: 14px;
+  right: 14px;
+  z-index: 2;
+}
+.fighter-card {
+  min-width: 140px;
+}
+.round-info {
+  padding-top: 3px;
+}
+.enemy-count {
+  min-width: 55px;
+}
+.skill-switcher {
+  position: absolute;
+  top: 73px;
+  left: 12px;
+  right: 12px;
+  display: flex;
+  justify-content: center;
+  gap: 5px;
+  z-index: 3;
+  overflow-x: auto;
+  scrollbar-width: none;
+  pointer-events: none;
+}
+.form-button {
+  pointer-events: auto;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  border: 1px solid #6a766455;
+  background: #142422e8;
+  border-radius: 5px;
+  color: #a3b6a4;
+  font-size: 10px;
+  white-space: nowrap;
+  min-height: 36px;
+  padding: 7px 12px;
+  flex-shrink: 0;
+}
+.form-button svg {
+  width: 17px;
+  height: 17px;
+  color: var(--element);
+}
+.form-button.selected {
+  border-color: #e3be76;
+  background: #3d3e2be8;
+  color: #f7e1ae;
+  box-shadow: inset 0 -2px #e3be76;
+}
+.battle-controls {
+  position: absolute;
+  inset: auto 16px 20px;
+  display: flex;
+  align-items: end;
+  justify-content: space-between;
+  gap: 12px;
+  pointer-events: none;
+  z-index: 4;
+  user-select: none;
+  -webkit-user-select: none;
+}
+.stick-area {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 5px;
+  flex-shrink: 0;
+}
+.stick-area > span {
+  font-size: 7px;
+  letter-spacing: 2px;
+  color: #d4d9bd;
+  text-shadow: 0 1px 3px #000;
+}
+.joystick {
+  width: 106px;
+  height: 106px;
+  border-radius: 50%;
+  border: 2px solid #a9b99b80;
+  background: radial-gradient(
+    circle,
+    #263d31cc 0%,
+    #1a2b27b8 65%,
+    #53614a80 66%,
+    #142620dd 70%
+  );
+  position: relative;
+  pointer-events: auto;
+  touch-action: none;
+  box-shadow:
+    0 3px 18px #0b181966,
+    inset 0 0 0 9px #192e2744;
+}
+.stick-cross {
+  position: absolute;
+  inset: 16px;
+  border: 1px solid #c6d1b129;
+  border-radius: 50%;
+}
+.stick-cross:before,
+.stick-cross:after {
+  content: "";
+  position: absolute;
+  background: #a9ba9140;
+  left: 50%;
+  top: 0;
+  height: 100%;
+  width: 1px;
+}
+.stick-cross:after {
+  transform: rotate(90deg);
+}
+.stick-thumb {
+  position: absolute;
+  left: calc(50% - 23px);
+  top: calc(50% - 23px);
+  width: 46px;
+  height: 46px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 35% 25%, #d2d8b3, #7c9473 55%, #4b6656);
+  border: 2px solid #d5debb;
+  box-shadow: 0 4px 12px #0005;
+  pointer-events: none;
+  will-change: transform;
+}
+.skill-controls {
+  display: flex;
+  justify-content: center;
+  align-items: end;
+  gap: 8px;
+  flex: 1;
+  min-width: 0;
+  margin-bottom: 12px;
+  pointer-events: none;
+}
+.skill-controls > .ability {
+  flex: 0 1 106px;
+  min-width: 82px;
+  height: 84px;
+  background: #182c29ed;
+  pointer-events: auto;
+  touch-action: none;
+  box-shadow: 0 4px 15px #0004;
+}
+.skill-controls > .main-ability {
+  background: #443a29ed;
+}
+.skill-controls .ability strong {
+  font-size: 10px;
+}
+.skill-controls .ability small {
+  font-size: 8px;
+}
+.attack-button {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 94px;
+  height: 94px;
+  border-radius: 50%;
+  border: 2px solid #e6c481;
+  color: #ffe1a2;
+  background: radial-gradient(
+    circle at 35% 25%,
+    #746044e8,
+    #423b2aee 60%,
+    #292d23
+  );
+  box-shadow:
+    0 4px 20px #0c1718aa,
+    inset 0 0 0 6px #b99b5533;
+  pointer-events: auto;
+  touch-action: none;
+  margin-bottom: 12px;
+}
+.attack-button .ability-icon svg {
+  width: 32px;
+  height: 32px;
+}
+.attack-button strong {
+  font-size: 10px;
+  letter-spacing: 1.8px;
+}
+.attack-button kbd {
+  position: absolute;
+  right: 9px;
+  top: 9px;
+  background: #334132;
+}
+.pressed {
+  filter: brightness(1.35) !important;
+  box-shadow: inset 0 0 18px #f2d28e88 !important;
+}
+.passive-note {
+  padding: 12px;
+  background: #10211ed9;
+  border: 1px solid #9b998451;
+  border-radius: 5px;
+  color: #c9d1b4;
+  line-height: 1.6;
+  font-size: 10px;
+  text-align: center;
+  max-width: 200px;
+}
+.arena-caption {
+  bottom: 4px;
+  font-size: 8px;
+  z-index: 2;
+  text-shadow: 0 1px 3px #000;
+}
+.charge-meter {
+  bottom: 122px;
+  z-index: 3;
+}
+.toast {
+  bottom: 158px;
+}
+.game-overlay {
+  z-index: 8;
+  background: linear-gradient(
+    transparent,
+    #101a18db 30%,
+    #101a18ed 65%,
+    transparent
+  );
+}
+.portal-notice {
+  position: absolute;
+  top: 119px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: #1b263deb;
+  border: 1px solid #8293bb;
+  border-radius: 5px;
+  padding: 7px 12px;
+  z-index: 5;
+  text-align: center;
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  width: max-content;
+  max-width: 90%;
+  font-size: 10px;
+  color: #dae9ff;
+}
+.portal-notice button {
+  border-left: 1px solid #61738b;
+  font-size: 9px;
+  padding-left: 10px;
+  color: #e8c597;
+  min-height: 24px;
+}
+.dimension-notice {
+  pointer-events: none;
+  position: absolute;
+  left: 50%;
+  top: 45%;
+  transform: translate(-50%, -50%);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  background: #171629c9;
+  border: 1px solid #9f97bf77;
+  padding: 18px;
+  text-align: center;
+  border-radius: 8px;
+  z-index: 3;
+  min-width: 250px;
+}
+.dimension-notice strong {
+  font-size: 17px;
+  letter-spacing: 3px;
+  color: #d5c5f1;
+}
+.dimension-notice span {
+  font-size: 10px;
+  color: #bbb9d5;
+  line-height: 1.6;
+}
+.immersive-play {
+  overflow: hidden !important;
+  overscroll-behavior: none;
+}
+.arena-panel.immersive {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  width: 100dvw;
+  height: 100dvh;
+  max-width: none;
+  border: 0;
+  border-radius: 0;
+  display: flex;
+  flex-direction: column;
+  margin: 0;
+  padding: 0;
+  background: #12211d;
+}
+.immersive .arena-topline {
+  flex: 0 0 38px;
+  padding: 2px max(12px, env(safe-area-inset-right)) 2px
+    max(12px, env(safe-area-inset-left));
+}
+.immersive .arena-tools > button {
+  min-height: 30px;
+}
+.immersive .game-wrap {
+  flex: 1;
+  width: 100%;
+  height: 0;
+  min-height: 0;
+  aspect-ratio: auto;
+}
+.immersive .battle-controls {
+  left: max(16px, env(safe-area-inset-left));
+  right: max(16px, env(safe-area-inset-right));
+  bottom: max(14px, env(safe-area-inset-bottom));
+}
+.immersive .game-hud {
+  left: max(16px, env(safe-area-inset-left));
+  right: max(16px, env(safe-area-inset-right));
+}
+.immersive .skill-switcher {
+  top: 65px;
+}
+.immersive .portal-notice {
+  top: 108px;
+}
+.immersive .arena-caption {
+  bottom: 3px;
+}
+.immersive .game-overlay .primary {
+  min-height: 44px;
+}
+.immersive .ability:disabled {
+  opacity: 0.55;
+}
+.immersive .passive-note {
+  font-size: 10px;
+}
+.arena-panel:fullscreen {
+  width: 100vw;
+  height: 100vh;
+}
+.form-button:disabled {
+  opacity: 0.5;
+}
+@media (max-width: 760px) {
+  .game-wrap {
+    min-height: 360px;
+  }
+  .battle-controls {
+    left: 10px;
+    right: 10px;
+    gap: 6px;
+  }
+  .joystick {
+    width: 84px;
+    height: 84px;
+  }
+  .stick-thumb {
+    width: 38px;
+    height: 38px;
+    left: calc(50% - 19px);
+    top: calc(50% - 19px);
+  }
+  .attack-button {
+    width: 76px;
+    height: 76px;
+  }
+  .skill-controls {
+    gap: 5px;
+  }
+  .skill-controls > .ability {
+    min-width: 64px;
+    height: 76px;
+    flex-basis: 86px;
+  }
+  .skill-controls .ability strong {
+    font-size: 8px;
+  }
+  .skill-controls .ability small {
+    font-size: 7px;
+  }
+  .skill-controls .ability kbd,
+  .attack-button kbd {
+    display: none;
+  }
+  .skill-switcher {
+    top: 69px;
+  }
+  .form-button {
+    font-size: 9px;
+    padding: 6px 9px;
+    min-height: 35px;
+  }
+  .skill-switcher:has(.form-button:nth-child(5)) {
+    justify-content: flex-start;
+  }
+  .game-overlay h2 {
+    font-size: 30px;
+  }
+  .game-overlay small {
+    font-size: 8px;
+  }
+  .arena-tools > button {
+    font-size: 8px;
+    padding: 5px;
+  }
+  .arena-topline strong {
+    font-size: 8px;
+  }
+  .arena-type {
+    display: none;
+  }
+  .setup-panel .element-option {
+    font-size: 9px;
+  }
+  .element-grid:has(.element-option:nth-child(7)) {
+    grid-template-columns: repeat(3, 1fr);
+  }
+  .element-grid:has(.element-option:nth-child(7)) .element-option {
+    height: 58px;
+  }
+  .setup-panel .mode-description {
+    min-width: 0;
+  }
+  .passive-note {
+    font-size: 8px;
+    padding: 6px;
+    max-width: 130px;
+  }
+}
+@media (orientation: portrait) {
+  .arena-panel.immersive {
+    inset: auto;
+    left: 50%;
+    top: 50%;
+    width: 100dvh;
+    height: 100dvw;
+    transform: translate(-50%, -50%) rotate(90deg);
+    transform-origin: center;
+  }
+  .immersive .game-wrap {
+    min-height: 0;
+  }
+  .immersive .joystick {
+    width: 100px;
+    height: 100px;
+  }
+  .immersive .attack-button {
+    width: 86px;
+    height: 86px;
+  }
+  .immersive .skill-controls > .ability {
+    min-width: 100px;
+    height: 76px;
+    flex-basis: 110px;
+  }
+  .immersive .skill-controls .ability strong {
+    font-size: 10px;
+  }
+  .immersive .skill-controls .ability small {
+    font-size: 8px;
+  }
+  .immersive .form-button {
+    font-size: 10px;
+    min-height: 35px;
+    padding: 6px 12px;
+  }
+  .immersive .skill-switcher {
+    top: 62px;
+  }
+  .immersive .portal-notice {
+    top: 103px;
+  }
+  .immersive .arena-topline strong {
+    font-size: 9px;
+  }
+  .immersive .arena-tools > button {
+    font-size: 10px;
+  }
+  .immersive .passive-note {
+    font-size: 10px;
+    max-width: 240px;
+  }
+  .immersive .arena-caption {
+    font-size: 8px;
+  }
+}
+@media (orientation: landscape) and (max-height: 500px) {
+  .immersive .joystick {
+    width: 96px;
+    height: 96px;
+  }
+  .immersive .attack-button {
+    width: 84px;
+    height: 84px;
+  }
+  .immersive .skill-controls > .ability {
+    height: 74px;
+    min-width: 100px;
+  }
+  .immersive .game-hud {
+    top: 7px;
+  }
+  .immersive .fighter-card {
+    padding: 6px 9px;
+  }
+  .immersive .round-info strong {
+    font-size: 20px;
+  }
+  .immersive .enemy-count {
+    padding: 6px 9px;
+  }
+  .immersive .skill-switcher {
+    top: 60px;
+  }
+  .immersive .form-button {
+    min-height: 33px;
+    padding: 5px 11px;
+  }
+  .immersive .portal-notice {
+    top: 100px;
+  }
+  .immersive .charge-meter {
+    bottom: 111px;
+  }
+  .immersive .game-overlay h2 {
+    font-size: 31px;
+    margin: 6px;
+  }
+  .immersive .game-overlay .primary {
+    margin: 12px 0;
+  }
+  .immersive .arena-type {
+    display: none;
+  }
+}
+@media (orientation: portrait) {
+  .immersive .battle-controls,
+  .immersive .game-hud {
+    left: max(16px, env(safe-area-inset-top));
+    right: max(16px, env(safe-area-inset-bottom));
+  }
+  .immersive .battle-controls {
+    bottom: 14px;
+  }
+  .immersive .arena-topline {
+    padding-left: max(12px, env(safe-area-inset-top));
+    padding-right: max(12px, env(safe-area-inset-bottom));
+  }
+}

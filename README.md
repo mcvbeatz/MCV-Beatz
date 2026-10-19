@@ -1,122 +1,99 @@
-# Elemental — The Colosseum
+# Elemental — The Colosseum · v0.2
 
-A playable, single-player combat prototype based on the supplied elemental fighting-game brief. Original canvas pixel characters and arena art; all six origins share one caped silhouette. Built with vanilla JavaScript, Canvas 2D and Vite. No backend, accounts, secrets, or remote assets are required at runtime.
+A single-player elemental combat game with original caped pixel characters, AI battles, fusion and touch controls. Built with vanilla JavaScript, Canvas 2D and Vite. No server, accounts, secrets or external runtime assets are required.
 
-## Run
+**Public site:** https://mcvbeatz.github.io/MCV-Beatz/
 
-Node.js 22.12+ (validated with 24.19) and npm are required.
+## Playing on an iPhone
+
+Open the site in Safari. Select a format and elemental, then enter the battle. Phone play fills the viewport in landscape, with a rotated landscape fallback when the device is held vertically. The controls are:
+
+- **Bottom left:** analog movement stick, in any direction. Movement and skill buttons support simultaneous touches.
+- **Bottom right:** Strike. The nearest opponent is automatically targeted when within melee range.
+- **Bottom middle:** active skills. Hold the main skill to charge, then release. Earth’s Rock shield stays up while its button is held, until it breaks.
+- **Across the top:** available ability sets. A Mirror can choose Earth, Light or Mirror; switching skills does not change its fused identity, passives or cooldowns.
+- **Top right:** pause, fullscreen and return to setup.
+
+The fullscreen button requests browser fullscreen where supported. On iOS versions that do not support element fullscreen, the game fills the available browser viewport. Safari’s **Share → Add to Home Screen** provides a standalone view without normal browser bars. A manifest and Apple standalone metadata are included; offline play is not implemented.
+
+Keyboard controls remain available: **WASD/arrows** move, **J** strikes, **hold/release K** charges/casts, **L** uses the second skill, **Tab** cycles skill sets, **Esc** pauses, **R** restarts. There are no manual lock or fusion buttons. Arena taps are reserved for portal placement/closure or passive teleportation, not movement.
+
+## Combat rules
+
+- Duel, fused duel, and 2v2 / 3v3 / 4v4 team brawls against AI. Rivals draw a random element each battle; fused rivals draw from the nine level-II elements.
+- Fused mode shows all nine level-II choices instead of the six origins.
+- Automatic lock faces the nearest rival within **69 world units** while allowing independent movement. Blindness disrupts locking.
+- Melee has a **110ms windup**, **430ms cooldown**, and **14 base damage**. Facing attacks contested within **100ms** deal quarter damage to both fighters. Friendly fire remains on.
+- Low health reduces speed. Air passively flies faster with slower direction changes. Stick magnitude controls movement speed.
+- Main skills charge for up to **1.8 seconds** and scale to **2.6×** potency. Hits interrupt charge growth for **270ms** without deleting stored power; Dark sabotage cancels charging.
+- Same-element abilities deal half damage. The supplied hierarchy gives a **1.5×** advantage.
+- Water ability damage to any Fire-bearing elemental is multiplied by **0.7**, a 30% reduction from v0.1. Against base Fire, Hydro pump’s combined multiplier changes from **3× to 2.1×**. Cloud’s original Flood instant-death interaction with Fire is unchanged.
+- Rock shield has **65 durability**, blocks 360°, and renders a shell of rising rocks. It lasts as long as held, with no former 3-second timeout. Releasing or breaking it starts a 5-second cooldown.
+- Sonic boom is an expanding fan-shaped wave, with damage falling off over distance. The Sun laser is a fast, piercing beam with swept collision, not a ball.
+
+## Automatic fusion and passives
+
+Only allied tokens are rendered. Touching a compatible token within **27 world units** fuses automatically, heals 30 HP, blends colors and creates a shockwave that briefly pushes all other on-field fighters away, including allies. Level II gains a shine; level III gains a glow.
+
+Ability-set tabs expose all accumulated origins and fused forms. Passive abilities are inherited and never require a button: Reflect, hard skin, contact burn/resistance, flight, venomous contact, Angel guard, Divine status immunity and Multi-Dimensional teleportation. Mirror has **no active skill of its own**; use its Earth and Light tabs for active skills.
+
+Multi-Dimensional can teleport instantly to any valid arena point by tapping, without a cooldown, even while an inherited ability set is selected. An active portal-placement operation or a tap on the player’s portal takes priority over teleportation.
+
+## Spirit abilities
+
+### Portals
+
+Activate **Portals**, then tap two positions inside the arena. The first portal immediately exists, even before the second is placed. A pair works in both directions for all current mobile combat entities: fighters, summoned minions, ghosts, projectiles (including lasers), sonic waves, tokens and lingering ground effects. Static arena architecture is decorative and not a movable entity.
+
+- Paired crossings take **180ms**. Tap either of your portals at any time to close it. Closing an entrance or exit while a fighter is crossing kills them. A normal paired-crossing death leaves a token.
+- Entering a lone portal takes the entrant off-screen into another dimension. Move against the entry direction with the stick to retreat back out. AI fighters also know how to retreat.
+- Opening a second exit immediately releases everyone held by the first portal.
+- Closing a lone portal permanently loses its trapped fighters and their tokens, including absorbed souls. These losses cannot be revived.
+- Off-screen travellers do not collide or take damage. Projectile and hazard lifetimes pause until they emerge. A brief exit cooldown prevents instant portal loops.
+- A remaining portal can be paired with a replacement using the Portals skill again. Portal positions must be at least 85 world units apart. Cancel placement without closing portals using the on-screen cancel control.
+
+### Revival
+
+Revival restores the **nearest recoverable fallen ally**, without a range limit, at the caster’s position with 60–84 HP depending on charge. It does not substitute self-healing when there is no fallen ally and consumes no cooldown on that failed use. Permanently lost souls and temporary minions cannot be revived.
+
+An already absorbed ally can be revived: their elemental contribution is removed from its bearer or bearer token, preventing the same soul from existing both as a fused component and a living ally.
+
+### Angel guard
+
+A felled Spirit, or a fighter that has inherited Spirit, becomes a controllable ghost while living allies remain. Position the ghost between a rival and an ally to block the rival’s melee attack. Ghosts cannot attack or take normal damage, can move and use portals, and stop being ghosts when revived. They do not count as surviving fighters for victory conditions. Ranged abilities bypass the ghost’s melee guard.
+
+## Development
+
+Node.js 22.12+ and npm are required; development uses Node.js 24.
 
 ```sh
 cd /workspace/MCV-Beatz
 npm ci --cache /workspace/.npm-cache
 npm run dev -- --port 5173
+npm test
+npm run test:browser
+npm run build
 ```
 
-Open the app in your local browser, select an origin and battle format, then press **Begin battle**. Cloud onboarding does not provide a public preview link. The development server binds to all interfaces. Public hosting uses the static production build described below.
+Browser tests use `/usr/bin/chromium`; set `CHROMIUM_PATH` for another installed Chromium. The suite starts Vite if necessary. Tests cover combat timing, automatic lock/fusion, hidden enemy tokens, passives, randomized formats, damage tuning, portal entity transport, dimensional losses, revival, Angel guard and teleportation. Browser checks exercise landscape and rotated-portrait layouts, real multi-touch stick-and-charge input, portal hit mapping, ability switching, shield holding and returning to setup. These are Chromium mobile emulation checks; real iPhone Safari validation remains useful.
 
-```sh
-npm test                # deterministic combat rules + AI match simulations
-npm run test:browser    # actual Chromium interaction tests
-npm run build          # production assets in dist/
-npm run preview        # serve the production build
-```
+- `src/combat.js`: combat, AI, abilities, fusion and revival.
+- `src/portals.js`: shared portal transport and dimensional state for all mobile entities.
+- `src/render.js`: original pixel art, rocks, waves, beams, ghosts and portals.
+- `src/main.js`: analog input, pointer ownership, fullscreen fallback and HUD.
+- `src/style.css`, `src/icons.js`: responsive interface and original icons.
+- `test/combat.test.js`, `test/browser/arena.spec.js`: simulation and browser regressions.
 
-Browser tests use `/usr/bin/chromium`. Set `CHROMIUM_PATH` to another installed Chromium executable if needed. They start Vite if a server is not already running. Font files are bundled locally through Fontsource.
+## Publish updates
 
-## Controls
-
-| Input             | Action                                                            |
-| ----------------- | ----------------------------------------------------------------- |
-| WASD / arrows     | Move; diagonal speed is normalized                                |
-| J                 | Strike; tap or hold to repeat at the attack cooldown              |
-| Q                 | Toggle nearest-rival lock; movement remains independent of facing |
-| Hold K, release K | Charge and cast the current form's main ability                   |
-| L                 | Utility; Earth holds L for its shield                             |
-| F                 | Fuse a nearby compatible ally token                               |
-| Tab               | Cycle origin and accumulated fused forms                          |
-| Esc / R           | Pause / restart with the selected setup                           |
-
-The action buttons also support mouse/touch. Hold a point in the arena to move toward it on touch devices. Dialogs and loss of window focus pause active battles. Sound is optional and defaults off.
-
-## Implemented combat foundation
-
-- Duels, fused duels, and 2v2 / 3v3 / 4v4 AI team battles, with victory/defeat and restart.
-- Directional close-range melee, lock-on strafing, friendly fire, health, low-health movement reduction, and airborne momentum.
-- 100ms contested-strike window: mutual in-range, facing strikes deal quarter damage.
-- Charging scales potency, with cooldowns. A hit pauses charge growth without losing accumulated charge; Dark sabotage cancels it.
-- Six origins, individual main/utility abilities, and core passives: contact burn, burn resistance, hard skin, flight, water cooling magma, and Light bypassing shadow step.
-- Same-element ability resistance and the supplied hierarchy, represented as directed edges (including the Fire/Earth cycle).
-- Fallen ally tokens, all listed compatibility recipes, stacked origin passives, and switching between origin and fused forms.
-- Blended colors, level-II highlights, and level-III glow on original caped sprites.
-- In-game controls, element codex, fusion reference, and responsive UI.
-
-## Initial tuning assumptions
-
-These values were not specified in the brief and are deliberately centralized in `src/combat.js` for iteration:
-
-| Rule                            | Initial value                                 |
-| ------------------------------- | --------------------------------------------- |
-| Health                          | 120                                           |
-| Melee damage / reach / cooldown | 14 / 69 world units / 430ms                   |
-| Attack windup / clash window    | 110ms / 100ms                                 |
-| Lock-facing range               | 245 world units, covering abilities and melee |
-| Full charge                     | 1.8 seconds; up to 2.6× potency               |
-| Hit interruption                | 270ms pause in charge growth                  |
-| Main / utility cooldown         | 4.5 / 7 seconds, shield 5 seconds on release  |
-| Earth defense                   | 25% reduction                                 |
-| Shield                          | 65 durability, maximum 3-second hold          |
-| Hierarchy advantage             | 1.5×                                          |
-| Fusion range / healing          | 85 world units / 30 HP                        |
-
-Hydro pump's requested 2× against Fire stacks with Water's 1.5× hierarchy advantage. Melee has no same-element penalty. Friendly fire follows the same damage rules as rival hits. Flight stays active when switching forms if Air has been accumulated.
-
-## Deliberately unfinished / prototype approximations
-
-The requested game is larger than this first combat slice. The following are **not complete implementations of the full specification**:
-
-- Online multiplayer, campaign/progression, final character art, environmental objects, doors and flammable scenery.
-- Light's sacrifice, separately selectable Dark blindness, and optional third/fourth ability slots. Flash and sabotage currently apply blindness.
-- Quicksand currently applies a fixed slow and damage; it does not yet build to immobilization or support rescuing trapped fighters.
-- Spirit's Angel guard/realm is absent. Portal is explicitly a personal **Portal step**, not shared paired portals or portal-closure kills. Revival restores a nearby unclaimed ally token's fighter at half health.
-- Flood is a temporary arena-wide hazard: it suppresses ground damage and defeats Fire; it does not simulate water flow, swimming, doors, or lightning. Rainbow is not yet implemented.
-- Telekinesis pushes nearby fighters; it does not select and move arbitrary objects/projectiles. Flight is currently an accumulated Air passive, not a separate Gravity hold ability.
-- Doppelgängers/minions are short-lived one-hit AI fighters. They can use basic origin actions; their behavior still needs specialization.
-- Demonic Death currently consumes an enemy token. Targeted un-fusion, special death and universal resuscitation rules are pending.
-- Divine currently has healing/status-clearing actions; passive invisibility and comprehensive immunity are pending.
-- Multi-Dimensional has experimental projectile/phase actions because its abilities were unspecified.
-- Reflect handles ability damage, including contact damage; projectile trajectory reversal is not visualized.
-- Several fused forms use a generic projectile or timed utility as a first-pass combat placeholder. Full ability-specific balance and visual feedback remain to be developed.
-- Lightning and Invincible appear in the requested hierarchy but have no supplied origin/recipe, so they are not playable forms.
-- Fixed arena camera, decorative architecture, and no character-to-character collision or obstacles yet. The app is designed primarily for keyboard combat; touch is basic pointer movement plus buttons.
-
-## Project layout
-
-- `src/combat.js`: simulation, AI, damage, timing, abilities, tokens and compatibility.
-- `src/render.js`: original pixel arena, caped avatars, effects and world-space feedback.
-- `src/main.js`: input, HUD, match setup, dialogs, sound and animation loop.
-- `src/style.css`, `src/icons.js`: responsive interface and original vector icons.
-- `test/combat.test.js`: deterministic simulation tests.
-- `test/browser/arena.spec.js`: Chromium gameplay smoke tests.
-
-Combat is independent of the renderer and browser. Start future iterations with timing, reach, hit feedback and AI pacing before expanding the ability catalogue.
-
-## Publish to GitHub Pages
-
-The site is prepared for `mcvbeatz/MCV-Beatz`. Relative asset paths support the `/MCV-Beatz/` project URL. The `main` branch stores the source; `gh-pages` stores only built public assets.
-
-With Git push access configured, run:
+The `main` branch stores source; `gh-pages` stores the production build. Deployment is manual:
 
 ```sh
 npm run deploy:pages
 ```
 
-This runs the combat tests, builds the app, adds `.nojekyll`, and pushes a new `gh-pages` commit without changing the working branch or normal index. Existing publishing history is preserved; the script never force-pushes. Source changes should also be committed and pushed to `main` separately. Deployments are manual, not automatic on source pushes.
+This tests, builds, adds `.nojekyll` and pushes a new publishing commit. It preserves the working branch, normal index and publishing history and never force-pushes. Commit and push source changes to `main` separately. GitHub Pages must use **Deploy from a branch → gh-pages → / (root)**. No service worker caches an old release; refresh Safari after a new deployment.
 
-One-time GitHub configuration:
+## Remaining scope from the original design
 
-1. Open the repository's **Settings → Pages**.
-2. Set **Source** to **Deploy from a branch**.
-3. Choose **gh-pages** and **/ (root)**, then **Save**.
-4. Wait for GitHub's Pages deployment to finish. The expected public address is `https://mcvbeatz.github.io/MCV-Beatz/`.
-
-The expected address is not proof of a live deployment. If Pages is unavailable, check the repository's visibility and GitHub plan. No need to make source code public solely for this script.
+This release implements the requested mobile/combat adjustments. Earlier features still awaiting their own iterations include online multiplayer, final art, physical scenery and doors, Light’s sacrifice, separately selectable Dark blindness, progressive quicksand/rescue, simulated flood flow and swimming, rainbow aesthetics, arbitrary-object telekinesis and Gravity’s separate held flight ability. Demonic Death still consumes a rival token rather than implementing the original targeted un-fusion and special resuscitation rules. Divine’s passive invisibility remains pending. Several other active fused skills retain their first-pass behavior. Lightning and Invincible have no supplied origin/recipe and remain hierarchy entries only.

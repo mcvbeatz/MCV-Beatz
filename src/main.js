@@ -9,12 +9,15 @@ import "./style.css";
 import {
   Combat,
   ELEMENTS,
-  FUSED,
   COMBOS,
   EDGES,
+  LEVEL_TWO,
   nameOf,
-  distance,
-  combination,
+  recipe,
+  activeForm,
+  skillsFor,
+  hasPassive,
+  inWorld,
 } from "./combat.js";
 import { Renderer, fighterColor } from "./render.js";
 const $ = (id) => document.getElementById(id);
@@ -25,94 +28,197 @@ let selected = "fire",
   paused = false,
   round = 0,
   sound = false,
-  context,
+  audio,
   frameTime = 0,
-  shownResult = false;
+  shownResult = false,
+  immersive = false;
 let game = new Combat();
 const renderer = new Renderer($("game"));
 const keys = new Set();
-let pointerMove = null;
-let soundEventTime = -1;
+const resetActionPointers = [];
+const stick = { x: 0, y: 0, pointer: null };
+let heldStrike = false,
+  formSignature = "";
+const descriptions = {
+  mud: [
+    "Control & attrition",
+    "Quicksand controls the floor. Venom on contact is automatic.",
+    "Venomous contact · origin passives",
+  ],
+  spirit: [
+    "Guardians & gateways",
+    "Revive the nearest fallen ally. Place two portals and protect allies even after you fall.",
+    "Angel guard · flight · Light affinity",
+  ],
+  mirror: [
+    "Defense & reflection",
+    "Reflect is always active. Switch to Earth or Light to use their skills.",
+    "Reflect · hard skin · Light affinity",
+  ],
+  sun: [
+    "Radiance & pressure",
+    "A fast beam cuts through the arena. Heatwave punishes anyone nearby.",
+    "Contact burn · burn immunity",
+  ],
+  blaze: [
+    "Momentum & heat",
+    "Combine flight with fire and a sudden burst of speed.",
+    "Flight · contact burn",
+  ],
+  cloud: [
+    "Weather & control",
+    "Send out a tornado or flood the arena.",
+    "Flight · burn immunity",
+  ],
+  smoke: [
+    "Obscurity & pressure",
+    "Fill an area with burning, blinding vog.",
+    "Contact burn · burn immunity",
+  ],
+  gravity: [
+    "Force & control",
+    "Push fighters away with telekinesis and slow rivals in a gravity field.",
+    "Hard skin",
+  ],
+  apparition: [
+    "Evasion & echoes",
+    "Summon a fragile double to distract your opponent.",
+    "Flight · gravity immunity",
+  ],
+  "multi-dimensional": [
+    "Space without limits",
+    "Tap anywhere on the arena to teleport. No ability button or cooldown.",
+    "Tap-to-teleport · Reflect · hard skin",
+  ],
+  divine: [
+    "Protection & radiance",
+    "Radiance heals. Immunity to burn, venom and blindness stays active.",
+    "Angel guard · Reflect · immunity",
+  ],
+  demonic: [
+    "Minions & heat",
+    "Summon burning minions and consume a rival token.",
+    "Flight · contact burn",
+  ],
+};
+function profile(e) {
+  if (ELEMENTS[e]) return ELEMENTS[e];
+  const [role, desc, passive] = descriptions[e] || [
+    "Fusion",
+    "A fusion of elemental abilities.",
+    "Inherited passives",
+  ];
+  return {
+    name: nameOf(e),
+    color: fighterColor({ parts: recipe(e) }),
+    role,
+    desc,
+    passive,
+  };
+}
 function beep(frequency = 180) {
   if (!sound) return;
-  context ??= new AudioContext();
-  const osc = context.createOscillator(),
-    gain = context.createGain();
+  audio ??= new AudioContext();
+  if (audio.state === "suspended") audio.resume();
+  const osc = audio.createOscillator(),
+    gain = audio.createGain();
   osc.type = "triangle";
-  osc.frequency.setValueAtTime(frequency, context.currentTime);
+  osc.frequency.setValueAtTime(frequency, audio.currentTime);
   osc.frequency.exponentialRampToValueAtTime(
     frequency / 2,
-    context.currentTime + 0.08,
+    audio.currentTime + 0.08,
   );
-  gain.gain.setValueAtTime(0.06, context.currentTime);
-  gain.gain.exponentialRampToValueAtTime(0.001, context.currentTime + 0.1);
+  gain.gain.setValueAtTime(0.06, audio.currentTime);
+  gain.gain.exponentialRampToValueAtTime(0.001, audio.currentTime + 0.1);
   osc.connect(gain);
-  gain.connect(context.destination);
+  gain.connect(audio.destination);
   osc.start();
-  osc.stop(context.currentTime + 0.12);
+  osc.stop(audio.currentTime + 0.12);
 }
 function chip(e) {
-  return `<span class="element-chip" style="--element:${ELEMENTS[e]?.color || "#bda1c8"}"><i>${icon(e)}</i>${nameOf(e)}</span>`;
+  return `<span class="element-chip" style="--element:${profile(e).color}"><i>${icon(e)}</i>${nameOf(e)}</span>`;
 }
-$("element-grid").innerHTML = Object.entries(ELEMENTS)
-  .map(
-    ([id, e]) =>
-      `<button class="element-option ${id === selected ? "selected" : ""}" data-element="${id}" style="--element:${e.color}" aria-pressed="${id === selected}"><span class="symbol">${icon(id)}</span>${e.name}</button>`,
-  )
-  .join("");
 function setProfile() {
-  const e = ELEMENTS[selected];
+  const e = profile(selected);
   $("profile-name").textContent = e.name;
   $("profile-symbol").innerHTML = icon(selected);
   $("profile-symbol").style.color = e.color;
   $("profile-role").textContent = e.role;
   $("profile-desc").textContent = e.desc;
   $("profile-passive").textContent = e.passive;
-  $("matchup-desc").textContent = {
-    fire: "Keep the pressure on. Fire punishes enemies who get too close.",
-    water:
-      "Keep a clear line of fire. A hydro pump is devastating against fire.",
-    earth: "Trade carefully. Hard skin gives you an edge in a close fight.",
-    air: "Stay moving. Flying clears ground hazards, but turns take time.",
-    dark: "Watch for a charge. Sabotage steals your rival’s biggest moment.",
-    light: "Choose your openings. Recover health before rejoining the fight.",
-  }[selected];
+  document.querySelector(".tier").textContent =
+    recipe(selected).length === 2 ? "II" : "I";
+  $("matchup-desc").textContent = e.desc;
   $("strong-against").innerHTML =
     EDGES.filter(([a]) => a === selected)
       .map(([, b]) => chip(b))
       .join("") || '<span class="subtle">Win with timing & positioning</span>';
-  $("weak-against").innerHTML = EDGES.filter(([, b]) => b === selected)
-    .map(([a]) => chip(a))
-    .join("");
+  $("weak-against").innerHTML =
+    EDGES.filter(([, b]) => b === selected)
+      .map(([a]) => chip(a))
+      .join("") || '<span class="subtle">Mind your timing</span>';
   document.querySelectorAll("[data-element]").forEach((b) => {
     b.classList.toggle("selected", b.dataset.element === selected);
     b.setAttribute("aria-pressed", b.dataset.element === selected);
   });
 }
+function renderSelection() {
+  const pool = mode === "fused" ? LEVEL_TWO : Object.keys(ELEMENTS);
+  if (!pool.includes(selected)) selected = pool[0];
+  $("element-grid").innerHTML = pool
+    .map(
+      (id) =>
+        `<button class="element-option ${id === selected ? "selected" : ""}" data-element="${id}" style="--element:${profile(id).color}" aria-pressed="${id === selected}"><span class="symbol">${icon(id)}</span>${nameOf(id)}</button>`,
+    )
+    .join("");
+  document.querySelector(".setup-panel .subtle").textContent =
+    mode === "fused" ? "9 fusions" : "6 origins";
+  $("element-grid").onclick = (e) => {
+    const b = e.target.closest("[data-element]");
+    if (!b) return;
+    selected = b.dataset.element;
+    setProfile();
+    if (!started) {
+      game = new Combat({ element: selected, mode, size: teamSize });
+      formSignature = "";
+      updateHUD();
+    }
+  };
+  setProfile();
+}
 function newGame() {
+  releaseInput();
   game = new Combat({ element: selected, mode, size: teamSize });
   started = true;
   paused = false;
   shownResult = false;
   round++;
-  keys.clear();
-  pointerMove = null;
+  formSignature = "";
   $("game-overlay").hidden = true;
   $("pause-btn").textContent = "II";
   $("begin-btn").innerHTML = "Restart battle <span>→</span>";
   $("game").focus({ preventScroll: true });
+  if (matchMedia("(pointer:coarse)").matches || innerWidth < 900)
+    enterImmersive();
   beep(300);
   updateHUD();
 }
 function releaseInput() {
   keys.clear();
-  pointerMove = null;
-  if (game.player.charging) game.releaseCharge(game.player);
+  resetActionPointers.forEach((reset) => reset());
+  heldStrike = false;
+  stick.x = stick.y = 0;
+  stick.pointer = null;
+  $("stick-thumb").style.transform = "translate(0,0)";
+  game.player.charging = false;
   game.utility(game.player, false);
+  document
+    .querySelectorAll(".pressed")
+    .forEach((b) => b.classList.remove("pressed"));
 }
-function pause() {
+function pause(force) {
   if (!started || game.finished) return;
-  paused = !paused;
+  paused = typeof force === "boolean" ? force : !paused;
   releaseInput();
   $("pause-btn").textContent = paused ? "▶" : "II";
   $("game-overlay").hidden = !paused;
@@ -124,11 +230,11 @@ function pause() {
   } else $("game").focus({ preventScroll: true });
 }
 function action(key, down = true) {
-  if (!started || paused || game.finished || !game.player.alive) return;
+  if (!started || paused || game.finished) return;
   const p = game.player;
-  if (key === "j" && down) {
-    game.strike(p);
-    beep();
+  if (key === "j") {
+    heldStrike = down;
+    if (down && game.strike(p)) beep();
   }
   if (key === "k") {
     if (down) game.startCharge(p);
@@ -138,34 +244,41 @@ function action(key, down = true) {
     }
   }
   if (key === "l") game.utility(p, down);
-  if (key === "q" && down) game.toggleLock(p);
-  if (key === "f" && down) game.fuse(p);
-  if (key === "tab" && down) game.switchForm(p);
+  if (key === "tab" && down) {
+    game.switchForm(p);
+    formSignature = "";
+  }
 }
 window.addEventListener("keydown", (e) => {
   if ($("info-dialog").open) return;
   const k = e.key.toLowerCase();
-  const isGameKey = [
-    "w",
-    "a",
-    "s",
-    "d",
-    "arrowup",
-    "arrowdown",
-    "arrowleft",
-    "arrowright",
-    "j",
-    "k",
-    "l",
-    "q",
-    "f",
-    "r",
-    "tab",
-    "escape",
-    " ",
-  ].includes(k);
-  if (!isGameKey) return;
+  if (
+    ![
+      "w",
+      "a",
+      "s",
+      "d",
+      "arrowup",
+      "arrowdown",
+      "arrowleft",
+      "arrowright",
+      "j",
+      "k",
+      "l",
+      "r",
+      "tab",
+      "escape",
+      " ",
+    ].includes(k)
+  )
+    return;
   if (k === "tab" && !started) return;
+  if (
+    (e.target.closest("button") || e.target.closest("a")) &&
+    [" ", "tab"].includes(k) &&
+    !immersive
+  )
+    return;
   e.preventDefault();
   if (e.repeat) return;
   keys.add(k);
@@ -180,71 +293,197 @@ window.addEventListener("keyup", (e) => {
   action(k, false);
 });
 window.addEventListener("blur", () => {
-  if (started && !paused && !game.finished) pause();
+  if (started && !paused && !game.finished) pause(true);
   else releaseInput();
 });
+document.addEventListener("visibilitychange", () => {
+  if (document.hidden && started && !paused) pause(true);
+});
+// Each thumb/button owns its pointer so movement and skills work simultaneously.
 for (const [id, key] of [
   ["attack-btn", "j"],
   ["charge-btn", "k"],
   ["utility-btn", "l"],
-  ["lock-btn", "q"],
-  ["fuse-btn", "f"],
 ]) {
   const b = $(id);
+  let pointer = null;
+  resetActionPointers.push(() => {
+    if (pointer !== null && b.hasPointerCapture(pointer))
+      b.releasePointerCapture(pointer);
+    pointer = null;
+  });
   b.addEventListener("pointerdown", (e) => {
     e.preventDefault();
-    b.setPointerCapture(e.pointerId);
+    if (pointer !== null) return;
+    pointer = e.pointerId;
+    b.setPointerCapture(pointer);
+    b.classList.add("pressed");
     action(key);
   });
-  b.addEventListener("pointerup", () => action(key, false));
-  b.addEventListener("pointercancel", () => action(key, false));
+  const end = (e) => {
+    if (e.pointerId !== pointer) return;
+    pointer = null;
+    b.classList.remove("pressed");
+    action(key, false);
+  };
+  b.addEventListener("pointerup", end);
+  b.addEventListener("pointercancel", end);
+  b.addEventListener("lostpointercapture", end);
+  window.addEventListener("pointerup", end);
+  window.addEventListener("pointercancel", end);
   b.addEventListener("keydown", (e) => {
-    if (e.key === "Enter" || e.key === " ") {
+    if (["Enter", " "].includes(e.key)) {
       e.preventDefault();
-      action(key);
+      e.stopPropagation();
+      if (!e.repeat) action(key);
     }
   });
   b.addEventListener("keyup", (e) => {
-    if (e.key === "Enter" || e.key === " ") action(key, false);
+    if (["Enter", " "].includes(e.key)) {
+      e.preventDefault();
+      e.stopPropagation();
+      action(key, false);
+    }
   });
 }
-$("game").style.touchAction = "none";
+function isRotated() {
+  return immersive && innerHeight > innerWidth;
+}
+function localPoint(el, clientX, clientY) {
+  const r = el.getBoundingClientRect();
+  return isRotated()
+    ? { x: clientY - r.top, y: r.right - clientX }
+    : { x: clientX - r.left, y: clientY - r.top };
+}
+function updateStick(e) {
+  const el = $("joystick"),
+    p = localPoint(el, e.clientX, e.clientY),
+    radius = el.clientWidth * 0.34;
+  let x = p.x - el.clientWidth / 2,
+    y = p.y - el.clientHeight / 2,
+    d = Math.hypot(x, y);
+  if (d > radius) {
+    x = (x / d) * radius;
+    y = (y / d) * radius;
+  }
+  stick.x = x / radius;
+  stick.y = y / radius;
+  if (Math.hypot(stick.x, stick.y) < 0.1) stick.x = stick.y = 0;
+  $("stick-thumb").style.transform = `translate(${x}px,${y}px)`;
+}
+$("joystick").addEventListener("pointerdown", (e) => {
+  e.preventDefault();
+  if (stick.pointer !== null) return;
+  stick.pointer = e.pointerId;
+  e.currentTarget.setPointerCapture(e.pointerId);
+  updateStick(e);
+});
+$("joystick").addEventListener("pointermove", (e) => {
+  if (e.pointerId === stick.pointer) {
+    e.preventDefault();
+    updateStick(e);
+  }
+});
+const endStick = (e) => {
+  if (e.pointerId !== stick.pointer) return;
+  stick.pointer = null;
+  stick.x = stick.y = 0;
+  $("stick-thumb").style.transform = "translate(0,0)";
+};
+for (const type of ["pointerup", "pointercancel", "lostpointercapture"])
+  $("joystick").addEventListener(type, endStick);
+let arenaPointer = null;
 $("game").addEventListener("pointerdown", (e) => {
-  const r = $("game").getBoundingClientRect();
-  pointerMove = {
-    x: ((e.clientX - r.left) / r.width) * 1024,
-    y: ((e.clientY - r.top) / r.height) * 680,
-  };
+  e.preventDefault();
+  arenaPointer = { id: e.pointerId, x: e.clientX, y: e.clientY };
   $("game").setPointerCapture(e.pointerId);
 });
-$("game").addEventListener("pointermove", (e) => {
-  if (!pointerMove) return;
-  const r = $("game").getBoundingClientRect();
-  pointerMove = {
-    x: ((e.clientX - r.left) / r.width) * 1024,
-    y: ((e.clientY - r.top) / r.height) * 680,
-  };
+$("game").addEventListener("pointerup", (e) => {
+  if (arenaPointer?.id !== e.pointerId) return;
+  const click =
+    Math.hypot(e.clientX - arenaPointer.x, e.clientY - arenaPointer.y) < 15;
+  arenaPointer = null;
+  if (!click || !started || paused || game.finished) return;
+  const local = localPoint($("game"), e.clientX, e.clientY),
+    p = renderer.worldPoint(local.x, local.y),
+    a = game.player;
+  const portal = game.portals
+    .owned(a)
+    .find((q) => Math.hypot(p.x - q.x, p.y - q.y) < 36);
+  if (portal) {
+    game.portals.close(a, portal.id);
+    return;
+  }
+  if (game.portals.placing === a.id) {
+    game.portals.place(a, p.x, p.y);
+    return;
+  }
+  game.teleport(a, p.x, p.y);
 });
-$("game").addEventListener("pointerup", () => (pointerMove = null));
-$("game").addEventListener("pointercancel", () => (pointerMove = null));
+$("game").addEventListener("pointercancel", () => (arenaPointer = null));
+$("cancel-portal").onclick = () => (game.portals.placing = null);
+$("skill-switcher").onclick = (e) => {
+  const b = e.target.closest("[data-form]");
+  if (b && !game.finished && game.player.alive) {
+    game.switchForm(game.player, b.dataset.form);
+    formSignature = "";
+    updateHUD();
+  }
+};
+function setImmersive(value) {
+  immersive = value;
+  document.body.classList.toggle("immersive-play", value);
+  $("arena-panel").classList.toggle("immersive", value);
+  $("fullscreen-btn").textContent = value
+    ? "⤢ Exit fullscreen"
+    : "⛶ Fullscreen";
+  $("fullscreen-btn").setAttribute(
+    "aria-label",
+    value ? "Exit fullscreen play" : "Enter fullscreen play",
+  );
+  releaseInput();
+}
+async function enterImmersive() {
+  setImmersive(true);
+  try {
+    if (!document.fullscreenElement && $("arena-panel").requestFullscreen)
+      await $("arena-panel").requestFullscreen();
+  } catch {
+    /* iOS versions without element fullscreen still get the viewport-filling layout. */
+  }
+  try {
+    await screen.orientation?.lock?.("landscape");
+  } catch {
+    /* The portrait fallback rotates the complete game and its input coordinates. */
+  }
+}
+async function exitImmersive() {
+  setImmersive(false);
+  try {
+    if (document.fullscreenElement) await document.exitFullscreen();
+    screen.orientation?.unlock?.();
+  } catch {}
+}
+$("fullscreen-btn").onclick = () =>
+  immersive ? exitImmersive() : enterImmersive();
+$("leave-btn").onclick = async () => {
+  pause(true);
+  await exitImmersive();
+  document
+    .querySelector(".setup-panel")
+    .scrollIntoView({ behavior: "smooth", block: "start" });
+};
+document.addEventListener("fullscreenchange", () => {
+  if (!document.fullscreenElement && immersive && document.fullscreenEnabled)
+    setImmersive(false);
+});
+window.addEventListener("resize", releaseInput);
 $("begin-btn").onclick = newGame;
-$("overlay-play").onclick = () => (paused ? pause() : newGame());
-$("pause-btn").onclick = pause;
+$("overlay-play").onclick = () => (paused ? pause(false) : newGame());
+$("pause-btn").onclick = () => pause();
 $("arena-nav").onclick = () => {
-  if ($("info-dialog").open) $("info-dialog").close();
   $("game-wrap").scrollIntoView({ behavior: "smooth", block: "center" });
 };
-document.querySelectorAll("[data-element]").forEach(
-  (b) =>
-    (b.onclick = () => {
-      selected = b.dataset.element;
-      setProfile();
-      if (!started) {
-        game = new Combat({ element: selected, mode, size: teamSize });
-        updateHUD();
-      }
-    }),
-);
 document.querySelectorAll("[data-mode]").forEach(
   (b) =>
     (b.onclick = () => {
@@ -256,17 +495,19 @@ document.querySelectorAll("[data-mode]").forEach(
       const titles = {
         duel: "One on one",
         team: "Fight together. Strike carefully.",
-        fused: "One on one · fused",
+        fused: "One on one · level II",
       };
-      const descriptions = {
-        duel: "You, a rival, and no room for mistakes.",
+      const desc = {
+        duel: "A new random rival every battle.",
         team: "Allies are vulnerable to your attacks.",
-        fused: "Start evolved. Switch forms with Tab.",
+        fused: "Choose any level-II elemental above.",
       };
       $("mode-description").innerHTML =
-        `<span>⚔</span><div><strong>${titles[mode]}</strong><p>${descriptions[mode]}</p></div>`;
+        `<span>⚔</span><div><strong>${titles[mode]}</strong><p>${desc[mode]}</p></div>`;
+      renderSelection();
       if (!started) {
         game = new Combat({ element: selected, mode, size: teamSize });
+        formSignature = "";
         updateHUD();
       }
     }),
@@ -288,119 +529,114 @@ $("sound-btn").onclick = () => {
   $("sound-btn").setAttribute("aria-pressed", sound);
   beep(400);
 };
-const guide = `<span class="eyebrow">THE BASICS</span><h2>Every strike is a decision.</h2><table><tr><td>W A S D / Arrow keys</td><td>Move freely. On touch, hold a point in the arena to move toward it.</td></tr><tr><td>J · Strike</td><td>Tap for a short directional melee attack. You must face your target.</td></tr><tr><td>Q · Target lock</td><td>Lock the nearest rival. Within range, face them while moving in any direction.</td></tr><tr><td>Hold K · Release K</td><td>Charge an elemental ability, then release. A full 1.8-second charge increases potency to 2.6×. Cooldown: 4.5 seconds.</td></tr><tr><td>L · Utility</td><td>Use your second ability. Earth holds L for a shield lasting up to 3 seconds.</td></tr><tr><td>F · Fuse / Tab · Form</td><td>Claim a compatible fallen ally’s token within range. Tab cycles your accumulated forms.</td></tr><tr><td>Esc / R</td><td>Pause / start a fresh battle with the selected setup.</td></tr></table><h3>Timing matters</h3><p>Opposing strikes within 100ms of each other clash if both fighters are in range and facing each other: each takes quarter damage. A hit pauses charging for 270ms but preserves the charge already built. Dark’s sabotage cancels a charge.</p><h3>Positioning matters</h3><p>Friendly fire is always on. Low health slows movement. Flight is faster but changes direction gradually. Same-element abilities deal half damage; a hierarchy advantage applies a 1.5× multiplier. Hydro pump has an additional 2× multiplier against fire.</p><h3>Prototype scope</h3><p>Local AI battles; no online multiplayer yet. Fusion and each form have playable first-pass abilities. Advanced spirit-realm blocking, shared portals, full token resurrection/death rules, interactable scenery and a complete status simulation remain future work. Lightning and Invincible are matchup entries, not selectable origins.</p>`;
-const fusion = `<span class="eyebrow">ELEMENT CODEX / FUSION</span><h2>More than the sum.</h2><p>Only a fallen ally’s compatible token can be claimed. Stand nearby and press F. Your colors merge: two origins gain a shine, three gain a glow. Accumulated origin passives persist when you switch forms with Tab.</p><h3>Level II · Shine</h3><table>${Object.entries(
-  COMBOS,
-)
-  .filter(([k]) => k.split("+").length === 2)
-  .map(
-    ([k, v]) =>
-      `<tr><td>${k.split("+").map(nameOf).join(" + ")}</td><td>${nameOf(v)}</td><td>${FUSED[v].join(" / ")}</td></tr>`,
-  )
-  .join("")}</table><h3>Level III · Glow</h3><table>${Object.entries(COMBOS)
-  .filter(([k]) => k.split("+").length === 3)
-  .map(
-    ([k, v]) =>
-      `<tr><td>${k.split("+").map(nameOf).join(" + ")}</td><td>${nameOf(v)}</td></tr>`,
-  )
-  .join(
-    "",
-  )}</table><p style="margin-top:18px">Try Fused mode for an immediate level-II duel. Use Team brawl to earn fusion from fallen allies. Some advanced fused abilities use simplified prototype behavior; see How to play.</p>`;
+const guide = `<span class="eyebrow">TOUCH COMBAT / v0.2</span><h2>Your thumbs. Your timing.</h2><p>Use Fullscreen for landscape play. On phones, battles open in a landscape layout automatically. If Safari cannot hide its browser bars, use Share → Add to Home Screen for a standalone view.</p><table><tr><td>Bottom-left stick / WASD</td><td>Move in any direction. Drag farther for full speed.</td></tr><tr><td>Bottom-right Strike / J</td><td>Strike locks automatically onto the nearest rival within melee range.</td></tr><tr><td>Bottom-middle skills / K, L</td><td>Hold your main skill to charge, then release to cast. Hold Rock shield until you release it or it breaks.</td></tr><tr><td>Top ability-set tabs / Tab</td><td>Choose origin or fused skills. Your elemental identity and accumulated passives remain active.</td></tr><tr><td>Touch an ally token</td><td>Compatible fusion happens automatically and blows nearby and distant fighters away. Enemy tokens are hidden.</td></tr></table><h3>Spirit: portals, revival and angel guard</h3><p>Tap Portals, then tap two arena positions. Fighters, ghosts, attacks, tokens and lingering effects can travel through either portal. Tap your portal to close it. Closing a portal during a crossing kills the traveller. A lone portal holds entrants off-screen: reverse your entry direction with the stick to retreat, or open a second exit. Closing the lone portal permanently loses anyone still inside and their token.</p><p>Revival brings back the closest recoverable fallen ally. It never heals you instead. If their token has already been fused, their contribution is removed from its bearer when they revive. A felled Spirit becomes a controllable ghost while allies remain: stand between an enemy and an ally to block melee attacks.</p><h3>Always-active abilities</h3><p>Reflect, hard skin, burn, flight, venomous contact, Angel guard and Divine immunity do not have buttons. Multi-Dimensional gains unlimited tap-to-teleport on the arena; placement and portal-closing taps take priority. Passives stay active across ability sets.</p><h3>Combat rules</h3><p>Friendly fire is on. Mutual strikes within 100ms clash for quarter damage. Hits pause charging for 270ms without deleting stored power. Same-element abilities deal half damage. Fire now takes 30% less Water ability damage than in v0.1. Sonic boom is a spreading fan; the Sun laser is a fast, piercing beam.</p>`;
 function openDialog(content) {
-  if (started && !paused && !game.finished) pause();
+  if (started && !paused && !game.finished) pause(true);
   $("dialog-content").innerHTML = content;
   $("info-dialog").showModal();
 }
 $("guide-btn").onclick = () => openDialog(guide);
-$("fusion-guide").onclick = () => openDialog(fusion);
-$("codex-btn").onclick = () =>
+$("fusion-guide").onclick = () =>
   openDialog(
-    `<span class="eyebrow">SIX ORIGINS. ONE ARENA.</span><h2>The element codex.</h2><div class="codex-grid">${Object.entries(
-      ELEMENTS,
+    `<span class="eyebrow">ELEMENT CODEX / FUSION</span><h2>Touch. Fuse. Rise.</h2><p>Only allied tokens are visible. Touch a compatible token to fuse automatically. Fusion sends fighters in every direction. Use the top tabs to choose abilities; all passives remain active.</p><table>${Object.entries(
+      COMBOS,
     )
       .map(
-        ([id, e]) =>
-          `<article><h3>${chip(id)}</h3><p>${e.desc}</p><p><strong>${e.ability}</strong> · ${e.utility}</p><p>${e.passive}</p></article>`,
+        ([k, v]) =>
+          `<tr><td>${k.split("+").map(nameOf).join(" + ")}</td><td>${nameOf(v)}</td></tr>`,
       )
-      .join("")}</div><h3>Fusion paths</h3><p>${Object.entries(COMBOS)
-      .map(([k, v]) => `${k.split("+").map(nameOf).join(" + ")} → ${nameOf(v)}`)
-      .join("<br>")}</p>`,
+      .join("")}</table>`,
+  );
+$("codex-btn").onclick = () =>
+  openDialog(
+    `<span class="eyebrow">ORIGINS & FUSIONS</span><h2>The element codex.</h2><div class="codex-grid">${[...Object.keys(ELEMENTS), ...Object.values(COMBOS)].map((id) => `<article><h3>${chip(id)}</h3><p>${profile(id).desc}</p><p>${skillsFor(id).filter(Boolean).join(" · ") || "No active skills. Choose an inherited ability set."}</p><p>Passive: ${profile(id).passive}</p></article>`).join("")}</div>`,
   );
 $("close-dialog").onclick = () => $("info-dialog").close();
-$("info-dialog").addEventListener("click", (e) => {
-  if (e.target === $("info-dialog")) {
-    const r = e.target.getBoundingClientRect();
-    if (
-      e.clientX < r.left ||
-      e.clientX > r.right ||
-      e.clientY < r.top ||
-      e.clientY > r.bottom
-    )
-      e.target.close();
-  }
-});
 function updateHUD() {
-  const p = game.player,
-    e = ELEMENTS[p.element];
-  $("hud-name").textContent = nameOf(p.element).toUpperCase();
-  $("hud-symbol").innerHTML = icon(p.element);
-  $("hud-symbol").style.color = e?.color || fighterColor(p);
-  $("health-fill").style.width = `${(p.hp / p.maxHp) * 100}%`;
-  $("health-fill").style.background = p.hp < 40 ? "#e78c6c" : "#b2c797";
-  $("health-label").textContent = `${Math.ceil(p.hp)} / ${p.maxHp} HP`;
+  const a = game.player,
+    e = profile(a.element),
+    form = activeForm(a),
+    skills = skillsFor(form),
+    ready = a.alive && inWorld(a) && !paused && !game.finished;
+  const signature = a.forms.join("|") + ":" + form;
+  if (signature !== formSignature) {
+    $("skill-switcher").innerHTML = a.forms
+      .map(
+        (f) =>
+          `<button data-form="${f}" class="form-button ${f === form ? "selected" : ""}" aria-pressed="${f === form}" style="--element:${profile(f).color}">${icon(f)}<span>${nameOf(f)}</span></button>`,
+      )
+      .join("");
+    formSignature = signature;
+  }
+  $("hud-name").textContent = e.name.toUpperCase();
+  $("hud-symbol").innerHTML = icon(a.element);
+  $("hud-symbol").style.color = e.color;
+  $("health-fill").style.width = `${(a.hp / a.maxHp) * 100}%`;
+  $("health-label").textContent = a.ghost
+    ? "ANGEL GUARD"
+    : a.dimension
+      ? "BETWEEN WORLDS"
+      : `${Math.ceil(a.hp)} / ${a.maxHp} HP`;
+  $("health-fill").style.background = a.hp < 40 ? "#e78c6c" : "#b2c797";
   $("timer").textContent = `${Math.floor(game.time / 60)
     .toString()
     .padStart(2, "0")}:${Math.floor(game.time % 60)
     .toString()
     .padStart(2, "0")}`;
   $("enemy-count").textContent = game.fighters
-    .filter((a) => a.team === 1 && a.alive && !a.echo)
+    .filter((b) => b.team === 1 && b.alive && !b.echo)
     .length.toString()
     .padStart(2, "0");
   $("round-mode").textContent =
-    `${game.mode === "team" ? "TEAM BRAWL" : game.mode === "fused" ? "FUSED DUEL" : "DUEL"} · ROUND ${Math.max(1, round).toString().padStart(2, "0")}`;
-  $("ability-name").textContent =
-    e?.ability || FUSED[p.element]?.[0] || "Elemental burst";
-  $("ability-symbol").innerHTML = icon(p.element);
-  $("utility-name").textContent =
-    e?.utility || FUSED[p.element]?.[1] || "Guard";
+    `${game.mode === "team" ? "TEAM BRAWL" : game.mode === "fused" ? "FUSED DUEL" : "DUEL"} · ${Math.max(1, round).toString().padStart(2, "0")}`;
+  $("charge-btn").hidden = !skills[0];
+  $("utility-btn").hidden = !skills[1];
+  $("passive-note").hidden = !!skills[0] || !!skills[1];
+  $("ability-name").textContent = skills[0] || "";
+  $("ability-symbol").innerHTML = icon(form);
+  $("utility-name").textContent = skills[1] || "";
   $("ability-status").textContent =
-    p.abilityCd > 0
-      ? `${p.abilityCd.toFixed(1)}s cooldown`
-      : p.charging
+    a.abilityCd > 0
+      ? `${a.abilityCd.toFixed(1)}s`
+      : a.charging
         ? "Release to cast"
-        : "Hold to charge";
-  $("ability-cooldown").style.width = `${(p.abilityCd / 4.5) * 100}%`;
+        : form === "spirit"
+          ? "Nearest fallen ally"
+          : "Hold to charge";
+  $("ability-cooldown").style.width = `${(a.abilityCd / 4.5) * 100}%`;
   $("utility-status").textContent =
-    p.utilityCd > 0
-      ? `${p.utilityCd.toFixed(1)}s cooldown`
-      : p.element === "earth"
-        ? `Hold · ${Math.ceil(p.shieldHp)} shield`
-        : "Ready";
-  $("lock-status").textContent =
-    p.blind > 0 ? "Blinded" : game.target(p) ? "Locked on" : "Unlocked";
-  $("lock-btn").classList.toggle("locked", !!game.target(p));
-  $("charge-meter").hidden = !p.charging;
-  $("charge-percent").textContent = `${Math.round((p.charge / 1.8) * 100)}%`;
-  $("charge-fill").style.width = `${(p.charge / 1.8) * 100}%`;
-  const token = game.tokens.find(
-    (t) =>
-      t.team === p.team && distance(p, t) < 85 && combination(p.parts, t.parts),
-  );
-  $("fuse-status").textContent = token
-    ? "Compatible token!"
-    : p.parts.length > 1
-      ? "Tab to switch form"
-      : "Ally token needed";
-  $("fuse-btn").classList.toggle("locked", !!token);
-  $("arena-hint").textContent =
-    !p.alive && !game.finished
+    form === "spirit"
+      ? "Tap, then place"
+      : a.utilityCd > 0
+        ? `${a.utilityCd.toFixed(1)}s`
+        : form === "earth"
+          ? `Hold · ${Math.ceil(a.shieldHp)} HP`
+          : "Tap to use";
+  $("charge-btn").disabled = !ready || a.abilityCd > 0;
+  $("utility-btn").disabled = !ready || (form !== "spirit" && a.utilityCd > 0);
+  $("attack-btn").disabled = !ready;
+  $("charge-meter").hidden = !a.charging;
+  $("charge-percent").textContent = `${Math.round((a.charge / 1.8) * 100)}%`;
+  $("charge-fill").style.width = `${(a.charge / 1.8) * 100}%`;
+  $("dimension-notice").hidden = !a.dimension;
+  $("portal-notice").hidden = game.portals.placing !== a.id;
+  $("portal-instruction").textContent = game.portals.owned(a).length
+    ? "Tap the arena to place the exit portal."
+    : "Tap the arena to place the first portal.";
+  $("arena-hint").textContent = a.ghost
+    ? "ANGEL GUARD · Move between an enemy and an ally to block melee."
+    : !a.alive
       ? "You are down. Your allies can still win."
-      : p.parts.length > 1
-        ? `${nameOf(p.element)} · ${p.parts.length === 2 ? "II / SHINE" : "III / GLOW"} · TAB to switch form`
-        : "Find your rhythm. Every opening counts.";
+      : a.dimension
+        ? "Pull the stick back against your entry direction to return."
+        : hasPassive(a, "multi-dimensional")
+          ? "PASSIVE TELEPORT · Tap anywhere on the arena."
+          : game.target(a)
+            ? "AUTO LOCK · Nearest rival in strike range."
+            : "Target lock and token fusion are automatic.";
   if (game.finished && !shownResult) {
     shownResult = true;
+    releaseInput();
     $("game-overlay").hidden = false;
     $("overlay-kicker").textContent =
       game.result === "victory"
@@ -417,7 +653,6 @@ function updateHUD() {
     $("overlay-text").textContent =
       `${Math.floor(game.time)} seconds · ${game.result === "victory" ? "Your team prevailed." : game.result === "draw" ? "Both teams fell." : "Your team has fallen."}`;
     $("overlay-play").innerHTML = "Fight again <span>→</span>";
-    keys.clear();
   }
 }
 function frame(now) {
@@ -430,33 +665,27 @@ function frame(now) {
       y =
         Number(keys.has("s") || keys.has("arrowdown")) -
         Number(keys.has("w") || keys.has("arrowup"));
-    if (pointerMove) {
-      const d = distance(game.player, pointerMove);
-      if (d > 8) {
-        x = pointerMove.x - game.player.x;
-        y = pointerMove.y - game.player.y;
-      }
+    if (stick.pointer !== null) {
+      x = stick.x;
+      y = stick.y;
     }
     game.update(dt, { x, y });
-    if (keys.has("j")) game.strike(game.player);
-    const latest = game.events.at(-1);
-    if (latest && latest.time > soundEventTime) {
-      soundEventTime = latest.time;
-      if (/^\d+$/.test(latest.text)) beep(100);
-    }
+    if (heldStrike || keys.has("j")) game.strike(game.player);
   }
   renderer.draw(game, !started);
   updateHUD();
   requestAnimationFrame(frame);
 }
 document.querySelector("#attack-btn .ability-icon").innerHTML = icon("strike");
-document.querySelector(".fire-orb").innerHTML = icon("fire");
-document.querySelector(".air-orb").innerHTML = icon("air");
-document.querySelector(".blaze-orb").innerHTML = icon("fusion");
-setProfile();
+for (const [name, element] of [
+  ["fire", "fire"],
+  ["air", "air"],
+  ["blaze", "fusion"],
+])
+  document.querySelector(`.${name}-orb`).innerHTML = icon(element);
+renderSelection();
 updateHUD();
 requestAnimationFrame(frame);
-// Read-only inspection hook for browser smoke tests and local debugging.
 window.__arena = {
   get game() {
     return game;
@@ -466,5 +695,14 @@ window.__arena = {
   },
   get paused() {
     return paused;
+  },
+  get immersive() {
+    return immersive;
+  },
+  get stick() {
+    return { ...stick };
+  },
+  get renderer() {
+    return renderer;
   },
 };

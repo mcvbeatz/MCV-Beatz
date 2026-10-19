@@ -2,8 +2,17 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1.0, viewport-fit=cover"
+    />
     <meta name="theme-color" content="#11191b" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta
+      name="apple-mobile-web-app-status-bar-style"
+      content="black-translucent"
+    />
+    <link rel="manifest" href="./manifest.webmanifest" />
     <title>Elemental — The Colosseum</title>
     <link
       rel="icon"
@@ -26,7 +35,7 @@
             How to play <span>→</span>
           </button>
         </nav>
-        <span class="build-badge"><i></i> COMBAT PROTOTYPE <b>0.1</b></span>
+        <span class="build-badge"><i></i> COMBAT PROTOTYPE <b>0.2</b></span>
       </header>
       <main>
         <div class="page-title">
@@ -97,21 +106,31 @@
               Change your setup, then enter a new battle.
             </p>
           </aside>
-          <section class="arena-panel panel" aria-label="Playable colosseum">
+          <section
+            class="arena-panel panel"
+            id="arena-panel"
+            aria-label="Playable colosseum"
+          >
             <div class="arena-topline">
               <div>
                 <span class="live-dot"></span
                 ><strong>THE SUNKEN COLOSSEUM</strong
-                ><span class="arena-type">Training grounds</span>
+                ><span class="arena-type">Touch combat · v0.2</span>
               </div>
-              <button
-                id="pause-btn"
-                class="icon-button"
-                aria-label="Pause game"
-                title="Pause (Esc)"
-              >
-                II
-              </button>
+              <div class="arena-tools">
+                <button id="leave-btn" aria-label="Return to battle setup">
+                  Setup</button
+                ><button id="fullscreen-btn" aria-label="Enter fullscreen play">
+                  ⛶ Fullscreen</button
+                ><button
+                  id="pause-btn"
+                  class="icon-button"
+                  aria-label="Pause game"
+                  title="Pause (Esc)"
+                >
+                  II
+                </button>
+              </div>
             </div>
             <div class="game-wrap" id="game-wrap">
               <canvas
@@ -119,11 +138,11 @@
                 width="1024"
                 height="680"
                 tabindex="0"
-                aria-label="Elemental combat arena. Move with WASD, attack with J, lock with Q, hold K to charge and release to cast."
+                aria-label="Elemental arena. Use the movement stick or WASD. Strike locks automatically. Tap the arena to place portals or use passive teleportation."
               ></canvas>
               <div class="game-hud">
                 <div class="fighter-card">
-                  <span class="hud-symbol" id="hud-symbol">♨</span>
+                  <span class="hud-symbol" id="hud-symbol"></span>
                   <div>
                     <div class="fighter-label">
                       <strong id="hud-name">FIRE</strong><span>YOU</span>
@@ -137,60 +156,86 @@
                   ><strong id="timer">00:00</strong>
                 </div>
                 <div class="enemy-count">
-                  <span>RIVALS REMAINING</span
-                  ><strong id="enemy-count">01</strong>
+                  <span>RIVALS</span><strong id="enemy-count">01</strong>
                 </div>
               </div>
-              <div class="arena-caption">
-                <span class="gold-diamond">◇</span>
-                <span id="arena-hint"
-                  >Find your rhythm. Every opening counts.</span
+              <nav
+                id="skill-switcher"
+                class="skill-switcher"
+                aria-label="Choose an ability set"
+              ></nav>
+              <div id="portal-notice" class="portal-notice" hidden>
+                <span id="portal-instruction"></span
+                ><button id="cancel-portal">Cancel placement</button>
+              </div>
+              <div id="dimension-notice" class="dimension-notice" hidden>
+                <strong>BETWEEN WORLDS</strong
+                ><span
+                  >Reverse your entry direction with the stick to return.</span
                 >
               </div>
-              <div id="game-overlay" class="game-overlay">
-                <span class="eyebrow" id="overlay-kicker"
-                  >THE ARENA AWAITS</span
+              <div class="arena-caption">
+                <span class="gold-diamond">◇</span
+                ><span id="arena-hint"
+                  >Target lock and fusion are automatic.</span
                 >
-                <h2 id="overlay-title">Make your first move.</h2>
-                <p id="overlay-text">A clash of elements. A test of timing.</p>
-                <button id="overlay-play" class="primary">
-                  Begin battle <span>→</span></button
-                ><small>W A S D to move · J to strike</small>
               </div>
               <div id="charge-meter" class="charge-meter" hidden>
                 <span>CHARGING <b id="charge-percent">0%</b></span>
                 <div><i id="charge-fill"></i></div>
               </div>
-              <div id="toast" class="toast" role="status"></div>
-            </div>
-            <div class="action-bar">
-              <div class="movement-hint">
-                <div class="wasd">
-                  <kbd>W</kbd>
-                  <div><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd></div>
+              <div class="battle-controls" id="battle-controls">
+                <div class="stick-area">
+                  <div
+                    id="joystick"
+                    class="joystick"
+                    role="group"
+                    aria-label="Movement stick: drag in any direction"
+                  >
+                    <div class="stick-cross"></div>
+                    <div id="stick-thumb" class="stick-thumb"></div>
+                  </div>
+                  <span>MOVE</span>
                 </div>
-                <span>MOVE</span>
-              </div>
-              <div class="ability-buttons">
-                <button id="attack-btn" class="ability">
-                  <span class="ability-icon">⚔</span><strong>Strike</strong
-                  ><kbd>J</kbd><small>Close range</small></button
-                ><button id="charge-btn" class="ability main-ability">
-                  <span class="ability-icon" id="ability-symbol">♨</span
-                  ><strong id="ability-name">Flamethrower</strong><kbd>K</kbd
-                  ><small id="ability-status">Hold to charge</small
-                  ><i id="ability-cooldown"></i></button
-                ><button id="utility-btn" class="ability">
-                  <span class="ability-icon">◈</span
-                  ><strong id="utility-name">Magma</strong><kbd>L</kbd
-                  ><small id="utility-status">Area control</small></button
-                ><button id="lock-btn" class="ability">
-                  <span class="ability-icon">⌖</span><strong>Target lock</strong
-                  ><kbd>Q</kbd><small id="lock-status">Unlocked</small></button
-                ><button id="fuse-btn" class="ability fusion-ability">
-                  <span class="ability-icon">✧</span><strong>Fuse</strong
-                  ><kbd>F</kbd><small id="fuse-status">Ally token needed</small>
+                <div class="skill-controls">
+                  <div id="passive-note" class="passive-note" hidden>
+                    Reflect is always active.<br />Choose Earth or Light skills
+                    above.
+                  </div>
+                  <button id="charge-btn" class="ability main-ability">
+                    <span class="ability-icon" id="ability-symbol"></span
+                    ><strong id="ability-name">Flamethrower</strong><kbd>K</kbd
+                    ><small id="ability-status">Hold to charge</small
+                    ><i id="ability-cooldown"></i></button
+                  ><button id="utility-btn" class="ability">
+                    <span class="ability-icon">◈</span
+                    ><strong id="utility-name">Magma</strong><kbd>L</kbd
+                    ><small id="utility-status">Ready</small>
+                  </button>
+                </div>
+                <button
+                  id="attack-btn"
+                  class="attack-button"
+                  aria-label="Strike"
+                >
+                  <span class="ability-icon"></span><strong>STRIKE</strong
+                  ><kbd>J</kbd>
                 </button>
+              </div>
+              <div id="toast" class="toast" role="status"></div>
+              <div id="game-overlay" class="game-overlay">
+                <span class="eyebrow" id="overlay-kicker"
+                  >THE ARENA AWAITS</span
+                >
+                <h2 id="overlay-title">Make your first move.</h2>
+                <p id="overlay-text">
+                  Automatic lock. Free movement. Your timing.
+                </p>
+                <button id="overlay-play" class="primary">
+                  Begin battle <span>→</span></button
+                ><small
+                  >Stick to move · Hold a skill to charge · Tap Strike</small
+                >
               </div>
             </div>
           </section>
@@ -225,8 +270,8 @@
               </div>
               <h3>Fall. Fuse. Rise.</h3>
               <p>
-                A fallen ally leaves a token. Claim a compatible element to
-                unlock a new form.
+                A fallen ally leaves a token only your team can see. Touch it to
+                absorb a compatible element and unlock a new form.
               </p>
               <div class="fusion-tier">
                 <span>II <i>Shine</i></span
