@@ -485,6 +485,8 @@ test("Angel guard is controllable after death and blocks only enemy melee", () =
   ghost.x = 425;
   g.fell(ghost);
   assert.ok(ghost.ghost);
+  // Keep the newly compatible Spirit + Water token outside contact range.
+  g.tokens[0].x = 200;
   g.move(ghost, 0, -1, 0.01);
   assert.ok(ghost.y < 300);
   g.strike(b);

@@ -75,6 +75,8 @@ export const COMBOS = {
   "air+dark+fire": "demonic",
   "air+earth+light": "divine",
   "dark+earth+light": "multi-dimensional",
+  "air+light+water": "lightning",
+  "earth+fire+light": "invincible",
 };
 export const FUSED = {
   mud: ["Quicksand", null],
@@ -88,7 +90,9 @@ export const FUSED = {
   apparition: ["Doppelgänger", "Phase"],
   demonic: ["Minions", "Death"],
   divine: ["Radiance", null],
-  "multi-dimensional": ["Rift", null],
+  "multi-dimensional": [null, null],
+  lightning: ["Lightning strikes", null],
+  invincible: [null, null],
 };
 export const EDGES = [
   ["divine", "spirit"],
@@ -144,6 +148,7 @@ export const burnImmune = (a) =>
 export function visibility(a) {
   if (a.ghost || !hasPassive(a, "divine")) return 1;
   if (a.reveal > 0 || a.charging || a.shield || a.swing > 0) return 0.3;
+  if (a.hurtReveal > 0) return 0.1;
   return a.movingTime >= 1 && a.movingTime % 1 < 0.15 ? 0.1 : 0;
 }
 const clamp = (v, min, max) => Math.max(min, Math.min(max, v));
@@ -201,6 +206,7 @@ export function makeFighter(id, element, team, x, y) {
     burst: 0,
     burstHits: new Set(),
     reveal: 0,
+    hurtReveal: 0,
     movingTime: 0,
     burn: 0,
     venom: 0,
@@ -299,8 +305,27 @@ export class Combat {
       }
     }
   }
+  isShocked(a) {
+    return (
+      a.alive &&
+      inWorld(a) &&
+      !hasPassive(a, "divine") &&
+      this.fighters.some(
+        (b) =>
+          b.id !== a.id &&
+          b.alive &&
+          inWorld(b) &&
+          hasPassive(b, "lightning") &&
+          distance(a, b) < 30,
+      )
+    );
+  }
   move(a, dx, dy, dt) {
     if ((!a.alive && !a.ghost) || !inWorld(a)) return;
+    if (this.isShocked(a)) {
+      a.vx = a.vy = a.knockX = a.knockY = a.burst = a.movingTime = 0;
+      return;
+    }
     const old = { x: a.x, y: a.y };
     const length = Math.hypot(dx, dy),
       magnitude = Math.min(1, length);
@@ -337,14 +362,19 @@ export class Combat {
     }
     this.autoLock(a);
   }
-  strike(a) {
+  strike(a, aim = null) {
     if (!a.alive || !inWorld(a) || a.attackCd > 0 || a.shield || a.stagger > 0)
       return false;
     this.autoLock(a);
     a.attackCd = 0.43;
     a.swing = 0.22;
     a.reveal = 0.45;
-    this.pending.push({ id: ++this.sequence, who: a, at: this.time + 0.11 });
+    this.pending.push({
+      id: ++this.sequence,
+      who: a,
+      at: this.time + 0.11,
+      aim: aim ? { ...aim } : null,
+    });
     return true;
   }
   startCharge(a) {
@@ -357,6 +387,11 @@ export class Combat {
       !skillsFor(activeForm(a))[0]
     )
       return false;
+    if (activeForm(a) === "lightning") {
+      if (this.cast(a, 1) === false) return false;
+      a.abilityCd = 4.5;
+      return true;
+    }
     if (activeForm(a) === "spirit" && !this.revivalTarget(a)) {
       this.event("NO FALLEN ALLY TO REVIVE");
       return false;
@@ -434,6 +469,7 @@ export class Combat {
       this.event("DODGED", "#b8a1df", b.x, b.y);
       return 0;
     }
+    if (!reflected && hasPassive(a, "invincible")) amount *= 2;
     if (ability && hasPassive(b, "mirror") && !reflected && a.id !== b.id) {
       this.event("REFLECT", "#fff", b.x, b.y);
       return this.damage(b, a, amount, true, true, sourceElement);
@@ -457,7 +493,8 @@ export class Combat {
     b.hp = Math.max(0, b.hp - hit);
     if (hit > 0) {
       b.flash = 0.16;
-      if (hit >= 0.5)
+      b.hurtReveal = 0.15;
+      if (hit >= 0.5 && !hasPassive(b, "divine"))
         this.event(
           `${Math.round(hit)}`,
           a.team === b.team ? "#eab66b" : "#f3e7cd",
@@ -466,7 +503,8 @@ export class Combat {
         );
       if (b.charging) {
         b.stagger = 0.27;
-        if (hit >= 0.5) this.event("INTERRUPTED", "#e9cc91", b.x, b.y - 48);
+        if (hit >= 0.5 && !hasPassive(b, "divine"))
+          this.event("INTERRUPTED", "#e9cc91", b.x, b.y - 48);
       }
       if (b.hp <= 0) this.fell(b);
     }
@@ -509,7 +547,7 @@ export class Combat {
         continue;
       }
       this.autoLock(a);
-      if (a.aiControlled && !this.safeAttack(a, this.target(a))) {
+      if (a.aiControlled && !this.safeAttack(a, p.aim || this.target(a))) {
         remove.add(p.id);
         continue;
       }
@@ -633,7 +671,29 @@ export class Combat {
     const e = activeForm(a);
     if (!skillsFor(e)[0]) return false;
     a.reveal = 0.45;
-    if (e === "light" || e === "divine") {
+    if (e === "lightning") {
+      const target =
+        this.target(a) ||
+        this.enemies(a)
+          .filter((b) => distance(a, b) <= 300)
+          .sort((b, c) => distance(a, b) - distance(a, c))[0];
+      if (!target) {
+        if (a.id === "player") this.event("NO VISIBLE RIVAL IN RANGE");
+        return false;
+      }
+      const flooded = this.hazards.some(
+        (h) => inWorld(h) && h.kind === "flood" && distance(h, target) <= h.r,
+      );
+      this.effects.push({
+        kind: "lightning",
+        x: target.x,
+        y: target.y,
+        color: "#e7faff",
+        life: 0.25,
+        max: 0.25,
+      });
+      this.damage(a, target, 26 * (flooded ? 2 : 1), true, false, "lightning");
+    } else if (e === "light" || e === "divine") {
       const recipient = this.healingTarget(a);
       if (!recipient) return false;
       recipient.hp = Math.min(recipient.maxHp, recipient.hp + 23 * p);
@@ -760,6 +820,7 @@ export class Combat {
     }
     if (!a.alive || !inWorld(a) || !skillsFor(e)[1]) return false;
     if (e === "blaze") {
+      if (this.isShocked(a)) return false;
       // An active dash finishes before the next one begins; there is no recharge.
       if (a.burst > 0) return true;
       const speed = Math.hypot(a.vx, a.vy);
@@ -938,6 +999,7 @@ export class Combat {
       !a.alive ||
       !inWorld(a) ||
       !hasPassive(a, "multi-dimensional") ||
+      this.isShocked(a) ||
       x < 135 ||
       x > 889 ||
       y < 175 ||
@@ -983,7 +1045,10 @@ export class Combat {
   safeAttack(a, target, kind = "melee", form = activeForm(a)) {
     if (!target) return false;
     const enemies = this.enemies(a);
-    const nearestEnemy = Math.min(...enemies.map((b) => distance(a, b)));
+    const nearestEnemy = Math.min(
+      distance(a, target),
+      ...enemies.map((b) => distance(a, b)),
+    );
     const allies = this.fighters.filter(
       (b) => b.id !== a.id && b.alive && inWorld(b) && b.team === a.team,
     );
@@ -1085,11 +1150,20 @@ export class Combat {
         dx = nx * 0.25 - ny * side;
         dy = ny * 0.25 + nx * side;
       }
-      a.lastSeen = { x: target.x, y: target.y, until: this.time + 2 };
+      a.lastSeen = {
+        x: target.x,
+        y: target.y,
+        until: this.time + 2,
+        divine: hasPassive(target, "divine"),
+      };
+      a.searchSpot = null;
     } else if (a.lastSeen?.until > this.time && distance(a, a.lastSeen) > 20) {
       // Search the last observed spot, never a concealed opponent's live position.
       dx = a.lastSeen.x - a.x;
       dy = a.lastSeen.y - a.y;
+    } else if (a.searchSpot && distance(a, a.searchSpot) > 45) {
+      dx = a.searchSpot.x - a.x;
+      dy = a.searchSpot.y - a.y;
     }
     for (const ally of allies) {
       const gap = distance(a, ally);
@@ -1154,7 +1228,29 @@ export class Combat {
       this.startCharge(a);
       return;
     }
-    if (!target) return;
+    if (!target) {
+      // Only search when support, movement and hazard avoidance leave us idle.
+      // Spots come solely from remembered coordinates, never hidden live state.
+      if (a.lastSeen?.divine && Math.hypot(dx, dy) < 0.1) {
+        if (!a.searchSpot || this.time >= (a.searchNext || 0)) {
+          const angle = this.random() * Math.PI * 2,
+            radius = Math.sqrt(this.random()) * 65;
+          a.searchSpot = {
+            x: clamp(a.lastSeen.x + Math.cos(angle) * radius, 135, 889),
+            y: clamp(a.lastSeen.y + Math.sin(angle) * radius, 175, 560),
+          };
+          a.searchNext = this.time + 0.8;
+        }
+        const aim = a.searchSpot,
+          gap = distance(a, aim);
+        if (gap > 0) {
+          a.fx = (aim.x - a.x) / gap;
+          a.fy = (aim.y - a.y) / gap;
+        }
+        if (gap <= STRIKE_RANGE && this.safeAttack(a, aim)) this.strike(a, aim);
+      }
+      return;
+    }
     // Light flashes to escape pressure; do not blind nearby teammates.
     if (
       !a.echo &&
@@ -1176,12 +1272,7 @@ export class Combat {
       this.switchForm(a, "blaze");
       this.utility(a);
     }
-    if (
-      d <= STRIKE_RANGE &&
-      (!light || aggressiveLight || d < 40) &&
-      this.safeAttack(a, target)
-    )
-      this.strike(a);
+    if (d <= STRIKE_RANGE && this.safeAttack(a, target)) this.strike(a);
     if (a.echo) return;
     // Support waits for a healing opportunity instead of wasting its main skill.
     if (light) return;
@@ -1232,12 +1323,7 @@ export class Combat {
       )
         continue;
       a.burstHits.add(b.id);
-      const hp = b.hp;
       this.damage(a, b, 22, true, false, "blaze");
-      if (b.alive && b.hp < hp && !burnImmune(b)) {
-        b.burn = 3;
-        b.burnSource = a;
-      }
       if (!a.alive) break;
     }
     a.burst = Math.max(0, a.burst - dt);
@@ -1395,12 +1481,12 @@ export class Combat {
         "blind",
         "dodge",
         "boost",
-        "burn",
         "venom",
         "slow",
         "flash",
         "swing",
         "reveal",
+        "hurtReveal",
       ])
         a[key] = Math.max(0, a[key] - dt);
       if (a.life !== undefined && (a.life -= dt) <= 0) {
@@ -1411,9 +1497,8 @@ export class Combat {
       if (a.shield) a.shieldTime += dt;
       else a.shieldHp = Math.min(65, a.shieldHp + dt * 5);
       if (hasPassive(a, "divine")) a.venom = a.burn = a.blind = 0;
-      if (a.venom > 0) this.damage(a, a, dt * 3, true);
-      if (a.burn > 0 && !burnImmune(a))
-        this.damage(a.burnSource || a, a, dt * 4, true, false, "blaze");
+      if (a.venom > 0)
+        this.damage(a.venomSource || a, a, dt * 3, true, false, "mud");
       if (!a.alive && !a.ghost) continue;
       const old = { x: a.x, y: a.y };
       if (a.id === "player") this.move(a, input.x, input.y, dt);
@@ -1437,6 +1522,7 @@ export class Combat {
     this.updateProjectiles(dt);
     this.updateWaves(dt);
     this.updateHazards(dt);
+    for (const a of this.fighters) a.burn = 0;
     for (const a of this.fighters) {
       if (!a.alive || !inWorld(a)) continue;
       for (const b of this.fighters) {
@@ -1447,9 +1533,15 @@ export class Combat {
           !b.parts.includes("fire") &&
           !b.parts.includes("water") &&
           !hasPassive(b, "divine")
-        )
+        ) {
+          const hp = b.hp;
           this.damage(a, b, dt * 5, true, false, "fire");
-        if (hasPassive(a, "mud") && !hasPassive(b, "divine")) b.venom = 5;
+          if (b.hp < hp) b.burn = 1;
+        }
+        if (hasPassive(a, "mud") && !hasPassive(b, "divine")) {
+          b.venom = 5;
+          b.venomSource = a;
+        }
       }
     }
     for (const e of this.effects) e.life -= dt;

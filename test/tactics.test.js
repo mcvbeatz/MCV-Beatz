@@ -30,11 +30,21 @@ test("Blaze and Smoke expose only their requested fused skill; Gravity is purple
 test("level III mode accepts every third-tier fusion and randomizes within its own tier", () => {
   assert.deepEqual(
     new Set(LEVEL_THREE),
-    new Set(["demonic", "divine", "multi-dimensional"]),
+    new Set([
+      "demonic",
+      "divine",
+      "multi-dimensional",
+      "lightning",
+      "invincible",
+    ]),
   );
   for (const element of LEVEL_THREE)
-    for (let i = 0; i < 3; i++) {
-      const g = new Combat({ mode: "fused3", element, random: () => i / 3 });
+    for (let i = 0; i < LEVEL_THREE.length; i++) {
+      const g = new Combat({
+        mode: "fused3",
+        element,
+        random: () => i / LEVEL_THREE.length,
+      });
       assert.equal(g.player.element, element);
       assert.equal(g.fighters[1].element, LEVEL_THREE[i]);
       assert.equal(g.player.parts.length, 3);
@@ -45,7 +55,7 @@ test("level III mode accepts every third-tier fusion and randomizes within its o
     ),
   );
 });
-test("Speed burst crosses and burns enemies AND allies, hits once per dash, and immediately repeats", () => {
+test("Speed burst hits enemies AND allies once, stops burning after contact, and immediately repeats", () => {
   const g = arena(),
     a = g.player,
     b = g.fighters[1];
@@ -58,12 +68,13 @@ test("Speed burst crosses and burns enemies AND allies, hits once per dash, and 
   assert.ok(a.x >= 490 && a.x <= 496);
   assert.ok(b.hp < 98 && b.hp > 95);
   assert.ok(ally.hp < 104 && ally.hp > 101);
-  assert.ok(b.burn > 0 && ally.burn > 0);
+  assert.equal(b.burn, 0);
+  assert.equal(ally.burn, 0);
   assert.ok(g.effects.some((e) => e.kind === "flame-trail"));
   assert.equal(a.burst, 0);
   const health = b.hp;
   advance(g, 0.5);
-  assert.ok(b.hp < health);
+  assert.equal(b.hp, health);
   assert.ok(g.utility(a));
   assert.equal(a.burst, 0.3);
 });
@@ -184,7 +195,7 @@ test("hidden Divine cannot be locked or tracked by AI but can still be physicall
   g.strike(a);
   advance(g, 0.15);
   assert.ok(b.hp < 120);
-  assert.equal(visibility(b), 0);
+  assert.equal(visibility(b), 0.1);
 });
 test("Fire closes to contact-burn distance while equal-health Light creates space", () => {
   const fire = arena("water", "fire"),

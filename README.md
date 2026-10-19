@@ -1,4 +1,4 @@
-# Elemental — The Colosseum · v0.3
+# Elemental — The Colosseum · v0.4
 
 A single-player elemental combat game with original caped pixel characters, AI battles, fusion and touch controls. Built with vanilla JavaScript, Canvas 2D and Vite. No server, accounts, secrets or external runtime assets are required.
 
@@ -21,7 +21,7 @@ Keyboard controls remain available: **WASD/arrows** move, **J** strikes, **hold/
 ## Combat rules
 
 - Duel, **Fused II**, **Fused III**, and 2v2 / 3v3 / 4v4 team brawls against AI. Rivals draw a random element from the selected tier each battle.
-- Fused II offers the nine level-II elements. Fused III offers **Demonic, Divine and Multi-Dimensional**, each with all of its origin ability tabs.
+- Fused II offers the nine level-II elements. Fused III offers **Demonic, Divine, Multi-Dimensional, Lightning and Invincible**, each with all of its origin ability tabs.
 - Automatic lock faces the nearest rival within **69 world units** while allowing independent movement. Blindness disrupts locking.
 - Melee has a **110ms windup**, **430ms cooldown**, and **14 base damage**. Facing attacks contested within **100ms** deal quarter damage to both fighters. Friendly fire remains on.
 - Low health reduces speed. Air passively flies faster with slower direction changes. Stick magnitude controls movement speed.
@@ -33,20 +33,25 @@ Keyboard controls remain available: **WASD/arrows** move, **J** strikes, **hold/
 
 ## Latest elemental changes and AI
 
-- **Blaze:** Flame burst is removed. Speed burst is a directional **300ms dash at 650 world units/second**, with a fading flame trail and **zero recharge**. It follows current movement, or facing if stationary. A new dash can start as soon as the active dash ends, even if an origin utility is cooling down. Each dash hits every crossed fighter once for **22 base damage**, including teammates. Vulnerable targets also burn for **3 seconds at 4 base damage/second**. Fire, Water and Divine resist the burn; shields, dodge and reflection still work on the impact. The flame trail itself is decorative.
+- **Blaze:** Flame burst is removed. Speed burst is a directional **300ms dash at 650 world units/second**, with a fading flame trail and **zero recharge**. It follows current movement, or facing if stationary. A new dash can start as soon as the active dash ends, even if an origin utility is cooling down. Each dash hits every crossed fighter once for **22 base damage**, including teammates. Burn only applies during physical contact, with no lingering damage after the dash passes. Fire, Water and Divine resist the burn; shields, dodge and reflection still work on the impact. The flame trail itself is decorative.
+- **Lightning (Cloud + Light / Spirit + Water):** tap **Lightning strikes** for an instant hit on the nearest visible enemy within **300 world units**, with **26 base damage**, no charge, and a **4.5-second cooldown**. No valid target means no cooldown. Flood doubles strike damage at the target. **Shock** passively prevents movement, inertia, knockback, dashes and teleportation while another living fighter touches Lightning (under 30 units). It affects allies too, ends immediately when contact breaks, and does not prevent attacks. Divine is immune. Both skills/passives follow the normal inherited-form rules.
+- **Invincible (Sun + Earth / Mirror + Fire):** **2× outgoing damage** is passive and applies to melee, inherited skills and damaging passives. It remains active across ability sets. Reflected hits are not doubled again. Invincible has no active fused skill and still takes damage normally, with its inherited defenses.
+- **Burn vs venom:** contact burn deals **5 base damage/second only while touching a Fire-bearing elemental**; it stops immediately on separation. A Blaze dash does impact damage and does not leave a burn timer. Mud contact refreshes **5 seconds of venom**, dealing **3 base damage/second** after separation. Immunities still apply. Magma, Vog, Heatwave and direct attacks keep their separate ability damage.
 - **Smoke:** Smoke veil is removed; Vog remains its active fused skill.
 - **Gravity:** purple across the avatar, selector, HUD and token.
 - **Healing / Radiance:** automatically heals the living, on-screen teammate with the **lowest current HP**, including the caster, without a range limit. Selection happens when the charge is released. Fallen allies, temporary minions and fighters trapped in another dimension are excluded; Spirit Revival handles fallen allies.
-- **Divine:** fully invisible at rest, including its shadow, glow, health bar and player marker. Actions reveal a **30% opaque silhouette** while charging/holding a shield and for **450ms** after a strike or cast. Continuous movement reveals **10% opacity for 150ms after each full second**; stopping resets the cadence. This remains active across origin skill sets and applies to the player's own avatar too. Hidden fighters cannot be locked or selected by the AI, but physical hits and area effects can still connect.
-- **AI:** Fire closes to burn-contact distance against vulnerable enemies. Light prioritizes healing and a teammate-safe Flash, maintains distance, and becomes aggressive with a health advantage of at least 15 HP. Fighters prioritize nearby threats to wounded allies, separate from teammates, avoid harmful floor effects and dodge incoming projectiles. They decline attacks when an ally is closer than the nearest visible rival, also check melee arcs and ability paths, and cancel unsafe wind-ups. They search a concealed enemy's last observed position briefly instead of tracking its hidden location. Friendly fire remains enabled; a teammate can still move into an attack already in flight.
+- **Divine:** fully invisible at rest, including its shadow, glow, health bar and player marker. Actions reveal a **30% opaque silhouette** while charging/holding a shield and for **450ms** after a strike or cast. Continuous movement reveals **10% opacity for 150ms after each full second**; stopping resets the cadence. Taking actual health damage reveals **10% opacity for 150ms**, then hides again; action visibility takes priority. Damage labels do not leave a lingering position marker. This remains active across origin skill sets and applies to the player's own avatar too. Hidden fighters cannot be locked or selected by the AI, but physical hits and area effects can still connect.
+- **AI:** Fire closes to burn-contact distance against vulnerable enemies. Light prioritizes healing and a teammate-safe Flash, maintains distance while supporting, and still strikes any enemy within melee range whenever healing or support does not take priority. It closes in with a health advantage of at least 15 HP. Fighters prioritize nearby threats to wounded allies, separate from teammates, avoid harmful floor effects and dodge incoming projectiles. They decline attacks when an ally is closer than the nearest visible rival, also check melee arcs and ability paths, and cancel unsafe wind-ups. When otherwise idle, they move to and attack random spaces within 65 units of a Divine's last seen location. Search attacks still check friendly-fire risk and can physically hit a hidden fighter; they never read its hidden live coordinates. Friendly fire remains enabled; a teammate can still move into an attack already in flight.
 
 ## Automatic fusion and passives
 
 Only allied tokens are rendered. Touching a compatible token within **27 world units** fuses automatically, heals 30 HP, blends colors and creates a shockwave that briefly pushes all other on-field fighters away, including allies. Level II gains a shine; level III gains a glow.
 
-Ability-set tabs expose all accumulated origins and fused forms. Passive abilities are inherited and never require a button: Reflect, hard skin, contact burn/resistance, flight, venomous contact, Angel guard, Divine invisibility/status immunity and Multi-Dimensional teleportation. Mirror has **no active skill of its own**; use its Earth and Light tabs for active skills.
+Ability-set tabs expose all accumulated origins and fused forms. Passive abilities are inherited and never require a button: Reflect, hard skin, contact burn/resistance, flight, venomous contact, Angel guard, Divine invisibility/status immunity and Multi-Dimensional teleportation, Lightning Shock and Invincible strength. Mirror has **no active skill of its own**; use its Earth and Light tabs for active skills.
 
 Multi-Dimensional can teleport instantly to any valid arena point by tapping, without a cooldown, even while an inherited ability set is selected. An active portal-placement operation or a tap on the player’s portal takes priority over teleportation.
+
+Multi-Dimensional has no Rift. Its **Teleport** reminder button explains that arena taps teleport immediately; pressing it does not teleport, activate a mode or spend a cooldown. Teleport remains available across inherited ability sets.
 
 ## Spirit abilities
 
@@ -91,7 +96,7 @@ Browser tests use `/usr/bin/chromium`; set `CHROMIUM_PATH` for another installed
 - `src/render.js`: original pixel art, rocks, waves, beams, ghosts and portals.
 - `src/main.js`: analog input, pointer ownership, fullscreen fallback and HUD.
 - `src/style.css`, `src/icons.js`: responsive interface and original icons.
-- `test/combat.test.js`, `test/tactics.test.js`, `test/browser/arena.spec.js`: simulation and browser regressions.
+- `test/combat.test.js`, `test/tactics.test.js`, `test/elements.test.js`, `test/browser/arena.spec.js`: simulation and browser regressions.
 
 ## Publish updates
 
@@ -105,4 +110,4 @@ This tests, builds, adds `.nojekyll` and pushes a new publishing commit. It pres
 
 ## Remaining scope from the original design
 
-This release implements the requested mobile/combat adjustments. Earlier features still awaiting their own iterations include online multiplayer, final art, physical scenery and doors, Light’s sacrifice, separately selectable Dark blindness, progressive quicksand/rescue, simulated flood flow and swimming, rainbow aesthetics, arbitrary-object telekinesis and Gravity’s separate held flight ability. Demonic Death still consumes a rival token rather than implementing the original targeted un-fusion and special resuscitation rules. Several other active fused skills retain their first-pass behavior. Lightning and Invincible have no supplied origin/recipe and remain hierarchy entries only.
+This release implements the requested mobile/combat adjustments. Earlier features still awaiting their own iterations include online multiplayer, final art, physical scenery and doors, Light’s sacrifice, separately selectable Dark blindness, progressive quicksand/rescue, simulated flood flow and swimming, rainbow aesthetics, arbitrary-object telekinesis and Gravity’s separate held flight ability. Demonic Death still consumes a rival token rather than implementing the original targeted un-fusion and special resuscitation rules. Several other active fused skills retain their first-pass behavior.

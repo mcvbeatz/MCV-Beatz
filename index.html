@@ -35,7 +35,7 @@
             How to play <span>→</span>
           </button>
         </nav>
-        <span class="build-badge"><i></i> COMBAT PROTOTYPE <b>0.3</b></span>
+        <span class="build-badge"><i></i> COMBAT PROTOTYPE <b>0.4</b></span>
       </header>
       <main>
         <div class="page-title">
@@ -116,7 +116,7 @@
               <div>
                 <span class="live-dot"></span
                 ><strong>THE SUNKEN COLOSSEUM</strong
-                ><span class="arena-type">Touch combat · v0.3</span>
+                ><span class="arena-type">Touch combat · v0.4</span>
               </div>
               <div class="arena-tools">
                 <button id="leave-btn" aria-label="Return to battle setup">
@@ -203,6 +203,15 @@
                     Reflect is always active.<br />Choose Earth or Light skills
                     above.
                   </div>
+                  <button
+                    id="teleport-info-btn"
+                    class="ability"
+                    aria-describedby="arena-hint"
+                    hidden
+                  >
+                    <span class="ability-icon">⌖</span><strong>Teleport</strong>
+                    <small>Tap arena · no cooldown</small>
+                  </button>
                   <button id="charge-btn" class="ability main-ability">
                     <span class="ability-icon" id="ability-symbol"></span
                     ><strong id="ability-name">Flamethrower</strong><kbd>K</kbd

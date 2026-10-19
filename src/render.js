@@ -655,6 +655,25 @@ export class Renderer {
     }
     for (const e of game.effects) {
       c.globalAlpha = e.life / e.max;
+      if (e.kind === "lightning") {
+        for (const [width, color] of [
+          [9, "#9acfff66"],
+          [4, "#b3eaff"],
+          [1.5, "#ffffff"],
+        ]) {
+          c.strokeStyle = color;
+          c.lineWidth = width;
+          c.beginPath();
+          c.moveTo(e.x - 16, e.y - 175);
+          c.lineTo(e.x + 8, e.y - 130);
+          c.lineTo(e.x - 10, e.y - 100);
+          c.lineTo(e.x + 13, e.y - 57);
+          c.lineTo(e.x, e.y);
+          c.stroke();
+        }
+        c.globalAlpha = 1;
+        continue;
+      }
       if (e.kind === "flame-trail") {
         const flicker = Math.sin(e.x * 0.7 + e.y * 0.3 + t * 18);
         const height = (10 + (23 * e.life) / e.max) * (0.85 + flicker * 0.35);

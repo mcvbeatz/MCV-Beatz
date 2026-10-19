@@ -115,7 +115,7 @@ test("Spirit places portals with arena clicks and closes them by tapping", async
     .poll(() => page.evaluate(() => __arena.game.portals.portals.length))
     .toBe(1);
 });
-test("passive teleport uses world taps with no cooldown and no button", async ({
+test("passive teleport uses world taps with an informational button and no cooldown", async ({
   page,
 }) => {
   await begin(page, { mode: "fused", element: "gravity" });
@@ -125,6 +125,19 @@ test("passive teleport uses world taps with no cooldown and no button", async ({
   );
   await expect(page.locator('[data-form="multi-dimensional"]')).toBeVisible();
   await expect(page.locator("#utility-btn")).toBeHidden();
+  await expect(page.locator("#charge-btn")).toBeHidden();
+  await expect(page.locator("#teleport-info-btn")).toBeVisible();
+  const before = await page.evaluate(() => ({
+    x: __arena.game.player.x,
+    y: __arena.game.player.y,
+  }));
+  await page.locator("#teleport-info-btn").click();
+  expect(
+    await page.evaluate(() => ({
+      x: __arena.game.player.x,
+      y: __arena.game.player.y,
+    })),
+  ).toEqual(before);
   await worldTap(page, 520, 340);
   await expect
     .poll(() => page.evaluate(() => Math.round(__arena.game.player.x)))
@@ -302,9 +315,15 @@ test("level III selector starts each fusion and Divine disappears completely at 
 }) => {
   await page.goto("/");
   await page.locator('[data-mode="fused3"]').click();
-  await expect(page.locator("[data-element]")).toHaveCount(3);
+  await expect(page.locator("[data-element]")).toHaveCount(5);
   await expect(page.locator(".tier")).toHaveText("III");
-  for (const element of ["demonic", "divine", "multi-dimensional"])
+  for (const element of [
+    "demonic",
+    "divine",
+    "multi-dimensional",
+    "lightning",
+    "invincible",
+  ])
     await expect(page.locator(`[data-element="${element}"]`)).toBeVisible();
   await page.locator('[data-element="divine"]').click();
   await page.locator("#begin-btn").click();
@@ -394,7 +413,7 @@ test.describe("level III phone controls", () => {
       for (const selector of [
         "#joystick",
         "#attack-btn",
-        "#charge-btn",
+        "#teleport-info-btn",
         "#skill-switcher",
       ]) {
         const b = await page.locator(selector).boundingBox();
@@ -413,4 +432,79 @@ test.describe("level III phone controls", () => {
       await page.locator('[data-form="multi-dimensional"]').click();
     }
   });
+});
+
+test("Lightning fires on press without charging and Invincible exposes inherited skills", async ({
+  page,
+}) => {
+  await begin(page, { mode: "fused3", element: "lightning" });
+  await stillRival(page);
+  await page.evaluate(() => {
+    const g = __arena.game,
+      b = g.fighters[1];
+    b.element = "earth";
+    b.parts = ["earth"];
+    b.x = g.player.x + 180;
+    b.y = g.player.y;
+  });
+  await expect(page.locator("#ability-name")).toHaveText("Lightning strikes");
+  await expect(page.locator("#ability-status")).toContainText("instant");
+  const btn = await page.locator("#charge-btn").boundingBox();
+  await page.mouse.move(btn.x + btn.width / 2, btn.y + btn.height / 2);
+  await page.mouse.down();
+  await expect
+    .poll(() => page.evaluate(() => __arena.game.fighters[1].hp))
+    .toBeLessThan(120);
+  await expect(page.locator("#charge-meter")).toBeHidden();
+  const health = await page.evaluate(() => __arena.game.fighters[1].hp);
+  await page.mouse.up();
+  expect(await page.evaluate(() => __arena.game.fighters[1].hp)).toBe(health);
+  expect(
+    await page.evaluate(() => __arena.game.player.abilityCd),
+  ).toBeGreaterThan(0);
+  await begin(page, { mode: "fused3", element: "invincible" });
+  await stillRival(page);
+  await expect(page.locator("#charge-btn")).toBeHidden();
+  await expect(page.locator("#utility-btn")).toBeHidden();
+  await expect(page.locator("#passive-note")).toContainText("2× strength");
+  await page.locator('[data-form="fire"]').click();
+  await expect(page.locator("#ability-name")).toHaveText("Flamethrower");
+  expect(await page.evaluate(() => __arena.game.player.element)).toBe(
+    "invincible",
+  );
+});
+
+test("Divine hit feedback draws a faint clue, then the canvas returns to hidden", async ({
+  page,
+}) => {
+  await begin(page, { mode: "fused3", element: "divine" });
+  await stillRival(page);
+  const result = await page.evaluate(() => {
+    const { game: g, renderer: r } = __arena,
+      a = g.player;
+    a.reveal = 0;
+    a.movingTime = 0;
+    a.hurtReveal = 0;
+    g.effects = [];
+    g.events = [];
+    const draw = () => {
+      r.draw(g);
+      return r.ctx.getImageData(0, 0, r.canvas.width, r.canvas.height).data;
+    };
+    const animationTime = g.time;
+    const hidden = draw();
+    g.damage(g.fighters[1], a, 14);
+    const hurt = draw();
+    g.update(0.2, { x: 0, y: 0 }, false); // Simulation caps individual time steps.
+    for (let i = 0; i < 15; i++) g.update(0.01, { x: 0, y: 0 }, false);
+    // Compare at the same animation time so torch flicker and flying bobbing
+    // cannot be mistaken for a lingering Divine silhouette.
+    g.time = animationTime;
+    const faded = draw();
+    return {
+      hint: hurt.some((v, i) => v !== hidden[i]),
+      hiddenAgain: faded.every((v, i) => v === hidden[i]),
+    };
+  });
+  expect(result).toEqual({ hint: true, hiddenAgain: true });
 });
