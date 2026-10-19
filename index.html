@@ -1,0 +1,266 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#11191b" />
+    <title>Elemental — The Colosseum</title>
+    <link
+      rel="icon"
+      href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Cpath fill='%23e8bd71' d='M16 2 30 16 16 30 2 16z'/%3E%3Cpath fill='%2311191b' d='m16 9 7 14H9z'/%3E%3C/svg%3E"
+    />
+  </head>
+  <body>
+    <div id="app">
+      <header class="topbar">
+        <a class="brand" href="./"
+          ><span class="brand-mark">◇</span> ELEMENTAL<span class="brand-sub"
+            >THE COLOSSEUM</span
+          ></a
+        >
+        <nav aria-label="Main navigation">
+          <button class="nav active" id="arena-nav">Arena</button
+          ><button class="nav" id="codex-btn">
+            Element codex <span>→</span></button
+          ><button class="nav" id="guide-btn">
+            How to play <span>→</span>
+          </button>
+        </nav>
+        <span class="build-badge"><i></i> COMBAT PROTOTYPE <b>0.1</b></span>
+      </header>
+      <main>
+        <div class="page-title">
+          <div>
+            <span class="eyebrow">ENTER THE ARENA</span>
+            <h1>Power is elemental.</h1>
+            <p>
+              Master your element. Find your opening. Become something more.
+            </p>
+          </div>
+          <div class="session-tag">
+            <span class="status-dot"></span> SINGLE PLAYER
+            <span class="divider">/</span> VS. AI
+          </div>
+        </div>
+        <div class="workspace">
+          <aside class="setup-panel panel">
+            <div class="section-heading">
+              <span class="eyebrow">01 / YOUR ELEMENT</span
+              ><span class="subtle">6 origins</span>
+            </div>
+            <div id="element-grid" class="element-grid"></div>
+            <div class="element-profile">
+              <div class="profile-heading">
+                <span id="profile-symbol">♨</span>
+                <div>
+                  <h2 id="profile-name">Fire</h2>
+                  <span id="profile-role">Pressure & persistence</span>
+                </div>
+                <span class="tier">I</span>
+              </div>
+              <p id="profile-desc"></p>
+              <div class="passive">
+                <span>PASSIVE</span><strong id="profile-passive"></strong>
+              </div>
+            </div>
+            <div class="section-heading mode-heading">
+              <span class="eyebrow">02 / BATTLE FORMAT</span>
+            </div>
+            <div class="mode-tabs">
+              <button data-mode="duel" class="selected">Duel</button
+              ><button data-mode="team">Team brawl</button
+              ><button data-mode="fused">Fused</button>
+            </div>
+            <div id="team-sizes" class="team-sizes" hidden>
+              <button data-size="2" class="selected">2 vs 2</button
+              ><button data-size="3">3 vs 3</button
+              ><button data-size="4">4 vs 4</button>
+            </div>
+            <div class="mode-description" id="mode-description">
+              <span>⚔</span>
+              <div>
+                <strong>One on one</strong>
+                <p>You, a rival, and no room for mistakes.</p>
+              </div>
+            </div>
+            <div class="rule-row">
+              <span>Friendly fire</span
+              ><span class="on-indicator">ON <i></i></span>
+            </div>
+            <div class="rule-row">
+              <span>Opponent</span><span>Adaptive AI</span>
+            </div>
+            <button id="begin-btn" class="primary">
+              Enter the colosseum <span>→</span>
+            </button>
+            <p class="setup-footnote">
+              Change your setup, then enter a new battle.
+            </p>
+          </aside>
+          <section class="arena-panel panel" aria-label="Playable colosseum">
+            <div class="arena-topline">
+              <div>
+                <span class="live-dot"></span
+                ><strong>THE SUNKEN COLOSSEUM</strong
+                ><span class="arena-type">Training grounds</span>
+              </div>
+              <button
+                id="pause-btn"
+                class="icon-button"
+                aria-label="Pause game"
+                title="Pause (Esc)"
+              >
+                II
+              </button>
+            </div>
+            <div class="game-wrap" id="game-wrap">
+              <canvas
+                id="game"
+                width="1024"
+                height="680"
+                tabindex="0"
+                aria-label="Elemental combat arena. Move with WASD, attack with J, lock with Q, hold K to charge and release to cast."
+              ></canvas>
+              <div class="game-hud">
+                <div class="fighter-card">
+                  <span class="hud-symbol" id="hud-symbol">♨</span>
+                  <div>
+                    <div class="fighter-label">
+                      <strong id="hud-name">FIRE</strong><span>YOU</span>
+                    </div>
+                    <div class="health-track"><i id="health-fill"></i></div>
+                    <small id="health-label">120 / 120 HP</small>
+                  </div>
+                </div>
+                <div class="round-info">
+                  <span id="round-mode">DUEL · ROUND 01</span
+                  ><strong id="timer">00:00</strong>
+                </div>
+                <div class="enemy-count">
+                  <span>RIVALS REMAINING</span
+                  ><strong id="enemy-count">01</strong>
+                </div>
+              </div>
+              <div class="arena-caption">
+                <span class="gold-diamond">◇</span>
+                <span id="arena-hint"
+                  >Find your rhythm. Every opening counts.</span
+                >
+              </div>
+              <div id="game-overlay" class="game-overlay">
+                <span class="eyebrow" id="overlay-kicker"
+                  >THE ARENA AWAITS</span
+                >
+                <h2 id="overlay-title">Make your first move.</h2>
+                <p id="overlay-text">A clash of elements. A test of timing.</p>
+                <button id="overlay-play" class="primary">
+                  Begin battle <span>→</span></button
+                ><small>W A S D to move · J to strike</small>
+              </div>
+              <div id="charge-meter" class="charge-meter" hidden>
+                <span>CHARGING <b id="charge-percent">0%</b></span>
+                <div><i id="charge-fill"></i></div>
+              </div>
+              <div id="toast" class="toast" role="status"></div>
+            </div>
+            <div class="action-bar">
+              <div class="movement-hint">
+                <div class="wasd">
+                  <kbd>W</kbd>
+                  <div><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd></div>
+                </div>
+                <span>MOVE</span>
+              </div>
+              <div class="ability-buttons">
+                <button id="attack-btn" class="ability">
+                  <span class="ability-icon">⚔</span><strong>Strike</strong
+                  ><kbd>J</kbd><small>Close range</small></button
+                ><button id="charge-btn" class="ability main-ability">
+                  <span class="ability-icon" id="ability-symbol">♨</span
+                  ><strong id="ability-name">Flamethrower</strong><kbd>K</kbd
+                  ><small id="ability-status">Hold to charge</small
+                  ><i id="ability-cooldown"></i></button
+                ><button id="utility-btn" class="ability">
+                  <span class="ability-icon">◈</span
+                  ><strong id="utility-name">Magma</strong><kbd>L</kbd
+                  ><small id="utility-status">Area control</small></button
+                ><button id="lock-btn" class="ability">
+                  <span class="ability-icon">⌖</span><strong>Target lock</strong
+                  ><kbd>Q</kbd><small id="lock-status">Unlocked</small></button
+                ><button id="fuse-btn" class="ability fusion-ability">
+                  <span class="ability-icon">✧</span><strong>Fuse</strong
+                  ><kbd>F</kbd><small id="fuse-status">Ally token needed</small>
+                </button>
+              </div>
+            </div>
+          </section>
+          <aside class="intel-panel">
+            <div class="panel match-panel">
+              <div class="section-heading">
+                <span class="eyebrow">BATTLE INTEL</span
+                ><span class="tiny-dot"></span>
+              </div>
+              <h3>Know your edge.</h3>
+              <p id="matchup-desc">
+                Keep the pressure on. Fire punishes enemies who get too close.
+              </p>
+              <div class="matchup">
+                <span>STRONG AGAINST</span>
+                <div id="strong-against"></div>
+              </div>
+              <div class="matchup">
+                <span>WATCH OUT FOR</span>
+                <div id="weak-against"></div>
+              </div>
+              <div class="intel-note">
+                <span>◉</span> Same-element abilities deal half damage.
+              </div>
+            </div>
+            <div class="panel fusion-panel">
+              <span class="eyebrow">STRONGER TOGETHER</span>
+              <div class="fusion-art">
+                <span class="orb fire-orb">♨</span><i>+</i
+                ><span class="orb air-orb">≋</span><i>→</i
+                ><span class="orb blaze-orb">✧</span>
+              </div>
+              <h3>Fall. Fuse. Rise.</h3>
+              <p>
+                A fallen ally leaves a token. Claim a compatible element to
+                unlock a new form.
+              </p>
+              <div class="fusion-tier">
+                <span>II <i>Shine</i></span
+                ><span>III <i>Glow</i></span>
+              </div>
+              <button class="text-button" id="fusion-guide">
+                Explore fusion <span>→</span>
+              </button>
+            </div>
+            <div class="combat-tip">
+              <span>FIELD NOTES / 001</span>
+              <p>
+                “A well-timed strike can turn a powerful charge into a missed
+                opportunity.”
+              </p>
+              <div>Timing is an element of its own.</div>
+            </div>
+          </aside>
+        </div>
+        <footer>
+          <span><i></i> Built for the fight. The rest comes later.</span>
+          <div>
+            <span>ESC <b>Pause</b></span
+            ><span>TAB <b>Switch form</b></span
+            ><span>R <b>Restart</b></span
+            ><button id="sound-btn" aria-pressed="false">♫ Sound off</button>
+          </div>
+        </footer>
+      </main>
+      <dialog id="info-dialog">
+        <button id="close-dialog" aria-label="Close dialog">×</button>
+        <div id="dialog-content"></div>
+      </dialog>
+    </div>
+    <script type="module" src="/src/main.js"></script>
+  </body>
+</html>
