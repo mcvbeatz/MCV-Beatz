@@ -18,7 +18,7 @@
       rel="icon"
       href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Cpath fill='%23e8bd71' d='M16 2 30 16 16 30 2 16z'/%3E%3Cpath fill='%2311191b' d='m16 9 7 14H9z'/%3E%3C/svg%3E"
     />
-    <script type="module" crossorigin src="./assets/index-B-J4_Vit.js"></script>
+    <script type="module" crossorigin src="./assets/index-B-A8oqdw.js"></script>
     <link rel="stylesheet" crossorigin href="./assets/index-Dikmb0dG.css">
   </head>
   <body>
@@ -37,7 +37,7 @@
             How to play <span>→</span>
           </button>
         </nav>
-        <span class="build-badge"><i></i> COMBAT PROTOTYPE <b>0.3</b></span>
+        <span class="build-badge"><i></i> COMBAT PROTOTYPE <b>0.4</b></span>
       </header>
       <main>
         <div class="page-title">
@@ -118,7 +118,7 @@
               <div>
                 <span class="live-dot"></span
                 ><strong>THE SUNKEN COLOSSEUM</strong
-                ><span class="arena-type">Touch combat · v0.3</span>
+                ><span class="arena-type">Touch combat · v0.4</span>
               </div>
               <div class="arena-tools">
                 <button id="leave-btn" aria-label="Return to battle setup">
@@ -205,6 +205,15 @@
                     Reflect is always active.<br />Choose Earth or Light skills
                     above.
                   </div>
+                  <button
+                    id="teleport-info-btn"
+                    class="ability"
+                    aria-describedby="arena-hint"
+                    hidden
+                  >
+                    <span class="ability-icon">⌖</span><strong>Teleport</strong>
+                    <small>Tap arena · no cooldown</small>
+                  </button>
                   <button id="charge-btn" class="ability main-ability">
                     <span class="ability-icon" id="ability-symbol"></span
                     ><strong id="ability-name">Flamethrower</strong><kbd>K</kbd
