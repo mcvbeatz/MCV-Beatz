@@ -1,0 +1,19 @@
+{
+  "id": "./",
+  "name": "Elemental — The Colosseum",
+  "short_name": "Elemental",
+  "start_url": "./",
+  "scope": "./",
+  "display": "fullscreen",
+  "orientation": "landscape",
+  "background_color": "#101719",
+  "theme_color": "#101719",
+  "icons": [
+    {
+      "src": "icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    }
+  ]
+}
