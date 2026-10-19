@@ -1,6 +1,6 @@
-# Elemental — The Colosseum · v0.5
+# Elemental — The Colosseum · v0.6
 
-A single-player elemental combat game with original caped pixel characters, AI battles, fusion and touch controls. Built with vanilla JavaScript, Canvas 2D and Vite. No server, accounts, secrets or external runtime assets are required.
+A single-player elemental combat game with concept-based pixel characters, AI battles, fusion and touch controls. Built with vanilla JavaScript, Canvas 2D and Vite. No server, accounts, secrets or external runtime assets are required.
 
 **Public site:** https://mcvbeatz.github.io/MCV-Beatz/
 
@@ -17,6 +17,23 @@ Open the site in Safari. Select a format and elemental, then enter the battle. P
 The fullscreen button requests browser fullscreen where supported. On iOS versions that do not support element fullscreen, the game fills the available browser viewport. Safari’s **Share → Add to Home Screen** provides a standalone view without normal browser bars. A manifest and Apple standalone metadata are included; offline play is not implemented.
 
 Keyboard controls remain available: **WASD/arrows** move, **J** strikes, **hold/release K** charges/casts, **L** uses the second skill, **Tab** cycles skill sets, **Esc** pauses, **R** restarts. There are no manual lock or fusion buttons. Arena taps are reserved for portal placement/closure or passive teleportation, not movement.
+
+## Origin character art
+
+The six level-I elementals now use the supplied concepts, adapted into a consistent pixel-art style. Each has front, back and right-side idle and attack poses; left-facing poses mirror the right side. The setup panel previews all three views.
+
+| Element | Character                                                 | Melee animation       |
+| ------- | --------------------------------------------------------- | --------------------- |
+| Water   | Blue armored knight with flowing cyan water hair          | Tidal palm and splash |
+| Dark    | Masked navy ninja with twin silver daggers                | Crossing dagger slash |
+| Fire    | Red flame body with a white-hot crown                     | Lunging flame fist    |
+| Air     | Silver crown and armor with cyan accents                  | Sweeping wind chop    |
+| Earth   | Brown reptilian brawler with green scales and ivory claws | Heavy clawed punch    |
+| Light   | White hood and cape, tan armor and spear                  | Radiant spear thrust  |
+
+Facing follows the actual target lock or movement direction. Each strike has recoil, contact and recovery synchronized to the existing **110ms windup / 220ms swing**. Animation effects are cosmetic; melee range, damage, cooldowns and passives are unchanged. The same art is used for players and AI. Fusions retain their blended-color avatar, shine and glow.
+
+The transparent atlas ships with the game, uses versioned asset URLs and has a procedural fallback if image loading fails. It requires no external image service. Source frame rectangles and foot anchors are documented in `src/assets/README.md`.
 
 ## Combat rules
 
@@ -98,6 +115,7 @@ Browser tests use `/usr/bin/chromium`; set `CHROMIUM_PATH` for another installed
 - `src/combat.js`: combat, AI, abilities, fusion and revival.
 - `src/portals.js`: shared portal transport and dimensional state for all mobile entities.
 - `src/render.js`: original pixel art, rocks, waves, beams, ghosts and portals.
+- `src/characters.js`, `src/assets/origins.png`, `src/assets/origins.json`: directional origin sprites, attack animation, portraits and atlas anchors.
 - `src/main.js`: analog input, pointer ownership, fullscreen fallback and HUD.
 - `src/style.css`, `src/icons.js`: responsive interface and original icons.
 - `test/combat.test.js`, `test/tactics.test.js`, `test/elements.test.js`, `test/balance.test.js`, `test/browser/arena.spec.js`: simulation and browser regressions.

@@ -218,6 +218,49 @@ p {
   font-size: 24px;
   color: var(--element);
 }
+.character-portrait {
+  display: block;
+  width: 48px;
+  height: 48px;
+  image-rendering: pixelated;
+}
+.element-option:has(.character-portrait) {
+  gap: 2px;
+}
+.element-option .character-portrait {
+  width: 44px;
+  height: 44px;
+}
+.character-turnaround {
+  display: flex;
+  justify-content: space-around;
+  padding: 9px 0;
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  background: #152021;
+}
+.character-turnaround figure {
+  margin: 0;
+  text-align: center;
+  flex: 1;
+  min-width: 0;
+}
+.character-turnaround .character-portrait {
+  width: 100%;
+  height: auto;
+}
+.character-turnaround figcaption {
+  font-size: 9px;
+  color: #a7b4b0;
+}
+.character-attack {
+  font-size: 10px;
+  color: #e0d9c4;
+  margin: 9px 0 15px;
+}
+.character-attack span {
+  color: #82938d;
+}
 .element-option.selected {
   border-color: var(--element);
   background: color-mix(in srgb, var(--element) 9%, #192224);

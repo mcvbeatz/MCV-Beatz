@@ -1,4 +1,5 @@
 import { inWorld, visibility } from "./combat.js";
+import { drawCharacter, drawCharacterStrike } from "./characters.js";
 const PALETTE = {
   light: "#f5edcf",
   dark: "#25232e",
@@ -256,52 +257,54 @@ export class Renderer {
       c.stroke();
     }
     c.translate(0, bob);
-    c.scale(scale, scale);
-    const px = (x, y, w, h, fill) => {
-      c.fillStyle = fill;
-      c.fillRect(Math.round(x), Math.round(y), w, h);
-    };
-    // Original, compact hooded knight silhouette: cape, tunic, boots, face and blade.
-    px(-7, -20, 14, 16, "#25302b");
-    px(-8, -16, 16, 13, shade(color, 0.6));
-    px(-9, -9, 18, 7, shade(color, 0.68));
-    px(-7, -17, 3, 13, color);
-    px(4, -17, 3, 13, shade(color, 0.85));
-    px(-6, -21, 12, 8, shade(color, 0.7));
-    px(-5, -23, 10, 3, color);
-    px(-6, -21, 12, 4, color);
-    px(-4, -19, 8, 5, "#262c28");
-    px(-3, -19, 6, 4, "#d2b383");
-    px(a.fx < -0.3 ? -3 : 1, -18, 2, 1, "#242b27");
-    px(-4, -14, 8, 10, color);
-    px(-4, -14, 8, 2, shade(color, 1.24));
-    px(-6, -13, 2, 7, shade(color, 0.9));
-    px(4, -13, 2, 7, shade(color, 0.85));
-    px(-4, -6, 8, 2, shade(color, 0.48));
-    px(-1, -6, 2, 2, "#d8c38a");
-    px(-4, -4, 3, 4 + Math.round(step / 2), "#31362d");
-    px(1, -4, 3, 4 - Math.round(step / 2), "#31362d");
-    px(-5, Math.round(step / 2), 4, 2, "#222d27");
-    px(1, -Math.round(step / 2), 4, 2, "#222d27");
-    if (a.fy < -0.6) {
-      px(-5, -19, 10, 5, color);
-      px(-4, -14, 8, 10, shade(color, 0.9));
-      px(-1, -20, 2, 15, shade(color, 1.13));
-    }
-    const side = a.fx < 0 ? -1 : 1;
-    px(side > 0 ? 7 : -8, -13, 2, 10, "#c8cbbb");
-    px(side > 0 ? 5 : -10, -6, 6, 2, "#ba9d61");
-    px(side > 0 ? 7 : -8, -4, 2, 3, "#4b4030");
-    if (a.parts.length === 2) {
-      px(-4, -22, 2, 1, "#fff5d4");
-      px(-3, -23, 1, 3, "#fff5d4");
-      px(3, -12, 1, 3, "#fff5d4");
-    }
-    if (a.flash > 0) {
-      c.save();
-      c.globalAlpha *= 0.65;
-      px(-5, -22, 10, 20, "#fff3d1");
-      c.restore();
+    if (!drawCharacter(c, a, time)) {
+      c.scale(scale, scale);
+      const px = (x, y, w, h, fill) => {
+        c.fillStyle = fill;
+        c.fillRect(Math.round(x), Math.round(y), w, h);
+      };
+      // Original, compact hooded knight silhouette: cape, tunic, boots, face and blade.
+      px(-7, -20, 14, 16, "#25302b");
+      px(-8, -16, 16, 13, shade(color, 0.6));
+      px(-9, -9, 18, 7, shade(color, 0.68));
+      px(-7, -17, 3, 13, color);
+      px(4, -17, 3, 13, shade(color, 0.85));
+      px(-6, -21, 12, 8, shade(color, 0.7));
+      px(-5, -23, 10, 3, color);
+      px(-6, -21, 12, 4, color);
+      px(-4, -19, 8, 5, "#262c28");
+      px(-3, -19, 6, 4, "#d2b383");
+      px(a.fx < -0.3 ? -3 : 1, -18, 2, 1, "#242b27");
+      px(-4, -14, 8, 10, color);
+      px(-4, -14, 8, 2, shade(color, 1.24));
+      px(-6, -13, 2, 7, shade(color, 0.9));
+      px(4, -13, 2, 7, shade(color, 0.85));
+      px(-4, -6, 8, 2, shade(color, 0.48));
+      px(-1, -6, 2, 2, "#d8c38a");
+      px(-4, -4, 3, 4 + Math.round(step / 2), "#31362d");
+      px(1, -4, 3, 4 - Math.round(step / 2), "#31362d");
+      px(-5, Math.round(step / 2), 4, 2, "#222d27");
+      px(1, -Math.round(step / 2), 4, 2, "#222d27");
+      if (a.fy < -0.6) {
+        px(-5, -19, 10, 5, color);
+        px(-4, -14, 8, 10, shade(color, 0.9));
+        px(-1, -20, 2, 15, shade(color, 1.13));
+      }
+      const side = a.fx < 0 ? -1 : 1;
+      px(side > 0 ? 7 : -8, -13, 2, 10, "#c8cbbb");
+      px(side > 0 ? 5 : -10, -6, 6, 2, "#ba9d61");
+      px(side > 0 ? 7 : -8, -4, 2, 3, "#4b4030");
+      if (a.parts.length === 2) {
+        px(-4, -22, 2, 1, "#fff5d4");
+        px(-3, -23, 1, 3, "#fff5d4");
+        px(3, -12, 1, 3, "#fff5d4");
+      }
+      if (a.flash > 0) {
+        c.save();
+        c.globalAlpha *= 0.65;
+        px(-5, -22, 10, 20, "#fff3d1");
+        c.restore();
+      }
     }
     c.restore();
     c.save();
@@ -383,7 +386,7 @@ export class Renderer {
         );
       }
     }
-    if (a.swing > 0) {
+    if (a.swing > 0 && !drawCharacterStrike(c, a)) {
       const angle = Math.atan2(a.fy, a.fx);
       c.strokeStyle = "#fff0bc";
       c.lineWidth = 4;
@@ -405,6 +408,8 @@ export class Renderer {
         c.fillRect(-13 + i * 13, -height * 0.6, 2, height * 0.6);
       }
     }
+    // Leave room above the taller crowns and Air's floating silhouette.
+    if (a.parts.length === 1) c.translate(0, -10);
     if (a.id !== "player") {
       c.fillStyle = "#23332b";
       c.fillRect(-22, -70, 44, 5);
