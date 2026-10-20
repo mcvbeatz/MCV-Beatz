@@ -18,7 +18,7 @@ function arena(element = "blaze", enemy = "light") {
   g.fighters[1] = makeFighter("enemy-0", enemy, 1, 700, 300);
   return g;
 }
-test("Blaze and Smoke expose only their requested fused skill; Gravity is purple everywhere", () => {
+test("Blaze retains Speed burst and Smoke retains Vog as primary skills; Gravity is purple everywhere", () => {
   assert.deepEqual(skillsFor("blaze"), [null, "Speed burst"]);
   assert.deepEqual(skillsFor("smoke"), ["Vog", null]);
   assert.equal(fighterColor({ parts: ["earth", "dark"] }), "#9254ce");

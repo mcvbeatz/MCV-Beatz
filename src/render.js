@@ -680,26 +680,35 @@ export class Renderer {
     for (const wave of game.waves.filter(inWorld)) {
       c.save();
       c.translate(wave.originX, wave.originY - 12);
-      const a = Math.atan2(wave.fy, wave.fx),
-        r = wave.radius,
-        trail = Math.max(0, r - 24);
-      c.fillStyle = "#9eece02a";
-      c.beginPath();
-      c.moveTo(0, 0);
-      c.arc(0, 0, r, a - wave.halfAngle, a + wave.halfAngle);
-      c.closePath();
-      c.fill();
-      c.fillStyle = "#b1f9ec77";
-      c.beginPath();
-      c.arc(0, 0, r, a - wave.halfAngle, a + wave.halfAngle);
-      c.arc(0, 0, trail, a + wave.halfAngle, a - wave.halfAngle, true);
-      c.closePath();
-      c.fill();
-      c.strokeStyle = "#d3fff1";
-      c.lineWidth = 4;
-      c.beginPath();
-      c.arc(0, 0, r, a - wave.halfAngle, a + wave.halfAngle);
-      c.stroke();
+      c.rotate(Math.atan2(wave.fy, wave.fx));
+      // Thin moving wind fronts use exactly the existing sonic cone and range.
+      for (let i = 0; i < 5; i++) {
+        const r = Math.max(0, wave.radius - i * 9);
+        c.strokeStyle =
+          i === 0 ? "#edfffcdd" : `rgba(184,237,231,${0.6 - i * 0.1})`;
+        c.lineWidth = i === 0 ? 3 : 1.5;
+        c.beginPath();
+        c.arc(0, 0, r, -wave.halfAngle, wave.halfAngle);
+        c.stroke();
+      }
+      for (let i = -4; i <= 4; i++) {
+        const angle = (i * wave.halfAngle) / 4;
+        const r = Math.max(0, wave.radius - (Math.abs(i) % 3) * 8);
+        c.strokeStyle = "#d7fff1aa";
+        c.lineWidth = 1.4;
+        c.beginPath();
+        c.moveTo(
+          Math.cos(angle) * Math.max(0, r - 28),
+          Math.sin(angle) * Math.max(0, r - 28),
+        );
+        c.quadraticCurveTo(
+          Math.cos(angle) * r,
+          Math.sin(angle) * r - 4,
+          Math.cos(angle) * r,
+          Math.sin(angle) * r,
+        );
+        c.stroke();
+      }
       c.restore();
     }
     for (const e of game.effects) {

@@ -23,12 +23,11 @@ test("telekinesis pushes only the selected enemy along every swipe direction", (
       b = g.fighters[1];
     const ally = makeFighter("ally", "water", 0, 400, 300);
     g.fighters.push(ally);
-    assert.equal(g.startCharge(a), false);
     assert.equal(g.telekinesis(a, b, dx, dy), true);
     assert.equal(b.hp, 102);
     assert.equal(ally.hp, 120);
-    assert.ok(Math.abs(b.knockX - (dx / Math.hypot(dx, dy)) * 260) < 1e-8);
-    assert.ok(Math.abs(b.knockY - (dy / Math.hypot(dx, dy)) * 260) < 1e-8);
+    assert.ok(Math.abs(b.knockX - (dx / Math.hypot(dx, dy)) * 520) < 1e-8);
+    assert.ok(Math.abs(b.knockY - (dy / Math.hypot(dx, dy)) * 520) < 1e-8);
     assert.equal(a.abilityCd, 4.5);
     assert.equal(g.telekinesis(a, b, -dx, -dy), false);
     g.update(0.05, { x: 0, y: 0 }, false);
@@ -51,7 +50,7 @@ test("invalid telekinesis gestures consume neither health nor cooldown", () => {
       a = g.player,
       b = g.fighters[1];
     if (invalid === "ally") b.team = 0;
-    if (invalid === "range") b.x = 600;
+    if (invalid === "range") b.x = 731;
     if (invalid === "hidden") {
       b.element = "divine";
       b.parts = recipe("divine");

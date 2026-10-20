@@ -1865,3 +1865,82 @@ dialog article h3 {
     padding-right: max(12px, env(safe-area-inset-bottom));
   }
 }
+
+/* Keep every origin, including Fire, reachable on narrow menu screens. */
+.setup-panel {
+  min-width: 0;
+}
+.element-grid {
+  position: relative;
+  min-width: 0;
+  max-width: 100%;
+}
+@media (max-width: 900px) {
+  .setup-panel .element-grid,
+  .element-grid:has(.element-option:nth-child(7)) {
+    display: grid;
+    grid-template-columns: none;
+    grid-auto-flow: column;
+    grid-auto-columns: minmax(84px, 1fr);
+    overflow-x: auto;
+    overscroll-behavior-x: contain;
+    touch-action: pan-x pan-y;
+    scroll-snap-type: x proximity;
+    padding-bottom: 8px;
+    scrollbar-width: thin;
+  }
+  .element-grid .element-option {
+    scroll-snap-align: center;
+    min-width: 84px;
+  }
+}
+/* All added abilities stay visible between the movement and attack controls. */
+.skill-controls.expanded-skills,
+.immersive .skill-controls.expanded-skills {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 106px));
+  gap: 5px;
+  align-items: stretch;
+}
+.skill-controls.expanded-skills > .ability,
+.immersive .skill-controls.expanded-skills > .ability {
+  width: 100%;
+  min-width: 0;
+  height: 54px;
+  padding: 4px;
+  gap: 2px;
+}
+.skill-controls.expanded-skills .ability-icon {
+  display: none;
+}
+.skill-controls.expanded-skills .ability strong {
+  font-size: 10px;
+}
+.skill-controls.expanded-skills .ability small {
+  font-size: 8px;
+  line-height: 1.2;
+}
+.skill-controls.expanded-skills .ability kbd {
+  display: none;
+}
+@media (min-width: 700px) and (orientation: landscape) {
+  .immersive .skill-controls.expanded-skills {
+    display: flex;
+  }
+  .immersive .skill-controls.expanded-skills > .ability {
+    flex: 0 1 106px;
+    height: 74px;
+    min-width: 0;
+  }
+}
+
+@media (min-width: 700px) and (orientation: landscape) {
+  .immersive .skill-controls.expanded-skills .ability-icon {
+    display: block;
+    height: 22px;
+  }
+  .immersive .skill-controls.expanded-skills .ability-icon svg {
+    width: 22px;
+    height: 22px;
+  }
+}

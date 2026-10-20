@@ -1,3 +1,4 @@
+import { canReactToHit } from "./combat.js";
 import origins from "./assets/origins.json" with { type: "json" };
 import grounded from "./assets/fusions-grounded.json" with { type: "json" };
 import airborne from "./assets/fusions-airborne.json" with { type: "json" };
@@ -102,7 +103,8 @@ export function characterPose(a) {
     a.swing > 0 ? Math.max(0, Math.min(1, 1 - a.swing / 0.22)) : -1;
   // Match the existing 110ms strike windup. Recoil, contact, then recovery.
   const contact = progress >= 0.5 && progress < 0.92;
-  const running = isRunning(a) && progress < 0 && !clashing;
+  const reacting = a.hitReact > 0 && canReactToHit(a);
+  const running = isRunning(a) && progress < 0 && !clashing && !reacting;
   // movingTime advances only for actual voluntary movement; a wall, Shock,
   // a portal or a teleport must not produce a treadmill animation.
   const cadence =
@@ -114,6 +116,7 @@ export function characterPose(a) {
     flip: side && fx < 0,
     progress,
     running,
+    reacting,
     runFrame:
       running && stride % 2 === 0 ? facing * 2 + (stride === 2 ? 1 : 0) : null,
     bob: running ? Math.abs(Math.sin((cycle * Math.PI) / 2)) * 2 : 0,
@@ -157,6 +160,11 @@ export function drawCharacter(c, a, time) {
         : 6 * Math.sin((p - 0.5) * Math.PI * 2);
   c.save();
   c.translate(a.fx * reach, a.fy * reach);
+  if (pose.reacting) {
+    const recoil = Math.sin((1 - a.hitReact / 0.24) * Math.PI);
+    c.translate(a.hitDx * recoil * 11, a.hitDy * recoil * 7 - recoil * 3);
+    c.rotate(a.hitDx * recoil * 0.16);
+  }
   if (a.clash > 0) {
     const brace = 3 + Math.sin((0.3 - a.clash) * 45) * 1.5;
     c.translate(a.clashFx * brace, a.clashFy * brace);

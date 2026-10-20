@@ -72,7 +72,7 @@ test("automatic locking, keyboard movement, charging and pause", async ({
   await page.getByRole("button", { name: "Resume battle" }).click();
   expect(errors).toEqual([]);
 });
-test("fused selector shows nine level-two elements and Mirror has no active skill buttons", async ({
+test("fused selector shows nine level-two elements and Mirror exposes shield and healing without switching", async ({
   page,
 }) => {
   await page.goto("/");
@@ -85,9 +85,9 @@ test("fused selector shows nine level-two elements and Mirror has no active skil
   await expect(page.locator("[data-form]")).toHaveCount(3);
   await expect(page.locator("#charge-btn")).toBeHidden();
   await expect(page.locator("#utility-btn")).toBeHidden();
-  await expect(page.locator("#passive-note")).toContainText(
-    "Reflect is always active",
-  );
+  await expect(page.locator("#passive-note")).toBeHidden();
+  await expect(page.locator("#extra-skill-0")).toContainText("Rock shield");
+  await expect(page.locator("#extra-skill-1")).toContainText("Healing");
   await page.locator('[data-form="earth"]').click();
   await expect(page.locator("#utility-name")).toHaveText("Rock shield");
   expect(await page.evaluate(() => __arena.game.player.element)).toBe("mirror");
@@ -434,7 +434,7 @@ test("level III selector starts each fusion and Divine disappears completely at 
   expect(pixels.actionDifference).toBeGreaterThan(0);
 });
 
-test("Blaze has a repeatable zero-cooldown dash and Smoke only exposes Vog", async ({
+test("Blaze has a repeatable zero-cooldown dash and Smoke retains Vog", async ({
   page,
 }) => {
   await begin(page, { mode: "fused", element: "blaze" });

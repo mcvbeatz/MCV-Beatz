@@ -46,9 +46,9 @@ export const ELEMENTS = {
     color: "#ab8259",
     symbol: "⬡",
     role: "Defense & endurance",
-    desc: "Stand your ground. Charge a crushing blow or hold a shield against pressure.",
+    desc: "Stand your ground and hold a rock shield against pressure.",
     passive: "Hard skin · 25% defense",
-    ability: "Rock burst",
+    ability: null,
     utility: "Rock shield",
   },
   fire: {
@@ -94,6 +94,50 @@ export const FUSED = {
   lightning: ["Lightning strikes", null],
   invincible: [null, null],
 };
+// Direct access on the fused tab; the origin tabs remain available too.
+export const EXTRA_SKILLS = {
+  divine: [{ name: "Revival", form: "spirit", kind: "ability" }],
+  sun: [{ name: "Healing", form: "light", kind: "ability" }],
+  demonic: [
+    { name: "Speed burst", form: "blaze", kind: "utility" },
+    { name: "Sonic boom", form: "air", kind: "ability" },
+  ],
+  mirror: [
+    { name: "Rock shield", form: "earth", kind: "utility" },
+    { name: "Healing", form: "light", kind: "ability" },
+  ],
+  smoke: [
+    { name: "Shadow step", form: "dark", kind: "utility" },
+    { name: "Flamethrower", form: "fire", kind: "ability" },
+  ],
+  gravity: [{ name: "Rock shield", form: "earth", kind: "utility" }],
+  apparition: [{ name: "Sonic boom", form: "air", kind: "ability" }],
+  "multi-dimensional": [
+    { name: "Healing", form: "light", kind: "ability" },
+    { name: "Shadow step", form: "dark", kind: "utility" },
+  ],
+  lightning: [
+    { name: "Healing", form: "light", kind: "ability" },
+    { name: "Gust", form: "air", kind: "utility" },
+  ],
+};
+export const extraSkillsFor = (form) => EXTRA_SKILLS[form] || [];
+const skillForm = (a) => a.executingForm || activeForm(a);
+export const canUseSkill = (a, form, kind) =>
+  a.forms.includes(form) ||
+  extraSkillsFor(a.element).some((s) => s.form === form && s.kind === kind);
+export const TELEKINESIS_RANGE = 400;
+export const TELEKINESIS_PUSH = 520;
+export const canReactToHit = (a) =>
+  a.alive &&
+  !a.ghost &&
+  !a.charging &&
+  !a.shield &&
+  !(a.swing > 0) &&
+  !(a.clash > 0) &&
+  !(a.burst > 0) &&
+  !a.blink &&
+  !(a.reveal > 0);
 export const EDGES = [
   ["divine", "spirit"],
   ["spirit", "light"],
@@ -208,6 +252,9 @@ export function makeFighter(id, element, team, x, y) {
     burstHits: new Set(),
     reveal: 0,
     hurtReveal: 0,
+    hitReact: 0,
+    hitDx: 0,
+    hitDy: 0,
     blink: null,
     movingTime: 0,
     burn: 0,
@@ -383,27 +430,28 @@ export class Combat {
     });
     return true;
   }
-  startCharge(a) {
-    if (activeForm(a) === "gravity") return false;
+  startCharge(a, form = activeForm(a)) {
+    if (!canUseSkill(a, form, "ability") || a.charging) return false;
     if (
       !a.alive ||
       !inWorld(a) ||
       a.abilityCd > 0 ||
       a.shield ||
       a.stagger > 0 ||
-      !skillsFor(activeForm(a))[0]
+      !skillsFor(form)[0]
     )
       return false;
-    if (activeForm(a) === "lightning") {
-      if (this.cast(a, 1) === false) return false;
+    if (["lightning", "gravity"].includes(form)) {
+      if (this.cast(a, 1, form) === false) return false;
       a.abilityCd = 4.5;
       return true;
     }
-    if (activeForm(a) === "spirit" && !this.revivalTarget(a)) {
+    if (form === "spirit" && !this.revivalTarget(a)) {
       this.event("NO FALLEN ALLY TO REVIVE");
       return false;
     }
     a.charging = true;
+    a.chargeForm = form;
     a.charge = 0;
     return true;
   }
@@ -416,12 +464,14 @@ export class Combat {
     }
     const p = 1 + Math.min(1, a.charge / 1.8) * 1.6;
     a.charge = 0;
-    if (this.cast(a, p) !== false) a.abilityCd = 4.5;
+    if (this.cast(a, p, a.chargeForm || activeForm(a)) !== false)
+      a.abilityCd = 4.5;
+    a.chargeForm = null;
   }
   fell(a, { lost = false } = {}) {
     if (!a.alive && !a.ghost) return;
     a.hp = 0;
-    a.clash = a.reflect = 0;
+    a.clash = a.reflect = a.hitReact = 0;
     a.blink = null;
     a.burst = 0;
     a.movingTime = 0;
@@ -470,7 +520,7 @@ export class Combat {
     amount,
     ability = false,
     reflected = false,
-    sourceElement = ability ? activeForm(a) : a.element,
+    sourceElement = ability ? skillForm(a) : a.element,
   ) {
     if (!b.alive || !inWorld(b)) return 0;
     if (b.dodge > 0 && !a.parts.includes("light")) {
@@ -506,13 +556,12 @@ export class Combat {
     if (hit > 0) {
       b.flash = 0.16;
       b.hurtReveal = 0.15;
-      if (hit >= 0.5 && !hasPassive(b, "divine"))
-        this.event(
-          `${Math.round(hit)}`,
-          a.team === b.team ? "#eab66b" : "#f3e7cd",
-          b.x,
-          b.y - 30,
-        );
+      if (canReactToHit(b) && !(b.hitReact > 0)) {
+        const d = distance(a, b);
+        b.hitReact = 0.24;
+        b.hitDx = d > 0 ? (b.x - a.x) / d : -b.fx;
+        b.hitDy = d > 0 ? (b.y - a.y) / d : -b.fy;
+      }
       if (b.charging) {
         b.stagger = 0.27;
         if (hit >= 0.5 && !hasPassive(b, "divine"))
@@ -601,7 +650,7 @@ export class Combat {
   ) {
     this.projectiles.push({
       owner: a,
-      element: activeForm(a),
+      element: skillForm(a),
       x: a.x + a.fx * 27,
       y: a.y + a.fy * 27,
       dx: a.fx * speed,
@@ -618,7 +667,7 @@ export class Combat {
   area(a, power, kind, r = 90, life = 5) {
     this.hazards.push({
       owner: a,
-      element: activeForm(a),
+      element: skillForm(a),
       x: a.x + a.fx * 70,
       y: a.y + a.fy * 70,
       r,
@@ -676,14 +725,33 @@ export class Combat {
     );
     return true;
   }
-  cast(a, p) {
-    const e = activeForm(a);
+  // Borrow an ability's implementation and damage type without changing tabs.
+  executeSkill(a, form, callback) {
+    const previous = a.executingForm;
+    a.executingForm = form;
+    try {
+      return callback();
+    } finally {
+      a.executingForm = previous;
+    }
+  }
+  cast(a, p, form = activeForm(a)) {
+    if (!canUseSkill(a, form, "ability")) return false;
+    return this.executeSkill(a, form, () => this.castSkill(a, p));
+  }
+  castSkill(a, p) {
+    const e = skillForm(a);
     if (!skillsFor(e)[0]) return false;
     if (e === "gravity") {
       const target = this.enemies(a).sort(
         (b, c) => distance(a, b) - distance(a, c),
       )[0];
-      return this.telekinesis(a, target, a.fx, a.fy);
+      return this.telekinesis(
+        a,
+        target,
+        target ? target.x - a.x : 0,
+        target ? target.y - a.y : 0,
+      );
     }
     a.reveal = 0.45;
     if (e === "lightning") {
@@ -709,19 +777,26 @@ export class Combat {
       });
       this.damage(a, target, 26 * (flooded ? 2 : 1), true, false, "lightning");
     } else if (e === "light" || e === "divine") {
-      const recipient = this.healingTarget(a);
-      if (!recipient) return false;
-      recipient.hp = Math.min(recipient.maxHp, recipient.hp + 23 * p);
-      this.effects.push({
-        kind: "ring",
-        x: recipient.x,
-        y: recipient.y,
-        color: "#fff3c4",
-        r: 75,
-        life: 0.7,
-        max: 0.7,
-      });
-      this.event("HEALED", "#c9ebbc", recipient.x, recipient.y - 30);
+      const recipients =
+        e === "divine"
+          ? this.fighters.filter(
+              (b) => b.alive && !b.echo && inWorld(b) && b.team === a.team,
+            )
+          : [this.healingTarget(a)].filter(Boolean);
+      if (!recipients.length) return false;
+      for (const recipient of recipients) {
+        recipient.hp = Math.min(recipient.maxHp, recipient.hp + 23 * p);
+        this.effects.push({
+          kind: "ring",
+          x: recipient.x,
+          y: recipient.y,
+          color: "#fff3c4",
+          r: 75,
+          life: 0.7,
+          max: 0.7,
+        });
+        this.event("HEALED", "#c9ebbc", recipient.x, recipient.y - 30);
+      }
     } else if (e === "dark") {
       const t =
         this.target(a) ||
@@ -822,14 +897,15 @@ export class Combat {
     if (
       !a.alive ||
       !inWorld(a) ||
-      activeForm(a) !== "gravity" ||
+      skillForm(a) !== "gravity" ||
+      a.shield ||
       a.abilityCd > 0 ||
       a.stagger > 0 ||
       !target?.alive ||
       !inWorld(target) ||
       target.team === a.team ||
       visibility(target) <= 0 ||
-      distance(a, target) > 200 ||
+      distance(a, target) > TELEKINESIS_RANGE ||
       !Number.isFinite(length) ||
       length <= 0
     )
@@ -840,8 +916,8 @@ export class Combat {
     a.reveal = 0.45;
     this.damage(a, target, 18, true, false, "gravity");
     if (target.alive) {
-      target.knockX += (dx / length) * 260;
-      target.knockY += (dy / length) * 260;
+      target.knockX += (dx / length) * TELEKINESIS_PUSH;
+      target.knockY += (dy / length) * TELEKINESIS_PUSH;
       target.blink = null;
     }
     this.effects.push({
@@ -855,8 +931,12 @@ export class Combat {
     });
     return true;
   }
-  utility(a, hold = true) {
-    const e = activeForm(a);
+  utility(a, hold = true, form = activeForm(a)) {
+    if (hold && !canUseSkill(a, form, "utility")) return false;
+    return this.executeSkill(a, form, () => this.utilitySkill(a, hold));
+  }
+  utilitySkill(a, hold) {
+    const e = skillForm(a);
     if (!hold) {
       if (a.shield) {
         a.shield = 0;
@@ -1124,7 +1204,8 @@ export class Combat {
     const allies = this.fighters.filter(
       (b) => b.id !== a.id && b.alive && inWorld(b) && b.team === a.team,
     );
-    if (allies.some((b) => distance(a, b) < nearestEnemy)) return false;
+    if (!a.echo && allies.some((b) => distance(a, b) < nearestEnemy))
+      return false;
     const d = distance(a, target) || 1;
     const dx = (target.x - a.x) / d,
       dy = (target.y - a.y) / d;
@@ -1192,13 +1273,14 @@ export class Combat {
       patient &&
       patient.hp < patient.maxHp - 18;
     const revive =
-      !a.echo && a.forms.includes("spirit") && this.revivalTarget(a);
+      !a.echo && canUseSkill(a, "spirit", "ability") && this.revivalTarget(a);
     const d = target ? distance(a, target) : Infinity;
     const fire = hasPassive(a, "fire"),
       light = a.element === "light";
     const aggressiveLight = light && target && a.hp >= target.hp + 15;
-    const desired =
-      a.hp < 30
+    const desired = a.echo
+      ? 42
+      : a.hp < 30
         ? 160
         : fire && target && !burnImmune(target)
           ? 22
@@ -1239,9 +1321,9 @@ export class Combat {
     }
     for (const ally of allies) {
       const gap = distance(a, ally);
-      if (gap < 75) {
-        dx += ((a.x - ally.x) / (gap || 1)) * 1.4;
-        dy += ((a.y - ally.y) / (gap || 1)) * 1.4;
+      if (gap < (a.echo ? 28 : 75)) {
+        dx += ((a.x - ally.x) / (gap || 1)) * (a.echo ? 0.35 : 1.4);
+        dy += ((a.y - ally.y) / (gap || 1)) * (a.echo ? 0.35 : 1.4);
       }
     }
     // Step out of hostile floor effects and incoming attack lanes.
@@ -1283,7 +1365,7 @@ export class Combat {
       a.fy = (target.y - a.y) / aim;
     }
     if (a.charging) {
-      const form = activeForm(a),
+      const form = a.chargeForm || activeForm(a),
         support = ["light", "divine", "spirit"].includes(form);
       if (a.charge >= (support && patient?.hp < 45 ? 0.25 : 0.7)) {
         if (support || this.safeAttack(a, target, "ability"))
@@ -1296,8 +1378,12 @@ export class Combat {
       return;
     }
     if ((revive || heal) && a.abilityCd <= 0) {
-      this.switchForm(a, revive ? "spirit" : "light");
-      this.startCharge(a);
+      const supportForm = revive
+        ? "spirit"
+        : a.element === "divine"
+          ? "divine"
+          : "light";
+      this.startCharge(a, supportForm);
       return;
     }
     if (!target) {
@@ -1335,14 +1421,13 @@ export class Combat {
       this.utility(a);
     if (
       !a.echo &&
-      a.forms.includes("blaze") &&
+      canUseSkill(a, "blaze", "utility") &&
       d > 80 &&
       d < 360 &&
       a.burst <= 0 &&
       this.safeAttack(a, target, "utility", "blaze")
     ) {
-      this.switchForm(a, "blaze");
-      this.utility(a);
+      this.utility(a, true, "blaze");
     }
     if (d <= STRIKE_RANGE && this.safeAttack(a, target)) this.strike(a);
     if (a.echo) return;
@@ -1568,6 +1653,7 @@ export class Combat {
         "reflect",
         "reveal",
         "hurtReveal",
+        "hitReact",
       ])
         a[key] = Math.max(0, a[key] - dt);
       if (a.life !== undefined && (a.life -= dt) <= 0) {

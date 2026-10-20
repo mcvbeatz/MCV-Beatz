@@ -20,7 +20,7 @@ test.describe("swipe telekinesis on a phone", () => {
     isMobile: true,
     hasTouch: true,
   });
-  test("direction is correct in landscape and rotated portrait; the button only explains", async ({
+  test("direction is correct in landscape and rotated portrait; the button pushes the nearest enemy", async ({
     page,
   }) => {
     await page.addInitScript(() => {
@@ -42,10 +42,13 @@ test.describe("swipe telekinesis on a phone", () => {
       });
     });
     await expect(page.locator("#ability-status")).toHaveText(
-      "Swipe enemies to move them",
+      "Tap push · or swipe enemy",
     );
     await page.locator("#charge-btn").click();
-    expect(await page.evaluate(() => __arena.game.player.abilityCd)).toBe(0);
+    expect(await page.evaluate(() => __arena.game.player.abilityCd)).toBe(4.5);
+    expect(await page.evaluate(() => __arena.game.fighters[1].knockX)).toBe(
+      520,
+    );
     expect(await page.evaluate(() => __arena.game.player.charging)).toBe(false);
     const client = await page.context().newCDPSession(page);
     for (const viewport of [
@@ -84,8 +87,8 @@ test.describe("swipe telekinesis on a phone", () => {
           y: __arena.game.fighters[1].knockY,
           cd: __arena.game.player.abilityCd,
         }));
-        expect(result.x).toBeCloseTo(dx ? 260 : 0, 3);
-        expect(result.y).toBeCloseTo(dy ? -260 : 0, 3);
+        expect(result.x).toBeCloseTo(dx ? 520 : 0, 3);
+        expect(result.y).toBeCloseTo(dy ? -520 : 0, 3);
         expect(result.cd).toBe(4.5);
       }
     }

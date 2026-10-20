@@ -20,6 +20,74 @@ export function drawTerrain(c, game, time) {
   const flooded = hazards.some((h) => h.kind === "flood");
   for (const h of hazards) {
     if (h.kind === "gravity" || (flooded && h.kind === "quicksand")) continue;
+    if (h.kind === "magma") {
+      // Match the existing ground footprint, with molten channels and dark crust.
+      c.save();
+      c.beginPath();
+      c.rect(135, 175, 754, 385);
+      c.clip();
+      c.beginPath();
+      c.ellipse(h.x, h.y, h.r, h.r * 0.7, 0, 0, TAU);
+      c.clip();
+      const lava = c.createRadialGradient(h.x, h.y, 0, h.x, h.y, h.r);
+      lava.addColorStop(0, "#ffc14a");
+      lava.addColorStop(0.5, "#fa651b");
+      lava.addColorStop(1, "#a92a12");
+      c.fillStyle = lava;
+      c.fillRect(h.x - h.r, h.y - h.r, h.r * 2, h.r * 2);
+      for (let row = -4; row <= 4; row++)
+        for (let col = -4; col <= 4; col++) {
+          const seed = Math.sin(row * 47 + col * 19);
+          const x =
+            h.x + col * 22 + (row % 2) * 10 + Math.sin(time * 0.5 + row) * 2;
+          const y =
+            h.y +
+            row * 15 +
+            Math.sin(col * 31 + row * 13) * 5 +
+            Math.cos(time * 0.6 + col) * 2;
+          c.save();
+          c.translate(x, y);
+          c.rotate(seed * 0.45);
+          c.scale(0.6 + Math.abs(seed) * 0.65, 0.7 + Math.abs(seed) * 0.4);
+          c.translate(-x, -y);
+          c.fillStyle = seed > 0 ? "#592c24" : "#7a3524";
+          c.beginPath();
+          c.moveTo(x - 8, y - 5);
+          c.lineTo(x + 5, y - 7);
+          c.lineTo(x + 10, y - 1);
+          c.lineTo(x + 6, y + 5);
+          c.lineTo(x - 7, y + 4);
+          c.closePath();
+          c.fill();
+          c.strokeStyle = "#ffb342";
+          c.lineWidth = 1;
+          c.beginPath();
+          c.moveTo(x - 8, y - 5);
+          c.lineTo(x + 5, y - 7);
+          c.stroke();
+          c.restore();
+        }
+      for (let i = 0; i < 14; i++) {
+        const angle = i * 2.4,
+          r = h.r * Math.sqrt((i + 0.5) / 14);
+        const pulse = (time * 0.7 + i * 0.17) % 1;
+        c.strokeStyle = `rgba(255,231,113,${1 - pulse})`;
+        c.lineWidth = 2;
+        c.beginPath();
+        c.ellipse(
+          h.x + Math.cos(angle) * r,
+          h.y + Math.sin(angle) * r * 0.7,
+          1 + pulse * 5,
+          1 + pulse * 2,
+          0,
+          0,
+          TAU,
+        );
+        c.stroke();
+      }
+      c.restore();
+      continue;
+    }
     if (!["flood", "quicksand"].includes(h.kind)) {
       c.save();
       c.globalAlpha = 0.3 + Math.sin(time * 4) * 0.07;
@@ -92,12 +160,6 @@ export function drawTerrain(c, game, time) {
           2,
         );
       }
-    } else {
-      c.globalAlpha = 0.3 + Math.sin(time * 4) * 0.07;
-      c.fillStyle =
-        { magma: "#ef7642", vog: "#8d7599", heatwave: "#f4ad4f" }[h.kind] ||
-        "#aaa";
-      c.fillRect(h.x - h.r, h.y - h.r, h.r * 2, h.r * 2);
     }
     c.restore();
   }
