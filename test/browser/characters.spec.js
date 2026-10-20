@@ -2,12 +2,57 @@ import { test, expect } from "@playwright/test";
 
 const origins = ["water", "dark", "fire", "air", "earth", "light"];
 
+test("all grounded atlases animate opposing strides while flyers retain their hovering pose", async ({
+  page,
+}) => {
+  await page.goto("/");
+  const result = await page.evaluate(async () => {
+    const { drawCharacter, CHARACTERS, charactersReady } =
+      await import("/src/characters.js");
+    const { makeFighter } = await import("/src/combat.js");
+    await charactersReady;
+    const c = document.createElement("canvas");
+    c.width = c.height = 240;
+    const ctx = c.getContext("2d");
+    let grounded = 0,
+      flying = 0;
+    for (const element of CHARACTERS) {
+      const a = makeFighter("test", element, 0, 0, 0);
+      a.vx = 150;
+      for (const [fx, fy] of [
+        [0, 1],
+        [1, 0],
+        [0, -1],
+      ]) {
+        a.fx = fx;
+        a.fy = fy;
+        const pictures = [];
+        for (const phase of [0.01, 0.21]) {
+          a.movingTime = phase;
+          ctx.clearRect(0, 0, 240, 240);
+          ctx.save();
+          ctx.translate(120, 140);
+          drawCharacter(ctx, a, 0);
+          ctx.restore();
+          pictures.push(c.toDataURL());
+        }
+        if (a.parts.includes("air")) {
+          if (pictures[0] === pictures[1]) flying++;
+        } else if (pictures[0] !== pictures[1]) grounded++;
+      }
+    }
+    return { grounded, flying };
+  });
+  expect(result.grounded).toBe(36);
+  expect(result.flying).toBe(24);
+});
+
 test("an unavailable sprite atlas leaves combat playable with the procedural avatar", async ({
   page,
 }) => {
   const errors = [];
   page.on("pageerror", (e) => errors.push(e.message));
-  await page.route(/\/origins[^/]*\.png(?:\?.*)?$/, (route) => route.abort());
+  await page.route(/\/origins[^/]*\.webp(?:\?.*)?$/, (route) => route.abort());
   await page.goto("/");
   expect(
     await page.evaluate(
@@ -56,15 +101,15 @@ test("all six concepts have populated, distinct turnaround previews", async ({
     for (const i of images) expect(i.pixels).toBeGreaterThan(350);
   }
   await page.locator('[data-mode="fused"]').click();
-  await expect(page.locator("#character-views")).toBeHidden();
+  await expect(page.locator("#character-views")).toBeVisible();
 });
 
-test("every origin draws four directions and distinct attack frames without mutating combat", async ({
+test("every elemental draws four directions and distinct attack frames without mutating combat", async ({
   page,
 }) => {
   await page.goto("/");
   const result = await page.evaluate(async () => {
-    const { drawCharacter, charactersReady } =
+    const { drawCharacter, charactersReady, CHARACTERS } =
       await import("/src/characters.js");
     const { makeFighter } = await import("/src/combat.js");
     await charactersReady;
@@ -73,7 +118,7 @@ test("every origin draws four directions and distinct attack frames without muta
     const ctx = c.getContext("2d");
     const images = [],
       errors = [];
-    for (const element of ["water", "dark", "fire", "air", "earth", "light"]) {
+    for (const element of CHARACTERS) {
       const a = makeFighter("preview", element, 0, 0, 0);
       for (const [fx, fy] of [
         [0, 1],
@@ -97,7 +142,7 @@ test("every origin draws four directions and distinct attack frames without muta
     return { distinct: new Set(images).size, errors };
   });
   expect(result.errors).toEqual([]);
-  expect(result.distinct).toBe(48);
+  expect(result.distinct).toBe(160);
 });
 
 test("attack poses enter contact when melee hits and recover on the existing timer", async ({

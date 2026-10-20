@@ -1,4 +1,4 @@
-# Elemental — The Colosseum · v0.6
+# Elemental — The Colosseum · v0.7
 
 A single-player elemental combat game with concept-based pixel characters, AI battles, fusion and touch controls. Built with vanilla JavaScript, Canvas 2D and Vite. No server, accounts, secrets or external runtime assets are required.
 
@@ -31,9 +31,20 @@ The six level-I elementals now use the supplied concepts, adapted into a consist
 | Earth   | Brown reptilian brawler with green scales and ivory claws | Heavy clawed punch    |
 | Light   | White hood and cape, tan armor and spear                  | Radiant spear thrust  |
 
-Facing follows the actual target lock or movement direction. Each strike has recoil, contact and recovery synchronized to the existing **110ms windup / 220ms swing**. Animation effects are cosmetic; melee range, damage, cooldowns and passives are unchanged. The same art is used for players and AI. Fusions retain their blended-color avatar, shine and glow.
+Facing follows the actual target lock or movement direction. Each strike has recoil, contact and recovery synchronized to the existing **110ms windup / 220ms swing**. The same art is used for players and AI. All **14 fused forms** now have their own front, back, side and attack frames, combining the component concepts. Level II adds a shine; level III adds a glow. Divine remains fully concealed at rest in battle, while its selection previews show the design.
 
-The transparent atlas ships with the game, uses versioned asset URLs and has a procedural fallback if image loading fails. It requires no external image service. Source frame rectangles and foot anchors are documented in `src/assets/README.md`.
+The **12 grounded elementals** (Water, Dark, Fire, Earth, Light, Mud, Mirror, Sun, Smoke, Gravity, Multi-Dimensional and Invincible) have alternating directional running frames with contact poses between strides. Cadence follows movement speed; the cycle stops when movement stops or is blocked. Attacks and clashes take precedence. Air and the seven Air-based fusions retain hovering movement. Running uses facing direction, so automatic target lock still allows strafing.
+
+The transparent atlases ship as lossless WebP files with versioned asset URLs. Each atlas loads independently, with a procedural fallback if loading fails. No external image service is used at runtime. Frame rectangles and foot anchors are documented in `src/assets/README.md`.
+
+## Swipe controls and ability visuals
+
+- **Telekinesis:** select Gravity's skill tab and swipe directly on a visible enemy's body. The enemy is pushed in the swipe direction, including in the rotated portrait layout. The main ability button and K key only explain the gesture. A valid swipe deals **18 base damage**, applies the existing **260-unit knockback impulse**, and starts a **4.5-second cooldown**. Range is **200 world units**. Invalid targets, taps, cancelled touches and gestures outside range consume nothing. The AI uses the same targeted operation. It no longer charges or pushes every nearby fighter through a button press.
+- **Gravity x2:** its circular gameplay area now softens and distorts the scene with a slight purple tint. The effect uses offset image copies for Safari compatibility and never draws hidden fighters.
+- **Flood:** a moving water surface replaces the flat marker. Grounded characters are occluded up to their waist; flying characters remain above the water. Existing Flood damage and slowing rules still apply.
+- **Quicksand:** sand bands and particles spiral inward; grounded feet disappear beneath the surface. Flood suppresses the ground effect as before.
+- **Reflect:** a translucent shield rotates around the recipient when reflection occurs. Reflection text is removed; the 40% return / 60% incoming split and normal defenses remain intact.
+- **Contested strikes:** the fighters briefly hold opposing contact poses with their own spears, daggers, claws or elemental fists meeting in a shared spark. Normal swing animations are suppressed during this **300ms** clash. Existing quarter-damage rules still apply.
 
 ## Combat rules
 
@@ -115,7 +126,8 @@ Browser tests use `/usr/bin/chromium`; set `CHROMIUM_PATH` for another installed
 - `src/combat.js`: combat, AI, abilities, fusion and revival.
 - `src/portals.js`: shared portal transport and dimensional state for all mobile entities.
 - `src/render.js`: original pixel art, rocks, waves, beams, ghosts and portals.
-- `src/characters.js`, `src/assets/origins.png`, `src/assets/origins.json`: directional origin sprites, attack animation, portraits and atlas anchors.
+- `src/characters.js`, `src/assets/`: directional origin/fusion sprites, running and attack animation, portraits and atlas anchors.
+- `src/battle-effects.js`: terrain surfaces, immersion, reflection shields, paired weapon clashes and gravity distortion.
 - `src/main.js`: analog input, pointer ownership, fullscreen fallback and HUD.
 - `src/style.css`, `src/icons.js`: responsive interface and original icons.
 - `test/combat.test.js`, `test/tactics.test.js`, `test/elements.test.js`, `test/balance.test.js`, `test/browser/arena.spec.js`: simulation and browser regressions.

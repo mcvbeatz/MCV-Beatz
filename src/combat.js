@@ -86,7 +86,7 @@ export const FUSED = {
   blaze: [null, "Speed burst"],
   cloud: ["Tornado", "Flood"],
   smoke: ["Vog", null],
-  gravity: ["Telekinesis", "Gravity field"],
+  gravity: ["Telekinesis", "Gravity x2"],
   apparition: ["Doppelgänger", "Phase"],
   demonic: ["Minions", "Death"],
   divine: ["Radiance", null],
@@ -215,6 +215,9 @@ export function makeFighter(id, element, team, x, y) {
     slow: 0,
     flash: 0,
     swing: 0,
+    clash: 0,
+    clashPartner: null,
+    reflect: 0,
     aiTimer: 0,
     knockX: 0,
     knockY: 0,
@@ -381,6 +384,7 @@ export class Combat {
     return true;
   }
   startCharge(a) {
+    if (activeForm(a) === "gravity") return false;
     if (
       !a.alive ||
       !inWorld(a) ||
@@ -417,6 +421,7 @@ export class Combat {
   fell(a, { lost = false } = {}) {
     if (!a.alive && !a.ghost) return;
     a.hp = 0;
+    a.clash = a.reflect = 0;
     a.blink = null;
     a.burst = 0;
     a.movingTime = 0;
@@ -480,7 +485,7 @@ export class Combat {
       (!ability && hasPassive(a, "invincible") ? 2 : 1) *
       (reflected ? 1 : multiplier(sourceElement, b.element, ability));
     if (ability && hasPassive(b, "mirror") && !reflected && a.id !== b.id) {
-      this.event("REFLECT 40%", "#fff", b.x, b.y);
+      b.reflect = 0.65;
       this.damage(b, a, hit * 0.4, true, true, sourceElement);
       hit *= 0.6;
     }
@@ -570,21 +575,18 @@ export class Combat {
         this.meleeDamage(a, clash.who, 3.5);
         this.meleeDamage(clash.who, a, 3.5);
         remove.add(clash.id);
-        this.event(
-          "CLASH",
-          "#f4d485",
-          (a.x + clash.who.x) / 2,
-          (a.y + clash.who.y) / 2 - 20,
-        );
-        this.effects.push({
-          kind: "ring",
-          x: (a.x + clash.who.x) / 2,
-          y: (a.y + clash.who.y) / 2,
-          color: "#fff4ca",
-          life: 0.3,
-          max: 0.3,
-          r: 48,
-        });
+        for (const [fighter, other] of [
+          [a, clash.who],
+          [clash.who, a],
+        ]) {
+          if (!fighter.alive) continue;
+          fighter.clash = 0.3;
+          fighter.clashPartner = other.id;
+          const d = distance(fighter, other) || 1;
+          fighter.clashFx = (other.x - fighter.x) / d;
+          fighter.clashFy = (other.y - fighter.y) / d;
+          fighter.swing = 0;
+        }
       } else
         for (const b of this.fighters)
           if (canHit(a, b)) this.meleeDamage(a, b, 14);
@@ -677,6 +679,12 @@ export class Combat {
   cast(a, p) {
     const e = activeForm(a);
     if (!skillsFor(e)[0]) return false;
+    if (e === "gravity") {
+      const target = this.enemies(a).sort(
+        (b, c) => distance(a, b) - distance(a, c),
+      )[0];
+      return this.telekinesis(a, target, a.fx, a.fy);
+    }
     a.reveal = 0.45;
     if (e === "lightning") {
       const target =
@@ -799,14 +807,7 @@ export class Combat {
       });
     else if (e === "water")
       this.projectile(a, p, { speed: 390, r: 18, damage: 23, kind: "water" });
-    else if (e === "gravity") {
-      for (const b of this.fighters)
-        if (b.id !== a.id && b.alive && inWorld(b) && distance(a, b) < 200) {
-          this.damage(a, b, 18 * p, true);
-          b.knockX += a.fx * 260;
-          b.knockY += a.fy * 260;
-        }
-    } else
+    else
       this.projectile(a, p, {
         speed: e === "fire" ? 290 : 330,
         r: e === "fire" ? 23 : 18,
@@ -814,6 +815,44 @@ export class Combat {
         life: e === "fire" ? 0.85 : 1.1,
         kind: e === "fire" ? "flame" : "bolt",
       });
+    return true;
+  }
+  telekinesis(a, target, dx, dy) {
+    const length = Math.hypot(dx, dy);
+    if (
+      !a.alive ||
+      !inWorld(a) ||
+      activeForm(a) !== "gravity" ||
+      a.abilityCd > 0 ||
+      a.stagger > 0 ||
+      !target?.alive ||
+      !inWorld(target) ||
+      target.team === a.team ||
+      visibility(target) <= 0 ||
+      distance(a, target) > 200 ||
+      !Number.isFinite(length) ||
+      length <= 0
+    )
+      return false;
+    a.charging = false;
+    a.charge = 0;
+    a.abilityCd = 4.5;
+    a.reveal = 0.45;
+    this.damage(a, target, 18, true, false, "gravity");
+    if (target.alive) {
+      target.knockX += (dx / length) * 260;
+      target.knockY += (dy / length) * 260;
+      target.blink = null;
+    }
+    this.effects.push({
+      kind: "telekinesis",
+      x: target.x,
+      y: target.y - 26,
+      dx: dx / length,
+      dy: dy / length,
+      life: 0.4,
+      max: 0.4,
+    });
     return true;
   }
   utility(a, hold = true) {
@@ -1321,7 +1360,8 @@ export class Combat {
       this.safeAttack(a, target, "ability", attackForm)
     ) {
       this.switchForm(a, attackForm);
-      this.startCharge(a);
+      if (attackForm === "gravity") this.telekinesis(a, target, a.fx, a.fy);
+      else this.startCharge(a);
     }
     const form = activeForm(a);
     if (
@@ -1524,6 +1564,8 @@ export class Combat {
         "slow",
         "flash",
         "swing",
+        "clash",
+        "reflect",
         "reveal",
         "hurtReveal",
       ])

@@ -1,5 +1,17 @@
 import { inWorld, visibility } from "./combat.js";
-import { drawCharacter, drawCharacterStrike } from "./characters.js";
+import {
+  drawCharacter,
+  drawCharacterStrike,
+  characterPose,
+} from "./characters.js";
+import {
+  drawTerrain,
+  immersionFor,
+  drawWaterline,
+  drawReflectShield,
+  drawClashes,
+  distortGravity,
+} from "./battle-effects.js";
 const PALETTE = {
   light: "#f5edcf",
   dark: "#25232e",
@@ -47,6 +59,7 @@ export class Renderer {
     this.canvas = canvas;
     this.ctx = canvas.getContext("2d");
     this.background = document.createElement("canvas");
+    this.distortion = document.createElement("canvas");
     this.background.width = 1024;
     this.background.height = 680;
     this.makeBackground();
@@ -223,23 +236,20 @@ export class Renderer {
     c.fillRect(0, 0, 1024, 66);
     c.fillRect(0, 636, 1024, 44);
   }
-  avatar(c, a, time) {
+  avatar(c, a, time, immersion = 0) {
     const scale = 2.35;
     const flying = a.parts.includes("air");
-    const walking = Math.hypot(a.vx, a.vy) > 15;
+    const pose = characterPose(a);
+    const walking = pose.running;
     const step = walking ? Math.sin(time * 12) * 2 : 0;
-    const bob = flying
-      ? Math.sin(time * 3) * 2 - 8
-      : walking
-        ? Math.abs(step) * 0.7
-        : 0;
+    const bob = flying ? Math.sin(time * 3) * 2 - 8 : walking ? -pose.bob : 0;
     const color = fighterColor(a);
     c.save();
     c.translate(Math.round(a.x), Math.round(a.y));
     c.fillStyle = "#162b2466";
     c.beginPath();
     c.ellipse(0, 7, 21, flying ? 8 : 6, 0, 0, Math.PI * 2);
-    c.fill();
+    if (!immersion) c.fill();
     if (a.parts.length >= 3) {
       c.shadowColor = color;
       c.shadowBlur = 22;
@@ -256,7 +266,14 @@ export class Renderer {
       c.ellipse(0, 7, 24, 9, 0, 0, Math.PI * 2);
       c.stroke();
     }
+    drawReflectShield(c, a, time, false);
     c.translate(0, bob);
+    c.save();
+    if (immersion) {
+      c.beginPath();
+      c.rect(-110, -160, 220, 160 - immersion - bob);
+      c.clip();
+    }
     if (!drawCharacter(c, a, time)) {
       c.scale(scale, scale);
       const px = (x, y, w, h, fill) => {
@@ -307,8 +324,10 @@ export class Renderer {
       }
     }
     c.restore();
+    c.restore();
     c.save();
     c.translate(a.x, a.y);
+    drawReflectShield(c, a, time, true);
     if (a.shield) {
       const rise = Math.min(1, a.shieldTime / 0.16);
       c.save();
@@ -386,7 +405,7 @@ export class Renderer {
         );
       }
     }
-    if (a.swing > 0 && !drawCharacterStrike(c, a)) {
+    if (a.swing > 0 && !a.clash && !drawCharacterStrike(c, a)) {
       const angle = Math.atan2(a.fy, a.fx);
       c.strokeStyle = "#fff0bc";
       c.lineWidth = 4;
@@ -409,7 +428,7 @@ export class Renderer {
       }
     }
     // Leave room above the taller crowns and Air's floating silhouette.
-    if (a.parts.length === 1) c.translate(0, -10);
+    c.translate(0, -10);
     if (a.id !== "player") {
       c.fillStyle = "#23332b";
       c.fillRect(-22, -70, 44, 5);
@@ -467,34 +486,7 @@ export class Renderer {
     c.imageSmoothingEnabled = false;
     c.drawImage(this.background, 0, 0);
     const t = idle ? performance.now() / 1000 : game.time;
-    for (const hazard of game.hazards.filter(inWorld)) {
-      c.save();
-      c.globalAlpha = 0.3 + 0.07 * Math.sin(t * 4);
-      c.fillStyle = {
-        magma: "#ef7642",
-        quicksand: "#6d4e36",
-        vog: "#8d7599",
-        flood: "#6cacd1",
-        gravity: "#7462aa",
-        heatwave: "#f4ad4f",
-      }[hazard.kind];
-      c.beginPath();
-      c.ellipse(
-        hazard.x,
-        hazard.y,
-        hazard.r,
-        hazard.r * 0.7,
-        0,
-        0,
-        Math.PI * 2,
-      );
-      c.fill();
-      c.globalAlpha = 0.55;
-      c.strokeStyle = c.fillStyle;
-      c.setLineDash([6, 10]);
-      c.stroke();
-      c.restore();
-    }
+    drawTerrain(c, game, t);
     for (const p of game.portals.portals) {
       if (!game.portals.active(p)) {
         c.save();
@@ -633,7 +625,9 @@ export class Renderer {
       .sort((a, b) => a.y - b.y)) {
       c.save();
       c.globalAlpha = a.ghost ? 0.38 : visibility(a);
-      this.avatar(c, a, t);
+      const immersion = immersionFor(game, a);
+      this.avatar(c, a, t, immersion);
+      drawWaterline(c, a, immersion, t);
       c.restore();
       if (a.ghost) {
         c.save();
@@ -651,6 +645,7 @@ export class Renderer {
         c.restore();
       }
     }
+    drawClashes(c, game);
     for (const p of game.projectiles.filter(inWorld)) {
       c.save();
       c.translate(p.x, p.y - 12);
@@ -749,6 +744,24 @@ export class Renderer {
         c.globalAlpha = 1;
         continue;
       }
+      if (e.kind === "telekinesis") {
+        c.save();
+        c.translate(e.x, e.y);
+        c.rotate(Math.atan2(e.dy, e.dx));
+        c.strokeStyle = "#d8b6ff";
+        c.lineWidth = 3;
+        const reach = 18 + (1 - e.life / e.max) * 45;
+        c.beginPath();
+        c.moveTo(0, 0);
+        c.lineTo(reach, 0);
+        c.lineTo(reach - 9, -7);
+        c.moveTo(reach, 0);
+        c.lineTo(reach - 9, 7);
+        c.stroke();
+        c.restore();
+        c.globalAlpha = 1;
+        continue;
+      }
       c.strokeStyle = e.color;
       c.lineWidth = e.kind === "fusion" ? 9 : 4;
       c.beginPath();
@@ -784,6 +797,7 @@ export class Renderer {
       c.fillStyle = "#f6de9c";
       c.fillRect(x + Math.sin(t * 2) * 4, y - 20 - ((t * 9) % 15), 2, 2);
     }
+    distortGravity(c, this.canvas, this.distortion, game, this.view, t);
     c.restore();
     if (game.player.blind > 0 && inWorld(game.player)) {
       c.fillStyle = game.fighters.some(

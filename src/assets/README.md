@@ -1,20 +1,43 @@
-# Origin characters
+# Elemental character atlases
 
-`origins.png` is a transparent atlas created for this game from the user's six
-character concepts: Water's wave-haired knight, Dark's masked ninja, Fire's living
-flame, Air's silver-crowned fighter, Earth's reptilian brawler and Light's hooded
-spearfighter. All six are interpreted in the same pixel-art style.
+All twenty characters derive from the user's six original concepts: Water's
+wave-haired knight, Dark's masked ninja, Fire's living flame, Air's silver crown,
+Earth's reptilian brawler, and Light's white hood and spear.
 
-Rows: Water, Dark, Fire, Air, Earth, Light.
-Columns: front, right, back, front strike, right strike, back strike.
-Left views mirror right views. `origins.json` records source rectangles and foot
-anchors, so hair, capes and extended weapons do not shift the fighter's position.
+The runtime atlases are transparent, lossless WebP files encoded from the
+image-generation outputs. The original level-I PNG remains as the design source.
+JSON files record each frame's source rectangle, foot anchor and reference height.
+Each atlas loads independently; failed identity images use the procedural avatar,
+and failed running images use the loaded idle poses. There are no runtime calls
+to an external image service.
 
-The renderer uses the existing 220ms swing: 110ms windup followed by contact and
-recovery. Character-specific effects are cosmetic and do not add damage,
-projectiles, burn, range or cooldowns. Walking adds a subtle rocking gait.
+## Identity atlases
 
-Generated with OpenAI image generation, then integrated as a local asset. The
-game serves the atlas through Vite's versioned asset URLs; no image service is
-called at runtime. Fused characters retain the existing blended-color avatar,
-shine and glow. The procedural avatar is also the image-load failure fallback.
+All identity atlases use six columns: front, right, back, front attack, right
+attack, back attack. Left views mirror right views.
+
+- `origins`: Water, Dark, Fire, Air, Earth, Light.
+- `fusions-grounded`: Mud, Mirror, Sun, Smoke, Gravity, Multi-Dimensional, Invincible.
+- `fusions-airborne`: Spirit, Blaze, Cloud, Apparition, Demonic, Divine, Lightning.
+
+Mud combines water hair and reptile armor; Mirror combines white hood and silver
+scales; Sun combines white cloak and golden flames; Smoke combines ninja blades
+and embers; Gravity uses purple reptilian ninja armor; Multi-Dimensional combines
+white hood, violet mask and crystal blades; Invincible combines reptile bulk,
+flames and a paladin's mantle. Flying fusions inherit Air's crown and floating
+silhouette alongside the other components. Divine's atlas is fully visible;
+combat visibility is applied by the renderer, including to its glow and effects.
+
+## Running atlases
+
+Six columns: two opposing front strides, two right-facing strides, two back
+strides. `running-origins` rows are Water, Dark, Fire, Earth, Light;
+`running-fusions` rows match `fusions-grounded`. Running alternates those strides
+with contact poses from the identity atlas. The cycle follows voluntary movement
+and speed; grounded fighters do not run in place when blocked. Attacks and paired
+clashes override running. Air-based forms retain hovering motion.
+
+The normal strike uses the existing 110ms windup and 220ms swing. A contested
+strike uses its contact pose plus a paired weapon effect for 300ms. These visual
+states do not add attack damage, range or cooldowns. Level-II shines and level-III
+glows are composited in the renderer so the transparency rules remain consistent.
