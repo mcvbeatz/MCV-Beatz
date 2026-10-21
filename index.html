@@ -18,8 +18,8 @@
       rel="icon"
       href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Cpath fill='%23e8bd71' d='M16 2 30 16 16 30 2 16z'/%3E%3Cpath fill='%2311191b' d='m16 9 7 14H9z'/%3E%3C/svg%3E"
     />
-    <script type="module" crossorigin src="./assets/index-Bqu2vegO.js"></script>
-    <link rel="stylesheet" crossorigin href="./assets/index-BQL5ihh7.css">
+    <script type="module" crossorigin src="./assets/index-Bt4VlHBj.js"></script>
+    <link rel="stylesheet" crossorigin href="./assets/index-DPJPUXsD.css">
   </head>
   <body>
     <div id="app">
@@ -83,12 +83,27 @@
               ><button data-mode="team">Team brawl</button
               ><button data-mode="fused">Fused II</button
               ><button data-mode="fused3">Fused III</button>
+              <button data-mode="ctf">Capture the flag</button>
+              <button data-mode="tdm">Team deathmatch</button>
+              <button data-mode="ffa">Free for all</button>
             </div>
             <div id="team-sizes" class="team-sizes" hidden>
               <button data-size="2" class="selected">2 vs 2</button
               ><button data-size="3">3 vs 3</button
               ><button data-size="4">4 vs 4</button>
             </div>
+            <label id="ffa-settings" class="ffa-settings" hidden
+              >Fighters
+              <select id="ffa-count" aria-label="Free for all fighter count">
+                <option>2</option>
+                <option>3</option>
+                <option selected>4</option>
+                <option>5</option>
+                <option>6</option>
+                <option>7</option>
+                <option>8</option>
+              </select>
+            </label>
             <div class="mode-description" id="mode-description">
               <span>⚔</span>
               <div>
@@ -119,7 +134,7 @@
               <div>
                 <span class="live-dot"></span
                 ><strong>THE SUNKEN COLOSSEUM</strong
-                ><span class="arena-type">Touch combat · v0.8</span>
+                ><span class="arena-type">Touch combat · v0.9</span>
               </div>
               <div class="arena-tools">
                 <button id="leave-btn" aria-label="Return to battle setup">
@@ -157,7 +172,8 @@
                 </div>
                 <div class="round-info">
                   <span id="round-mode">DUEL · ROUND 01</span
-                  ><strong id="timer">00:00</strong>
+                  ><strong id="timer">00:00</strong
+                  ><span id="objective-score" hidden></span>
                 </div>
                 <div class="enemy-count">
                   <span>RIVALS</span><strong id="enemy-count">01</strong>
