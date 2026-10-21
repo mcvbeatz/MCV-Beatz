@@ -11,6 +11,7 @@ import {
   drawReflectShield,
   drawClashes,
   distortGravity,
+  drawCue,
 } from "./battle-effects.js";
 const PALETTE = {
   light: "#f5edcf",
@@ -437,17 +438,16 @@ export class Renderer {
       c.fillStyle = a.team === 0 ? "#b5dec8" : "#e4ad8b";
       c.font = "8px monospace";
       c.textAlign = "center";
-      c.fillText(
-        a.ghost
-          ? "ANGEL GUARD"
-          : a.echo
-            ? "ECHO"
-            : a.team === 0
-              ? "ALLY"
-              : "RIVAL",
-        0,
-        -77,
-      );
+      // Small diamonds identify spirits and echoes without status labels.
+      if (a.ghost || a.echo) {
+        c.beginPath();
+        c.moveTo(0, -82);
+        c.lineTo(4, -78);
+        c.lineTo(0, -74);
+        c.lineTo(-4, -78);
+        c.closePath();
+        c.fill();
+      }
     } else {
       c.fillStyle = "#f5dc99";
       c.beginPath();
@@ -487,6 +487,44 @@ export class Renderer {
     c.drawImage(this.background, 0, 0);
     const t = idle ? performance.now() / 1000 : game.time;
     drawTerrain(c, game, t);
+    for (const flag of game.flags) {
+      const color = flag.team === game.player.team ? "#75d8f3" : "#f18e76";
+      c.save();
+      c.strokeStyle = color;
+      c.fillStyle = color + "22";
+      c.lineWidth = 3;
+      c.beginPath();
+      c.ellipse(flag.home.x, flag.home.y, 34, 20, 0, 0, Math.PI * 2);
+      c.fill();
+      c.stroke();
+      c.beginPath();
+      c.moveTo(flag.home.x - 12, flag.home.y);
+      c.lineTo(flag.home.x + 12, flag.home.y);
+      c.moveTo(flag.home.x, flag.home.y - 8);
+      c.lineTo(flag.home.x, flag.home.y + 8);
+      c.stroke();
+      const carrier = game.fighters.find((a) => a.id === flag.carrier);
+      const x = (carrier?.x ?? flag.x) + (carrier ? 22 : 0),
+        y = carrier?.y ?? flag.y;
+      c.strokeStyle = "#eadfc3";
+      c.lineWidth = 3;
+      c.beginPath();
+      c.moveTo(x, y);
+      c.lineTo(x, y - 66);
+      c.stroke();
+      const flutter = Math.sin(t * 8 + flag.team) * 4;
+      c.fillStyle = color;
+      c.shadowColor = color;
+      c.shadowBlur = 9;
+      c.beginPath();
+      c.moveTo(x + 1, y - 65);
+      c.lineTo(x + 30, y - 62 + flutter);
+      c.lineTo(x + 25, y - 49 + flutter);
+      c.lineTo(x + 1, y - 46);
+      c.closePath();
+      c.fill();
+      c.restore();
+    }
     for (const p of game.portals.portals) {
       if (!game.portals.active(p)) {
         c.save();
@@ -502,7 +540,7 @@ export class Renderer {
         c.fillStyle = "#eee0ff";
         c.font = "10px monospace";
         c.textAlign = "center";
-        c.fillText("OPENING", p.x, p.y - 28);
+
         c.restore();
         continue;
       }
@@ -539,15 +577,11 @@ export class Renderer {
       c.fillStyle = "#d4dbfc";
       c.font = "9px monospace";
       c.textAlign = "center";
-      c.fillText(
-        pair.length === 1
-          ? "LONE PORTAL"
-          : pair.indexOf(p) === 0
-            ? "PORTAL A"
-            : "PORTAL B",
-        0,
-        49,
-      );
+      for (let i = 0; i < pair.length; i++) {
+        c.beginPath();
+        c.arc((i - (pair.length - 1) / 2) * 9, 47, 2.5, 0, Math.PI * 2);
+        c.fill();
+      }
       c.restore();
     }
     for (const a of game.fighters) {
@@ -576,26 +610,38 @@ export class Renderer {
       c.fillStyle = "#f1deff";
       c.font = "9px monospace";
       c.textAlign = "center";
-      c.fillText("ARRIVING", p.x, p.y - 34);
+
       c.restore();
     }
     for (const token of game.visibleTokens()) {
       const color = fighterColor(token);
       c.save();
-      c.translate(token.x, token.y - 9 + Math.sin(t * 3) * 4);
+      const age = game.time - (token.bornAt ?? -10);
+      const drop = age < 0.7 ? -30 * Math.pow(1 - age / 0.7, 2) : 0;
+      c.translate(token.x, token.y - 9 + drop + Math.sin(t * 3) * 4);
       c.rotate(Math.PI / 4);
       c.shadowColor = color;
-      c.shadowBlur = 15;
+      c.shadowBlur = age < 1.2 ? 25 : 15;
       c.fillStyle = color;
       c.fillRect(-7, -7, 14, 14);
       c.strokeStyle = "#f5e4b9";
       c.lineWidth = 2;
       c.strokeRect(-7, -7, 14, 14);
+      c.rotate(-Math.PI / 4);
+      const shine =
+        age < 1.2 ? 12 + Math.sin(age * 18) * 5 : 5 + Math.sin(t * 3) * 2;
+      c.strokeStyle = "#fff4c5";
+      c.lineWidth = 2;
+      c.beginPath();
+      c.moveTo(-shine, 0);
+      c.lineTo(shine, 0);
+      c.moveTo(0, -shine);
+      c.lineTo(0, shine);
+      c.stroke();
       c.restore();
       c.fillStyle = "#e4d7a1";
       c.font = "9px monospace";
       c.textAlign = "center";
-      c.fillText("ALLY TOKEN", token.x, token.y + 22);
     }
     const target = game.target(game.player);
     if (target && game.player.alive && inWorld(game.player)) {
@@ -713,6 +759,11 @@ export class Renderer {
     }
     for (const e of game.effects) {
       c.globalAlpha = e.life / e.max;
+      if (e.kind === "cue") {
+        drawCue(c, e, game);
+        c.globalAlpha = 1;
+        continue;
+      }
       if (e.kind === "lightning") {
         for (const [width, color] of [
           [9, "#9acfff66"],
@@ -778,19 +829,6 @@ export class Renderer {
       c.stroke();
       c.globalAlpha = 1;
     }
-    for (const e of game.events) {
-      const age = game.time - e.time;
-      c.globalAlpha = Math.min(1, (1.4 - age) * 2);
-      c.font = /^\d+$/.test(e.text)
-        ? "bold 18px monospace"
-        : "bold 10px monospace";
-      c.textAlign = "center";
-      c.fillStyle = "#1b2624";
-      c.fillText(e.text, e.x + 1, e.y - 34 - age * 25 + 1);
-      c.fillStyle = e.color;
-      c.fillText(e.text, e.x, e.y - 34 - age * 25);
-      c.globalAlpha = 1;
-    }
     for (const [x, y] of [
       [210, 151],
       [814, 151],
@@ -818,7 +856,6 @@ export class Renderer {
       c.font = "16px monospace";
       c.textAlign = "center";
       c.fillStyle = "#dacfae";
-      c.fillText("VISION DISRUPTED", w / 2, h / 2);
     }
     if (game.player.dimension) {
       c.fillStyle = "#11102a70";

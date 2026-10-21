@@ -96,7 +96,11 @@ export const FUSED = {
 };
 // Direct access on the fused tab; the origin tabs remain available too.
 export const EXTRA_SKILLS = {
-  divine: [{ name: "Revival", form: "spirit", kind: "ability" }],
+  spirit: [{ name: "Healing", form: "light", kind: "ability" }],
+  divine: [
+    { name: "Revival", form: "spirit", kind: "ability" },
+    { name: "Portals", form: "spirit", kind: "utility" },
+  ],
   sun: [{ name: "Healing", form: "light", kind: "ability" }],
   demonic: [
     { name: "Speed burst", form: "blaze", kind: "utility" },
@@ -265,6 +269,7 @@ export function makeFighter(id, element, team, x, y) {
     clash: 0,
     clashPartner: null,
     reflect: 0,
+    spawnFlash: 0,
     aiTimer: 0,
     knockX: 0,
     knockY: 0,
@@ -276,11 +281,27 @@ export class Combat {
     element = "fire",
     mode = "duel",
     size = 2,
+    players = 4,
     random = Math.random,
   } = {}) {
     this.random = random;
     this.time = 0;
     this.mode = mode;
+    this.scores = [0, 0];
+    this.timeLimit = mode === "tdm" ? 180 : null;
+    this.respawnDelay = ["ctf", "tdm"].includes(mode) ? 10 : null;
+    this.flags =
+      mode === "ctf"
+        ? [0, 1].map((team) => ({
+            team,
+            home: { x: team === 0 ? 185 : 839, y: 350 },
+            x: team === 0 ? 185 : 839,
+            y: 350,
+            carrier: null,
+            dropped: false,
+          }))
+        : [];
+    this.finishReason = null;
     this.events = [];
     this.effects = [];
     this.projectiles = [];
@@ -293,7 +314,9 @@ export class Combat {
     this.fighters = [];
     this.sequence = 0;
     this.portals = new PortalSystem(this);
-    const n = mode === "team" ? size : 1,
+    const n = ["team", "ctf", "tdm"].includes(mode)
+        ? Math.max(2, Math.min(4, Math.floor(size) || 2))
+        : 1,
       pool =
         mode === "fused"
           ? LEVEL_TWO
@@ -302,6 +325,7 @@ export class Combat {
             : Object.keys(ELEMENTS);
     if (["fused", "fused3"].includes(mode) && !pool.includes(element))
       element = pool[0];
+    if (mode === "ctf" && !Object.hasOwn(ELEMENTS, element)) element = "fire";
     for (let i = 0; i < n; i++) {
       this.fighters.push(
         makeFighter(
@@ -322,10 +346,42 @@ export class Combat {
         ),
       );
     }
+    if (mode === "ffa") {
+      const count = Math.max(2, Math.min(8, Math.floor(players) || 4));
+      this.fighters = Array.from({ length: count }, (_, i) => {
+        const angle = Math.PI + (i * Math.PI * 2) / count;
+        return makeFighter(
+          i === 0 ? "player" : `enemy-${i}`,
+          i === 0
+            ? element
+            : pool[
+                Math.min(pool.length - 1, Math.floor(random() * pool.length))
+              ],
+          i,
+          512 + Math.cos(angle) * 300,
+          350 + Math.sin(angle) * 145,
+        );
+      });
+    }
+    for (const a of this.fighters) {
+      if (mode === "ctf") a.x = a.team === 0 ? 220 : 804;
+      a.spawn = { x: a.x, y: a.y, element: a.element };
+      a.kills = 0;
+      a.deaths = 0;
+    }
     this.player = this.fighters[0];
   }
-  event(text, color = "#e9cc91", x = this.player.x, y = this.player.y) {
-    this.events.push({ text, color, x, y, time: this.time });
+  cue(cue, subject, color = "#e9cc91") {
+    this.effects.push({
+      kind: "cue",
+      cue,
+      subject: subject.id || null,
+      x: subject.x,
+      y: subject.y,
+      color,
+      life: 0.65,
+      max: 0.65,
+    });
   }
   flying(a) {
     return a.parts.includes("air");
@@ -447,7 +503,7 @@ export class Combat {
       return true;
     }
     if (form === "spirit" && !this.revivalTarget(a)) {
-      this.event("NO FALLEN ALLY TO REVIVE");
+      this.cue("unavailable", a, "#dca282");
       return false;
     }
     a.charging = true;
@@ -468,8 +524,30 @@ export class Combat {
       a.abilityCd = 4.5;
     a.chargeForm = null;
   }
-  fell(a, { lost = false } = {}) {
+  fell(a, { lost = false, killer = null } = {}) {
     if (!a.alive && !a.ghost) return;
+    const wasAlive = a.alive;
+    if (wasAlive && !a.echo) {
+      a.deaths = (a.deaths || 0) + 1;
+      const source =
+        killer || (a.lastDamagedAt > this.time - 5 ? a.lastDamager : null);
+      const credited = source?.echo
+        ? this.fighters.find((b) => b.id === source.summoner)
+        : source;
+      if (credited && credited.team !== a.team) {
+        credited.kills = (credited.kills || 0) + 1;
+        if (this.mode === "tdm") this.scores[credited.team]++;
+      }
+      if (this.respawnDelay) a.respawnAt = this.time + this.respawnDelay;
+      for (const flag of this.flags)
+        if (flag.carrier === a.id) {
+          flag.carrier = null;
+          flag.x = a.x;
+          flag.y = a.y;
+          flag.dropped = true;
+          this.cue("portal", flag, flag.team === 0 ? "#82d7eb" : "#ed947d");
+        }
+    }
     a.hp = 0;
     a.clash = a.reflect = a.hitReact = 0;
     a.blink = null;
@@ -480,7 +558,7 @@ export class Combat {
     a.shield = 0;
     a.lock = null;
     a.lost = lost;
-    a.ghost = !lost && !a.echo && hasPassive(a, "spirit");
+    a.ghost = !this.respawnDelay && !lost && !a.echo && hasPassive(a, "spirit");
     a.dimension = null;
     a.transit = null;
     a.vx = a.vy = 0;
@@ -494,8 +572,8 @@ export class Combat {
           f.ghost = false;
         }
       }
-      this.event("LOST BETWEEN WORLDS", "#cbb4e7", a.x, a.y);
-    } else if (!a.echo) {
+      this.cue("lost", { x: a.x, y: a.y }, "#cbb4e7");
+    } else if (!a.echo && this.mode !== "ctf") {
       this.tokens.push({
         x: a.x,
         y: a.y,
@@ -504,14 +582,9 @@ export class Combat {
         owner: a.id,
         souls: [{ owner: a.id, parts: [...a.nativeParts] }, ...a.absorbed],
         portalCooldown: 0.3,
+        bornAt: this.time,
       });
-      if (a.team === this.player.team)
-        this.event(
-          a.ghost ? "ANGEL GUARD AWAKENS" : "ALLY TOKEN DROPPED",
-          "#a9dfd5",
-          a.x,
-          a.y,
-        );
+      if (a.ghost) this.cue("revive", a, "#a9dfd5");
     }
   }
   damage(
@@ -521,11 +594,12 @@ export class Combat {
     ability = false,
     reflected = false,
     sourceElement = ability ? skillForm(a) : a.element,
+    reflectable = true,
   ) {
     if (!b.alive || !inWorld(b)) return 0;
     if (b.dodge > 0 && !a.parts.includes("light")) {
       b.dodge = 0;
-      this.event("DODGED", "#b8a1df", b.x, b.y);
+      this.cue("dodge", b, "#b8a1df");
       return 0;
     }
     // Split the incoming ability before either recipient's defenses. The
@@ -534,7 +608,13 @@ export class Combat {
       amount *
       (!ability && hasPassive(a, "invincible") ? 2 : 1) *
       (reflected ? 1 : multiplier(sourceElement, b.element, ability));
-    if (ability && hasPassive(b, "mirror") && !reflected && a.id !== b.id) {
+    if (
+      ability &&
+      reflectable &&
+      hasPassive(b, "mirror") &&
+      !reflected &&
+      a.id !== b.id
+    ) {
       b.reflect = 0.65;
       this.damage(b, a, hit * 0.4, true, true, sourceElement);
       hit *= 0.6;
@@ -549,11 +629,13 @@ export class Combat {
       if (b.shieldHp <= 0) {
         b.shield = 0;
         b.utilityCd = 5;
-        this.event("SHIELD BROKEN", "#e9cc91", b.x, b.y);
+        this.cue("shatter", b, "#b79669");
       }
     }
     b.hp = Math.max(0, b.hp - hit);
     if (hit > 0) {
+      b.lastDamager = a;
+      b.lastDamagedAt = this.time;
       b.flash = 0.16;
       b.hurtReveal = 0.15;
       if (canReactToHit(b) && !(b.hitReact > 0)) {
@@ -565,9 +647,9 @@ export class Combat {
       if (b.charging) {
         b.stagger = 0.27;
         if (hit >= 0.5 && !hasPassive(b, "divine"))
-          this.event("INTERRUPTED", "#e9cc91", b.x, b.y - 48);
+          this.cue("interrupt", b, "#e9cc91");
       }
-      if (b.hp <= 0) this.fell(b);
+      if (b.hp <= 0) this.fell(b, { killer: a });
     }
     return hit;
   }
@@ -583,7 +665,7 @@ export class Combat {
     );
     if (guard) {
       guard.flash = 0.3;
-      this.event("ANGEL GUARD", "#b8edeb", guard.x, guard.y - 30);
+      this.cue("guard", guard, "#b8edeb");
       this.effects.push({
         kind: "ring",
         x: guard.x,
@@ -688,6 +770,12 @@ export class Combat {
   revive(a, power = 1) {
     const fallen = this.revivalTarget(a);
     if (!fallen) return false;
+    if (this.respawnDelay) {
+      this.respawn(fallen);
+      fallen.hp = Math.min(fallen.maxHp, 50 * power);
+      this.cue("revive", fallen, "#bee9bf");
+      return true;
+    }
     // A reclaimed soul cannot also remain inside a fused fighter. Detach it from
     // any bearer (or bearer token), then restore its own native elemental form.
     for (const b of this.fighters) {
@@ -717,12 +805,8 @@ export class Combat {
     fallen.y = clamp(a.y - a.fy * 45, 175, 560);
     fallen.portalCooldown = 0.8;
     fallen.blind = fallen.venom = fallen.burn = 0;
-    this.event(
-      `${nameOf(fallen.element).toUpperCase()} REVIVED`,
-      "#bee9bf",
-      fallen.x,
-      fallen.y,
-    );
+    fallen.spawnFlash = 0.65;
+    this.cue("revive", fallen, "#bee9bf");
     return true;
   }
   // Borrow an ability's implementation and damage type without changing tabs.
@@ -761,7 +845,7 @@ export class Combat {
           .filter((b) => distance(a, b) <= 300)
           .sort((b, c) => distance(a, b) - distance(a, c))[0];
       if (!target) {
-        if (a.id === "player") this.event("NO VISIBLE RIVAL IN RANGE");
+        if (a.id === "player") this.cue("unavailable", a, "#dca282");
         return false;
       }
       const flooded = this.hazards.some(
@@ -795,7 +879,7 @@ export class Combat {
           life: 0.7,
           max: 0.7,
         });
-        this.event("HEALED", "#c9ebbc", recipient.x, recipient.y - 30);
+        this.cue("heal", recipient, "#c9ebbc");
       }
     } else if (e === "dark") {
       const t =
@@ -819,7 +903,7 @@ export class Combat {
           t.lock = null;
         }
         this.damage(a, t, 12 * p, true);
-        this.event("SABOTAGED", "#c1a1df", t.x, t.y);
+        this.cue("interrupt", t, "#c1a1df");
       }
     } else if (e === "mud" || e === "smoke")
       this.area(a, p, e === "mud" ? "quicksand" : "vog", 85, 5 * p);
@@ -840,9 +924,9 @@ export class Combat {
         minion.life = 9;
         minion.echo = true;
         minion.summoner = a.id;
+        minion.spawnFlash = 0.65;
         this.fighters.push(minion);
       }
-      this.event("ECHO SUMMONED");
     } else if (e === "spirit") return this.revive(a, p);
     else if (e === "sun")
       this.projectile(a, p, {
@@ -994,10 +1078,9 @@ export class Combat {
         life: 0.5,
         max: 0.5,
       });
-      this.event("FLASH");
     } else if (e === "dark" || e === "apparition") {
       a.dodge = 4;
-      this.event("SHADOW STEP");
+      this.cue("dodge", a, "#b8a1df");
     } else if (e === "air") {
       a.boost = 2;
       this.effects.push({
@@ -1023,7 +1106,7 @@ export class Combat {
           dead.lost = true;
           dead.ghost = false;
         }
-        this.event("TOKEN CONSUMED");
+        this.cue("lost", a, "#dc6d73");
       }
     }
     return true;
@@ -1043,6 +1126,7 @@ export class Combat {
     a.shield = 0;
   }
   applyFusion(a, parts, { burst = true } = {}) {
+    if (this.mode === "ctf") return false;
     const fused = combination(a.parts, parts),
       all = [...new Set([...a.parts, ...parts])];
     if (!a.alive || !fused || all.length <= a.parts.length) return false;
@@ -1053,12 +1137,6 @@ export class Combat {
     a.hp = Math.min(a.maxHp, a.hp + 30);
     a.charging = false;
     a.shield = 0;
-    this.event(
-      `${nameOf(fused).toUpperCase()} AWAKENED`,
-      "#e8cf89",
-      a.x,
-      a.y - 20,
-    );
     if (burst) {
       this.effects.push({
         kind: "fusion",
@@ -1086,12 +1164,12 @@ export class Combat {
     return true;
   }
   touchTokens(a) {
-    if (!a.alive || !inWorld(a) || a.echo) return false;
+    if (this.mode === "ctf" || !a.alive || !inWorld(a) || a.echo) return false;
     const token = this.tokens.find(
       (t) =>
         inWorld(t) &&
         !t.removed &&
-        t.team === a.team &&
+        (this.mode === "ffa" || t.team === a.team) &&
         distance(a, t) <= TOKEN_TOUCH_RANGE &&
         combination(a.parts, t.parts),
     );
@@ -1106,7 +1184,9 @@ export class Combat {
     return true;
   }
   visibleTokens(team = this.player.team) {
-    return this.tokens.filter((t) => t.team === team && inWorld(t));
+    return this.tokens.filter(
+      (t) => (this.mode === "ffa" || t.team === team) && inWorld(t),
+    );
   }
   switchForm(a, form) {
     const index =
@@ -1117,7 +1197,7 @@ export class Combat {
     a.charging = false;
     this.utility(a, false);
     a.form = index;
-    this.event(`${nameOf(activeForm(a)).toUpperCase()} SKILLS`);
+
     return true;
   }
   teleport(a, x, y) {
@@ -1234,6 +1314,146 @@ export class Combat {
       );
     });
   }
+  mobilitySafe(a, point) {
+    if (point.x < 155 || point.x > 869 || point.y < 195 || point.y > 540)
+      return false;
+    if (
+      this.fighters.some(
+        (b) =>
+          b.id !== a.id && b.alive && inWorld(b) && distance(b, point) < 45,
+      )
+    )
+      return false;
+    return !this.hazards.some((h) => {
+      if (!inWorld(h) || distance(h, point) > h.r + 12) return false;
+      if (h.kind === "quicksand")
+        return !this.flying(a) && !hasPassive(a, "mud");
+      if (h.kind === "gravity")
+        return h.owner.team !== a.team && !hasPassive(a, "apparition");
+      if (h.kind === "flood") return !this.flying(a);
+      return ["magma", "heatwave", "vog"].includes(h.kind) && !burnImmune(a);
+    });
+  }
+  aiMobility(a, target, patient) {
+    if (a.echo || !a.alive || !inWorld(a)) return null;
+    const owned = this.portals.owned(a);
+    if (a.portalRoute) {
+      const route = a.portalRoute;
+      const entry = owned.find((p) => p.id === route.entry);
+      const exit = owned.find((p) => p.id === route.exit);
+      if (
+        !entry ||
+        !exit ||
+        this.time > route.until ||
+        (a.portalCooldown > 0 && distance(a, exit) < 90)
+      ) {
+        a.portalRoute = null;
+        a.mobilityNext = this.time + 5;
+      } else return entry;
+    }
+    if (
+      a.charging ||
+      a.shield ||
+      a.blink ||
+      a.swing > 0 ||
+      a.stagger > 0 ||
+      this.isShocked(a) ||
+      this.time < (a.mobilityNext || 0)
+    )
+      return null;
+    const gap = target ? distance(a, target) : Infinity;
+    const retreat = target && a.hp < 45 && gap < 135;
+    const support =
+      patient &&
+      patient.id !== a.id &&
+      patient.hp < 65 &&
+      distance(a, patient) > 200;
+    if (!retreat && !support && (!target || gap < 220)) return null;
+    const focus = support ? patient : target;
+    const length = distance(a, focus) || 1;
+    const nx = (focus.x - a.x) / length,
+      ny = (focus.y - a.y) / length;
+    const goal = retreat
+      ? { x: a.x - nx * 260, y: a.y - ny * 260 }
+      : { x: focus.x - nx * 90, y: focus.y - ny * 90 };
+    goal.x = clamp(goal.x, 155, 869);
+    goal.y = clamp(goal.y, 195, 540);
+    if (hasPassive(a, "multi-dimensional")) {
+      // A decision interval is AI pacing, not a new cooldown on teleport.
+      a.mobilityNext = this.time + 1.1;
+      const angle = Math.atan2(goal.y - a.y, goal.x - a.x);
+      const reach = Math.min(TELEPORT_RANGE, distance(a, goal));
+      for (const turn of [0, 0.45, -0.45, 0.9, -0.9]) {
+        const point = {
+          x: a.x + Math.cos(angle + turn) * reach,
+          y: a.y + Math.sin(angle + turn) * reach,
+        };
+        if (distance(a, point) < 70 || !this.mobilitySafe(a, point)) continue;
+        if (this.teleport(a, point.x, point.y)) return { x: a.x, y: a.y };
+      }
+      return null;
+    }
+    if (!canUseSkill(a, "spirit", "utility")) return null;
+    a.mobilityNext = this.time + 2;
+    // Never close a gate on a traveller while rebuilding a route.
+    if (
+      owned.some((p) =>
+        this.portals
+          .travellers()
+          .some(
+            (e) =>
+              e.dimension?.portal === p.id ||
+              e.transit?.entry === p.id ||
+              e.transit?.exit === p.id,
+          ),
+      )
+    )
+      return null;
+    const angle = Math.atan2(goal.y - a.y, goal.x - a.x);
+    const clear = (point) =>
+      this.mobilitySafe(a, point) &&
+      this.portals.portals
+        .filter((p) => p.owner !== a.id)
+        .every((p) => distance(p, point) >= 90) &&
+      distance(a, point) >= 42;
+    let entry = null,
+      exit = null;
+    for (const turn of [0, 0.65, -0.65, 1.2, -1.2]) {
+      const p = {
+        x: a.x + Math.cos(angle + turn) * 68,
+        y: a.y + Math.sin(angle + turn) * 68,
+      };
+      if (clear(p)) {
+        entry = p;
+        break;
+      }
+    }
+    for (const offset of [0, 55, -55, 95, -95]) {
+      const p = {
+        x: goal.x - Math.sin(angle) * offset,
+        y: goal.y + Math.cos(angle) * offset,
+      };
+      if (entry && clear(p) && distance(entry, p) >= 90) {
+        exit = p;
+        break;
+      }
+    }
+    if (!entry || !exit) return null;
+    for (const p of owned) this.portals.close(a, p.id);
+    if (!this.portals.place(a, entry.x, entry.y, { autonomous: true }))
+      return null;
+    if (!this.portals.place(a, exit.x, exit.y, { autonomous: true })) {
+      for (const p of this.portals.owned(a)) this.portals.close(a, p.id);
+      return null;
+    }
+    const pair = this.portals.owned(a);
+    a.portalRoute = {
+      entry: pair[0].id,
+      exit: pair[1].id,
+      until: this.time + 5,
+    };
+    return pair[0];
+  }
   ai(a, dt) {
     const enemies = this.enemies(a);
     const allies = this.fighters.filter(
@@ -1267,6 +1487,11 @@ export class Combat {
       (allies.some((c) => c.hp < 60 && distance(c, b) < 110) ? 90 : 0);
     const target = enemies.sort((b, c) => score(b) - score(c))[0];
     const patient = this.healingTarget(a);
+    const route = this.aiMobility(a, target, patient);
+    if (route) {
+      this.move(a, route.x - a.x, route.y - a.y, dt);
+      return;
+    }
     const heal =
       !a.echo &&
       a.forms.includes("light") &&
@@ -1332,7 +1557,7 @@ export class Combat {
         h.kind === "gravity"
           ? h.owner.team !== a.team && !hasPassive(a, "apparition")
           : h.kind === "quicksand"
-            ? !this.flying(a)
+            ? !this.flying(a) && !hasPassive(a, "mud")
             : ["magma", "heatwave", "vog"].includes(h.kind) && !burnImmune(a);
       const gap = distance(a, h);
       if (harmful && gap < h.r + 25) {
@@ -1353,6 +1578,11 @@ export class Combat {
         dx -= ny * side * 2;
         dy += nx * side * 2;
       }
+    }
+    const objective = this.flagObjective(a);
+    if (objective) {
+      dx = distance(a, objective) > 10 ? objective.x - a.x : 0;
+      dy = distance(a, objective) > 10 ? objective.y - a.y : 0;
     }
     this.move(a, dx, dy, dt);
     if (a.shield && a.shieldTime > 0.8) this.utility(a, false);
@@ -1592,14 +1822,27 @@ export class Combat {
           h.floodHits ??= new Set();
           if (b.parts.includes("fire") && !h.floodHits.has(b.id)) {
             h.floodHits.add(b.id);
-            this.damage(h.owner, b, b.maxHp * 0.25, true, false, "cloud");
+            this.damage(
+              h.owner,
+              b,
+              b.maxHp * 0.25,
+              true,
+              false,
+              "cloud",
+              false,
+            );
           }
         } else if (h.kind === "gravity") {
           if (b.team !== h.owner.team && !hasPassive(b, "apparition"))
             b.slow = 0.5;
-        } else if (h.kind === "quicksand" && !flying && !flooded) {
+        } else if (
+          h.kind === "quicksand" &&
+          !flying &&
+          !flooded &&
+          !hasPassive(b, "mud")
+        ) {
           b.slow = 0.5;
-          this.damage(h.owner, b, 2 * h.power, true, false, h.element);
+          this.damage(h.owner, b, 2 * h.power, true, false, h.element, false);
         } else if (h.kind === "vog") {
           if (!immune) {
             b.blind = 1;
@@ -1620,7 +1863,7 @@ export class Combat {
             !b.parts.includes("fire") &&
             !b.parts.includes("water")
           )
-            this.damage(h.owner, b, 3 * h.power, true, false, h.element);
+            this.damage(h.owner, b, 3 * h.power, true, false, h.element, false);
         }
       }
     }
@@ -1631,7 +1874,12 @@ export class Combat {
   update(dt, input = { x: 0, y: 0 }, runAI = true) {
     if (this.finished) return;
     dt = Math.min(dt, 0.05);
+    if (this.mode === "tdm" && this.checkMatchEnd()) return;
     this.time += dt;
+    for (const a of this.fighters) {
+      if (!a.alive && a.respawnAt !== undefined && this.time >= a.respawnAt)
+        this.respawn(a);
+    }
     this.portals.update();
     for (const a of this.fighters) {
       if (!a.alive && !a.ghost) continue;
@@ -1651,6 +1899,7 @@ export class Combat {
         "swing",
         "clash",
         "reflect",
+        "spawnFlash",
         "reveal",
         "hurtReveal",
         "hitReact",
@@ -1715,13 +1964,125 @@ export class Combat {
     for (const e of this.effects) e.life -= dt;
     this.effects = this.effects.filter((e) => e.life > 0);
     this.events = this.events.filter((e) => this.time - e.time < 1.4);
+    this.updateFlags();
+    this.checkMatchEnd();
+  }
+  respawn(a) {
+    if (!a.spawn || a.echo) return false;
+    const { spawn, kills, deaths } = a;
+    const fresh = makeFighter(a.id, spawn.element, a.team, spawn.x, spawn.y);
+    // Keep the object identity used by controls and projectiles, but clear every
+    // temporary status, fusion, portal route and death from the previous life.
+    for (const key of Object.keys(a)) delete a[key];
+    Object.assign(a, fresh, { spawn, kills, deaths, spawnFlash: 0.65 });
+    this.tokens = this.tokens.filter((t) => t.owner !== a.id);
+    this.pending = this.pending.filter((p) => p.who !== a);
+    // Other fighters keep all tokens they absorbed, even when their source respawns.
+    return true;
+  }
+  returnFlag(flag) {
+    Object.assign(flag, flag.home, { carrier: null, dropped: false });
+    this.cue("revive", flag, flag.team === 0 ? "#82d7eb" : "#ed947d");
+  }
+  updateFlags() {
+    if (this.mode !== "ctf") return;
+    const living = this.fighters.filter(
+      (a) => a.alive && !a.echo && inWorld(a),
+    );
+    // Return friendly dropped flags before checking captures, regardless of team order.
+    for (const flag of this.flags) {
+      if (
+        flag.dropped &&
+        living.some((a) => a.team === flag.team && distance(a, flag) < 30)
+      )
+        this.returnFlag(flag);
+    }
+    for (const flag of this.flags) {
+      let carrier = this.fighters.find((a) => a.id === flag.carrier);
+      if (!carrier) {
+        carrier = living.find(
+          (a) => a.team !== flag.team && distance(a, flag) < 30,
+        );
+        if (carrier) {
+          flag.carrier = carrier.id;
+          flag.dropped = false;
+          this.cue("portal", carrier, "#f3da92");
+        }
+      }
+      if (!carrier) continue;
+      flag.x = carrier.x;
+      flag.y = carrier.y;
+      const own = this.flags[carrier.team];
+      if (!own.carrier && !own.dropped && distance(carrier, own.home) < 34) {
+        this.scores[carrier.team]++;
+        this.returnFlag(flag);
+        this.cue("heal", carrier, "#f3da92");
+      }
+    }
+  }
+  flagObjective(a) {
+    if (this.mode !== "ctf" || a.echo) return null;
+    const own = this.flags[a.team],
+      enemy = this.flags[1 - a.team];
+    if (enemy.carrier === a.id) return own.dropped ? own : own.home;
+    const thief = this.fighters.find(
+      (b) => b.id === own.carrier && b.alive && inWorld(b),
+    );
+    if (thief) return thief;
+    if (own.dropped) return own;
+    const squad = this.fighters.filter((b) => b.team === a.team && !b.echo);
+    const defender = squad[squad.length - 1] === a;
+    if (defender) {
+      const intruder = this.enemies(a)
+        .filter((b) => distance(b, own.home) < 190)
+        .sort((b, c) => distance(b, own.home) - distance(c, own.home))[0];
+      return (
+        intruder || { x: own.home.x + (a.team === 0 ? 65 : -65), y: own.home.y }
+      );
+    }
+    return enemy.carrier
+      ? this.fighters.find((b) => b.id === enemy.carrier)
+      : enemy;
+  }
+  finish(winner, reason) {
+    this.finished = true;
+    this.result =
+      winner === null
+        ? "draw"
+        : winner === this.player.team
+          ? "victory"
+          : "defeat";
+    this.finishReason = reason;
+    return true;
+  }
+  checkMatchEnd() {
+    if (this.finished) return true;
+    if (this.mode === "ctf") {
+      const winner = this.scores.findIndex((score) => score >= 3);
+      return winner >= 0 ? this.finish(winner, "Three flags captured") : false;
+    }
     const teams = new Set(
       this.fighters.filter((a) => a.alive && !a.echo).map((a) => a.team),
     );
-    if (teams.size < 2) {
-      this.finished = true;
-      this.result =
-        teams.size === 0 ? "draw" : teams.has(0) ? "victory" : "defeat";
+    if (teams.size < 2)
+      return this.finish(
+        teams.size ? [...teams][0] : null,
+        this.mode === "tdm"
+          ? "Team eliminated during respawns"
+          : this.mode === "ffa"
+            ? "Last elemental standing"
+            : "Elimination",
+      );
+    if (this.mode === "tdm" && this.time >= this.timeLimit) {
+      return this.finish(
+        this.scores[0] === this.scores[1]
+          ? null
+          : this.scores[0] > this.scores[1]
+            ? 0
+            : 1,
+        "Time expired",
+      );
     }
+    return false;
   }
 }

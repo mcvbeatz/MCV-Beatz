@@ -24,25 +24,25 @@ export class PortalSystem {
   begin(owner) {
     if (!owner.alive) return false;
     if (this.owned(owner).length >= 2) {
-      this.game.event("TAP A PORTAL TO CLOSE IT");
+      this.game.cue("portal", owner, "#c6b8ef");
       return false;
     }
     this.placing = owner.id;
     return true;
   }
-  place(owner, x, y) {
+  place(owner, x, y, { autonomous = false } = {}) {
     if (
-      this.placing !== owner.id ||
+      (this.placing !== owner.id && !(autonomous && owner.aiControlled)) ||
       !owner.alive ||
       this.owned(owner).length >= 2
     )
       return false;
     if (x < 135 || x > 889 || y < 175 || y > 560) {
-      this.game.event("PLACE INSIDE THE ARENA");
+      this.game.cue("unavailable", { x, y }, "#dc9c85");
       return false;
     }
     if (this.portals.some((p) => Math.hypot(x - p.x, y - p.y) < 85)) {
-      this.game.event("LEAVE SPACE BETWEEN PORTALS");
+      this.game.cue("unavailable", { x, y }, "#dc9c85");
       return false;
     }
     if (
@@ -53,7 +53,7 @@ export class PortalSystem {
           Math.hypot(a.x - x, a.y - y) < 40,
       )
     ) {
-      this.game.event("LEAVE SPACE AROUND FIGHTERS");
+      this.game.cue("unavailable", { x, y }, "#dc9c85");
       return false;
     }
     const p = {
@@ -67,15 +67,7 @@ export class PortalSystem {
     owner.reveal = 0.45;
     this.portals.push(p);
     const pair = this.owned(owner);
-    if (pair.length === 2) this.placing = null;
-    this.game.event(
-      pair.length === 1
-        ? "OPENING · PLACE THE SECOND PORTAL"
-        : "PORTALS OPENING",
-      "#b7dcf3",
-      x,
-      y,
-    );
+    if (pair.length === 2 && this.placing === owner.id) this.placing = null;
     return true;
   }
   active(portal) {
@@ -119,7 +111,7 @@ export class PortalSystem {
       if (e.hp !== undefined) {
         e.x = portal.x;
         e.y = portal.y;
-        this.game.fell(e, { lost: trapped || e.ghost });
+        this.game.fell(e, { lost: trapped || e.ghost, killer: owner });
       } else {
         e.removed = true;
         if (e.owner && e.parts) {

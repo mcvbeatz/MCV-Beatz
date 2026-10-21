@@ -1,4 +1,4 @@
-import { inWorld, visibility, distance } from "./combat.js";
+import { inWorld, visibility, distance, hasPassive } from "./combat.js";
 import { weaponStyle } from "./characters.js";
 
 const TAU = Math.PI * 2;
@@ -8,6 +8,7 @@ export function immersionFor(game, a) {
   if (hazards.some((h) => h.kind === "flood" && distance(h, a) <= h.r))
     return 32;
   if (
+    !hasPassive(a, "mud") &&
     !hazards.some((h) => h.kind === "flood") &&
     hazards.some((h) => h.kind === "quicksand" && distance(h, a) <= h.r)
   )
@@ -395,4 +396,85 @@ export function distortGravity(c, canvas, buffer, game, view, time) {
     c.fillRect(0, 0, canvas.width, canvas.height);
     c.restore();
   }
+}
+
+// Event cues are anchored to the affected body and obey Divine concealment.
+export function drawCue(c, e, game) {
+  const actor = e.subject && game.fighters.find((a) => a.id === e.subject);
+  if (actor && (!inWorld(actor) || visibility(actor) <= 0)) return;
+  const p = 1 - e.life / e.max;
+  const x = actor ? actor.x : e.x,
+    y = (actor ? actor.y : e.y) - 28;
+  c.save();
+  c.translate(x, y);
+  c.globalAlpha *= actor ? visibility(actor) : 1;
+  c.strokeStyle = e.color;
+  c.fillStyle = e.color;
+  c.lineWidth = 2.5;
+  if (["heal", "revive"].includes(e.cue)) {
+    for (let i = 0; i < 7; i++) {
+      const xx = Math.sin(i * 2.4) * 25,
+        yy = 20 - p * 55 + (i % 3) * 7;
+      c.fillRect(xx - 2, yy - 6, 4, 12);
+      c.fillRect(xx - 6, yy - 2, 12, 4);
+    }
+  } else if (e.cue === "shatter") {
+    for (let i = 0; i < 9; i++) {
+      const angle = (i / 9) * TAU,
+        r = 20 + p * 35;
+      c.save();
+      c.translate(Math.cos(angle) * r, Math.sin(angle) * r + p * p * 20);
+      c.rotate(angle + p * 3);
+      c.fillRect(-4, -4, 8, 8);
+      c.restore();
+    }
+  } else if (e.cue === "guard") {
+    c.beginPath();
+    c.moveTo(0, -30);
+    c.lineTo(23, -18);
+    c.lineTo(18, 10);
+    c.lineTo(0, 28);
+    c.lineTo(-18, 10);
+    c.lineTo(-23, -18);
+    c.closePath();
+    c.stroke();
+  } else if (e.cue === "dodge") {
+    for (let i = 0; i < 3; i++) {
+      c.beginPath();
+      c.ellipse(-p * 30 - i * 10, 0, 15, 26, 0.2, -1.4, 1.4);
+      c.stroke();
+    }
+  } else if (e.cue === "lost") {
+    for (let i = 0; i < 12; i++) {
+      const angle = i * 2.4 + p * 5,
+        r = (1 - p) * 38;
+      c.fillRect(Math.cos(angle) * r, Math.sin(angle) * r, 3, 3);
+    }
+  } else if (e.cue === "portal") {
+    c.beginPath();
+    c.ellipse(0, 0, 22 + p * 20, 30 + p * 20, 0, p * 5, p * 5 + 5);
+    c.stroke();
+  } else if (e.cue === "unavailable") {
+    c.beginPath();
+    c.arc(0, 0, 12 + p * 6, 0, TAU);
+    c.moveTo(-10, -10);
+    c.lineTo(10, 10);
+    c.stroke();
+  } else if (e.cue === "interrupt") {
+    for (let i = 0; i < 6; i++) {
+      const angle = (i / 6) * TAU;
+      c.beginPath();
+      c.moveTo(Math.cos(angle) * 10, Math.sin(angle) * 10);
+      c.lineTo(
+        Math.cos(angle + 0.2) * (20 + p * 15),
+        Math.sin(angle + 0.2) * (20 + p * 15),
+      );
+      c.lineTo(
+        Math.cos(angle) * (30 + p * 15),
+        Math.sin(angle) * (30 + p * 15),
+      );
+      c.stroke();
+    }
+  }
+  c.restore();
 }

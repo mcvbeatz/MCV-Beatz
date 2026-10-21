@@ -87,7 +87,8 @@ test("every added fused skill remains visible and fits beside movement and strik
   await prepare(page);
   await page.locator("#begin-btn").click();
   const expected = {
-    divine: ["Radiance", "Revival"],
+    spirit: ["Revival", "Portals", "Healing"],
+    divine: ["Radiance", "Revival", "Portals"],
     sun: ["Laser beam", "Heatwave", "Healing"],
     demonic: ["Minions", "Death", "Speed burst", "Sonic boom"],
     mirror: ["Rock shield", "Healing"],

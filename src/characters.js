@@ -5,8 +5,11 @@ import airborne from "./assets/fusions-airborne.json" with { type: "json" };
 import originRuns from "./assets/running-origins.json" with { type: "json" };
 import fusionRuns from "./assets/running-fusions.json" with { type: "json" };
 
+import revised from "./assets/revised-characters.json" with { type: "json" };
+import revisedRuns from "./assets/revised-running.json" with { type: "json" };
+
 export const ORIGINS = ["water", "dark", "fire", "air", "earth", "light"];
-const frames = { ...origins, ...grounded, ...airborne };
+const frames = { ...origins, ...grounded, ...airborne, ...revised };
 export const CHARACTERS = Object.keys(frames);
 export const ATTACK_NAMES = {
   water: "Tidal palm",
@@ -62,6 +65,12 @@ const atlases = [
     new URL("./assets/fusions-airborne.webp", import.meta.url).href,
   ),
 ];
+atlases.push(
+  loadAtlas(
+    revised,
+    new URL("./assets/revised-characters.webp", import.meta.url).href,
+  ),
+);
 const runs = [
   loadAtlas(
     originRuns,
@@ -72,6 +81,12 @@ const runs = [
     new URL("./assets/running-fusions.webp", import.meta.url).href,
   ),
 ];
+runs.push(
+  loadAtlas(
+    revisedRuns,
+    new URL("./assets/revised-running.webp", import.meta.url).href,
+  ),
+);
 const byElement = Object.fromEntries(
   atlases.flatMap((atlas) => Object.keys(atlas.spec).map((e) => [e, atlas])),
 );
@@ -118,12 +133,24 @@ export function characterPose(a) {
     running,
     reacting,
     runFrame:
-      running && stride % 2 === 0 ? facing * 2 + (stride === 2 ? 1 : 0) : null,
+      running && ["earth", "mud"].includes(a.element)
+        ? facing * 2 + (stride < 2 ? 0 : 1)
+        : running && stride % 2 === 0
+          ? facing * 2 + (stride === 2 ? 1 : 0)
+          : null,
     bob: running ? Math.abs(Math.sin((cycle * Math.PI) / 2)) * 2 : 0,
   };
 }
 
-function paintFrame(c, element, frame, flip, height, running = false) {
+function paintFrame(
+  c,
+  element,
+  frame,
+  flip,
+  height,
+  running = false,
+  flash = 0,
+) {
   const atlas = running ? runByElement[element] : byElement[element];
   if (!atlas?.loaded) return false;
   const spec = atlas.spec[element];
@@ -143,6 +170,30 @@ function paintFrame(c, element, frame, flip, height, running = false) {
     f.w * scale,
     f.h * scale,
   );
+  if (flash > 0) {
+    if (!atlas.white) {
+      atlas.white = document.createElement("canvas");
+      atlas.white.width = atlas.image.width;
+      atlas.white.height = atlas.image.height;
+      const tint = atlas.white.getContext("2d");
+      tint.drawImage(atlas.image, 0, 0);
+      tint.globalCompositeOperation = "source-in";
+      tint.fillStyle = "#fffbe5";
+      tint.fillRect(0, 0, atlas.white.width, atlas.white.height);
+    }
+    c.globalAlpha *= flash;
+    c.drawImage(
+      atlas.white,
+      f.x,
+      f.y,
+      f.w,
+      f.h,
+      -f.anchorX * scale,
+      -f.anchorY * scale,
+      f.w * scale,
+      f.h * scale,
+    );
+  }
   c.restore();
   return true;
 }
@@ -175,8 +226,9 @@ export function drawCharacter(c, a, time) {
     a.element,
     running ? pose.runFrame : pose.frame,
     pose.flip,
-    64,
+    running && ["earth", "mud"].includes(a.element) ? 44 : 64,
     running,
+    a.spawnFlash > 0 ? 0.35 + Math.abs(Math.sin(a.spawnFlash * 22)) * 0.65 : 0,
   );
   if (a.parts.length === 2) {
     // Keep the level-II shine with the new silhouettes (and inherited alpha).

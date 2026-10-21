@@ -1,4 +1,4 @@
-# Elemental — The Colosseum · v0.8
+# Elemental — The Colosseum · v0.9
 
 A single-player elemental combat game with concept-based pixel characters, AI battles, fusion and touch controls. Built with vanilla JavaScript, Canvas 2D and Vite. No server, accounts, secrets or external runtime assets are required.
 
@@ -33,25 +33,39 @@ The six level-I elementals now use the supplied concepts, adapted into a consist
 
 Facing follows the actual target lock or movement direction. Each strike has recoil, contact and recovery synchronized to the existing **110ms windup / 220ms swing**. The same art is used for players and AI. All **14 fused forms** now have their own front, back, side and attack frames, combining the component concepts. Level II adds a shine; level III adds a glow. Divine remains fully concealed at rest in battle, while its selection previews show the design.
 
-The **12 grounded elementals** (Water, Dark, Fire, Earth, Light, Mud, Mirror, Sun, Smoke, Gravity, Multi-Dimensional and Invincible) have alternating directional running frames with contact poses between strides. Cadence follows movement speed; the cycle stops when movement stops or is blocked. Attacks and clashes take precedence. Air and the seven Air-based fusions retain hovering movement. Running uses facing direction, so automatic target lock still allows strafing.
+The **12 grounded elementals** (Water, Dark, Fire, Earth, Light, Mud, Mirror, Sun, Smoke, Gravity, Multi-Dimensional and Invincible) have alternating directional running frames with contact poses between strides. Earth and Mud use continuous all-fours strides without upright contact frames. Cadence follows movement speed; the cycle stops when movement stops or is blocked. Attacks and clashes take precedence. Air and the seven Air-based fusions retain hovering movement. Running uses facing direction, so automatic target lock still allows strafing.
 
 The transparent atlases ship as lossless WebP files with versioned asset URLs. Each atlas loads independently, with a procedural fallback if loading fails. No external image service is used at runtime. Frame rectangles and foot anchors are documented in `src/assets/README.md`.
+
+The v0.9 revision gives Divine a featureless white-light face under its hood; Invincible has an uncovered Sun-like human head, muscular human arms and golden scales; Lightning has golden hair; Multi-Dimensional has a smooth hood without head spikes. Updated idle, directional attacks and applicable running frames all use the revised designs.
+
+## Game modes
+
+All modes are single-player with adaptive AI opponents. Team formats offer **2v2, 3v3 and 4v4**; friendly fire remains enabled.
+
+- **Capture the Flag:** carry the enemy flag to your home flag. Your own flag must be at base to score; touch a dropped friendly flag to return it. Death drops a carried flag. First to **3 captures** wins. Fighters respawn after **10 seconds**, even after a full-team defeat. Only level-I elements are available, and tokens and fusion are disabled. AI assigns attackers and defenders, intercepts flag carriers and returns dropped flags.
+- **Team Deathmatch:** **3 minutes**, with **10-second respawns**. Most enemy kills wins; tied scores draw. A team immediately loses if all its real fighters are down together; surviving summons do not prevent this. Enemy kills by minions count for their summoner, while friendly kills and minion deaths score no points. A teammate's respawn preserves any fusion you acquired from their token. Your own respawn resets you to your starting element, full health and fresh cooldowns. Unclaimed tokens disappear when their owner respawns. Revival also resets the returned fighter without stripping other fighters' fusions.
+- **Free for All:** choose **2–8 fighters**, each on their own side. Last living real fighter wins; there are no respawns. All rival tokens are visible and compatible ones fuse on touch. After falling, you can watch the remaining rivals finish the match.
+- **Duel, Team Brawl, Fused II and Fused III** retain their existing elimination rules and allied-token fusion rules.
+
+The HUD shows flag/kill scores, Deathmatch time remaining, respawn countdowns and the number of surviving Free for All fighters. Match results identify captures, timeout or elimination.
 
 ## Direct fused abilities
 
 The fused tab now exposes these added buttons without switching origin tabs:
 
-| Elemental         | Added abilities                                   |
-| ----------------- | ------------------------------------------------- |
-| Divine            | Revival; Radiance now heals the whole living team |
-| Sun               | Healing                                           |
-| Demonic           | Speed burst, Sonic boom                           |
-| Mirror            | Rock shield, Healing                              |
-| Smoke             | Shadow step, Flamethrower                         |
-| Gravity           | Rock shield                                       |
-| Apparition        | Sonic boom                                        |
-| Multi-Dimensional | Healing, Shadow step                              |
-| Lightning         | Healing, Gust                                     |
+| Elemental         | Added abilities                                  |
+| ----------------- | ------------------------------------------------ |
+| Spirit            | Healing                                          |
+| Divine            | Revival, Portals; Radiance heals the living team |
+| Sun               | Healing                                          |
+| Demonic           | Speed burst, Sonic boom                          |
+| Mirror            | Rock shield, Healing                             |
+| Smoke             | Shadow step, Flamethrower                        |
+| Gravity           | Rock shield                                      |
+| Apparition        | Sonic boom                                       |
+| Multi-Dimensional | Healing, Shadow step                             |
+| Lightning         | Healing, Gust                                    |
 
 Buttons fit between the stick and Strike, using two rows on narrower screens. Added charge skills share the existing main-ability cooldown, and added utilities share the utility cooldown; Speed burst retains zero recharge. A held charge stays tied to the pressed ability. Passives remain automatic. The origin selector scrolls horizontally on phones, keeping Fire reachable.
 
@@ -64,6 +78,7 @@ Earth's Rock burst is removed; Rock shield remains. Doppelgängers pursue and st
 - **Sonic boom:** fast curved wind fronts and directional streaks move through the existing fan-shaped strike area. Range, speed and damage are unchanged.
 - **Gravity x2:** its circular gameplay area now softens and distorts the scene with a slight purple tint. The effect uses offset image copies for Safari compatibility and never draws hidden fighters.
 - **Flood:** a moving water surface replaces the flat marker. Grounded characters are occluded up to their waist; flying characters remain above the water. Existing Flood damage and slowing rules still apply.
+- **Mud:** immune to quicksand damage, slowing and sinking, regardless of which skill tab is selected.
 - **Quicksand:** sand bands and particles spiral inward; grounded feet disappear beneath the surface. Flood suppresses the ground effect as before.
 - **Reflect:** a translucent shield rotates around the recipient when reflection occurs. Reflection text is removed; the 40% return / 60% incoming split and normal defenses remain intact.
 - **Contested strikes:** the fighters briefly hold opposing contact poses with their own spears, daggers, claws or elemental fists meeting in a shared spark. Normal swing animations are suppressed during this **300ms** clash. Existing quarter-damage rules still apply.
@@ -77,7 +92,7 @@ Earth's Rock burst is removed; Rock shield remains. Doppelgängers pursue and st
 - Low health reduces speed. Air passively flies faster with slower direction changes. Stick magnitude controls movement speed.
 - Main skills charge for up to **1.8 seconds** and scale to **2.6×** potency. Hits interrupt charge growth for **270ms** without deleting stored power; Dark sabotage cancels charging.
 - Same-element abilities deal half damage. The supplied hierarchy gives a **1.2×** advantage.
-- Water ability damage to any Fire-bearing elemental is multiplied by **0.7**, a 30% reduction from v0.1. Against base Fire, Hydro pump’s combined multiplier is now **1.68×** (2 × 1.2 × 0.7). Flood deals **25% max-health base damage once per fighter per cast**, with normal defenses and partial reflection applied, instead of instant death. Grounded fighters are still slowed; leaving and re-entering the same Flood does not repeat its damage.
+- Water ability damage to any Fire-bearing elemental is multiplied by **0.7**, a 30% reduction from v0.1. Against base Fire, Hydro pump’s combined multiplier is now **1.68×** (2 × 1.2 × 0.7). Flood deals **25% max-health base damage once per fighter per cast**, with normal defenses applied and no reflection, instead of instant death. Grounded fighters are still slowed; leaving and re-entering the same Flood does not repeat its damage.
 - Rock shield has **65 durability**, blocks 360°, and renders a shell of rising rocks. It lasts as long as held, with no former 3-second timeout. Releasing or breaking it starts a 5-second cooldown.
 - Sonic boom is an expanding fan-shaped wave, with damage falling off over distance. The Sun laser is a fast, piercing beam with swept collision, not a ball.
 
@@ -95,11 +110,15 @@ Earth's Rock burst is removed; Rock shield remains. Doppelgängers pursue and st
 
 Demonic minions now have **8 HP** and retain their existing count, lifetime and contact burn. Apparition doubles remain at **1 HP**. An ordinary direct melee hit can still kill a Demonic minion.
 
-**Reflect:** Mirror and its descendants return **40% of incoming ability damage**, take the remaining **60%**, and then apply each recipient's normal defenses. The original elemental matchup is calculated once before the split. Reflections cannot bounce repeatedly. Melee is not reflected.
+**Reflect:** Mirror and its descendants return **40% of incoming ability damage**, take the remaining **60%**, and then apply each recipient's normal defenses. The original elemental matchup is calculated once before the split. Reflections cannot bounce repeatedly. Melee is not reflected. **Quicksand, Gravity x2, Flood, Heatwave and Magma never trigger Reflect**; damaging terrain applies its full damage before the recipient's normal defenses. Vog and direct elemental abilities still reflect.
+
+Spirit and Divine AI now open and traverse paired portals to close distance, retreat or reach wounded allies. They choose clear destinations, preserve player placement and never deliberately close a gate on a traveller. Multi-Dimensional AI uses bounded teleports with the same vulnerable preparation as the player, avoiding occupied and hazardous destinations. AI decisions never track an invisible enemy's live coordinates.
+
+Combat feedback uses animations instead of floating event text: summons and revived fighters flash, tokens fall with a shining glint, and healing, shields, dodges, interruptions and dimensional losses use contextual effects. Hidden Divine fighters remain concealed by these cues. Persistent control instructions, scores and match results remain readable in the HUD.
 
 ## Automatic fusion and passives
 
-Only allied tokens are rendered. Touching a compatible token within **27 world units** fuses automatically, heals 30 HP, blends colors and creates a shockwave that briefly pushes all other on-field fighters away, including allies. Level II gains a shine; level III gains a glow.
+In team elimination and Deathmatch, only allied tokens are rendered. Free for All exposes all rival tokens; Capture the Flag disables tokens and fusion. Touching a compatible token within **27 world units** fuses automatically, heals 30 HP, blends colors and creates a shockwave that briefly pushes all other on-field fighters away, including allies. Level II gains a shine; level III gains a glow.
 
 Ability-set tabs expose all accumulated origins and fused forms. Passive abilities are inherited and never require a button: Reflect, hard skin, contact burn/resistance, flight, venomous contact, Angel guard, Divine invisibility/status immunity and Multi-Dimensional teleportation, Lightning Shock and Invincible strength. Mirror exposes Rock shield and Healing directly on its fused tab.
 
@@ -143,7 +162,7 @@ npm run test:browser
 npm run build
 ```
 
-Browser tests use `/usr/bin/chromium`; set `CHROMIUM_PATH` for another installed Chromium. The suite starts Vite if necessary. Tests cover combat timing, automatic lock/fusion, hidden enemy tokens, passives, randomized formats, damage tuning, portal entity transport, dimensional losses, revival, Angel guard and teleportation. Browser checks exercise landscape and rotated-portrait layouts, real multi-touch stick-and-charge input, portal hit mapping, ability switching, shield holding returning to setup, zero-cooldown dashes, level-III controls and complete Divine concealment. These are Chromium mobile emulation checks; real iPhone Safari validation remains useful.
+Browser tests use `/usr/bin/chromium`; set `CHROMIUM_PATH` for another installed Chromium. The suite starts Vite if necessary. Tests cover flag pickup/return/capture, objective AI, timed scores, respawn fusion retention/reset, team wipes, Free for All sizes and tokens, combat timing, automatic lock/fusion, hidden enemy tokens, passives, randomized formats, damage tuning, portal entity transport, dimensional losses, revival, Angel guard and teleportation. Browser checks exercise landscape and rotated-portrait layouts, real multi-touch stick-and-charge input, portal hit mapping, ability switching, shield holding returning to setup, zero-cooldown dashes, level-III controls and complete Divine concealment. These are Chromium mobile emulation checks; real iPhone Safari validation remains useful.
 
 - `src/combat.js`: combat, AI, abilities, fusion and revival.
 - `src/portals.js`: shared portal transport and dimensional state for all mobile entities.

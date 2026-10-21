@@ -22,7 +22,8 @@ function charge(g, form) {
 }
 test("each requested fused shortcut executes without changing its selected tab or identity", () => {
   const expected = {
-    divine: ["Revival"],
+    spirit: ["Healing"],
+    divine: ["Revival", "Portals"],
     sun: ["Healing"],
     demonic: ["Speed burst", "Sonic boom"],
     mirror: ["Rock shield", "Healing"],
@@ -57,6 +58,7 @@ test("each requested fused shortcut executes without changing its selected tab o
       }
       if (skill.name === "Speed burst") assert.ok(a.burst > 0);
       if (skill.name === "Shadow step") assert.ok(a.dodge > 0);
+      if (skill.name === "Portals") assert.equal(g.portals.placing, a.id);
       if (skill.name === "Gust") assert.ok(a.boost > 0);
       if (skill.name === "Sonic boom") {
         assert.equal(g.waves.length, 1);

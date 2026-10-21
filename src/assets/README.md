@@ -41,3 +41,19 @@ The normal strike uses the existing 110ms windup and 220ms swing. A contested
 strike uses its contact pose plus a paired weapon effect for 300ms. These visual
 states do not add attack damage, range or cooldowns. Level-II shines and level-III
 glows are composited in the renderer so the transparency rules remain consistent.
+
+## v0.9 replacement atlases
+
+`revised-characters.webp` overrides Divine, Invincible, Lightning and
+Multi-Dimensional (four rows, the same six identity/attack columns).
+Divine has a featureless white-light face under its hood; Invincible has an
+uncovered human head, human arms and golden scales; Lightning's hair is gold;
+Multi-Dimensional's hood has no head spikes.
+
+`revised-running.webp` overrides Earth, Mud, Invincible and Multi-Dimensional
+(four rows, six running columns). Earth and Mud use a continuous all-fours gait
+rendered at a lower height, never alternating back to an upright idle sprite.
+The other two rows carry their revised anatomy/head details into running.
+Both atlases were generated from the existing concepts and encoded losslessly;
+JSON frame bounds and foot anchors do not modify the art. Summon/revival body
+flashes are white silhouettes composited from the loaded atlas at runtime.

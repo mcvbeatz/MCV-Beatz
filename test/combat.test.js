@@ -495,7 +495,7 @@ test("Angel guard is controllable after death and blocks only enemy melee", () =
   g.strike(b);
   advance(g, 0.15);
   assert.equal(ally.hp, 120);
-  assert.ok(g.events.some((e) => e.text === "ANGEL GUARD"));
+  assert.ok(g.effects.some((e) => e.cue === "guard"));
   g.damage(b, ally, 20, true);
   assert.equal(ally.hp, 110);
   assert.equal(g.strike(ghost), false);

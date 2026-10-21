@@ -185,7 +185,7 @@ test("Flood hits Fire-bearing fighters once per cast, including re-entry, and a 
   advance(g, 0.01);
   assert.equal(b.hp, 60);
 });
-test("Flood uses max-health base damage with defenses and reflection, and does not damage non-Fire fighters", () => {
+test("Flood uses max-health base damage with defenses, bypasses reflection, and spares non-Fire fighters", () => {
   const g = arena("cloud", "invincible"),
     a = g.player,
     b = g.fighters[1];
@@ -205,8 +205,8 @@ test("Flood uses max-health base damage with defenses and reflection, and does n
     tick: 0,
   });
   advance(g, 0.01);
-  near(b.hp, 106.5);
-  near(a.hp, 108);
+  near(b.hp, 97.5);
+  near(a.hp, 120);
   assert.equal(earth.hp, 120);
   assert.ok(earth.slow > 0);
   assert.ok(b.alive);
