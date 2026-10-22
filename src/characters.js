@@ -1,3 +1,15 @@
+import combatMud from "./assets/combat-mud.json" with { type: "json" };
+import tuned from "./assets/tuned-identities.json" with { type: "json" };
+import tunedRuns from "./assets/tuned-running.json" with { type: "json" };
+import combatOrigins from "./assets/combat-origins.json" with { type: "json" };
+import combatGrounded from "./assets/combat-grounded.json" with { type: "json" };
+import combatAirborne from "./assets/combat-airborne.json" with { type: "json" };
+import combatGravity from "./assets/combat-gravity.json" with { type: "json" };
+import combatSun from "./assets/combat-sun.json" with { type: "json" };
+import combatLightning from "./assets/combat-lightning.json" with { type: "json" };
+import hurtOrigins from "./assets/hurt-origins.json" with { type: "json" };
+import hurtGrounded from "./assets/hurt-grounded.json" with { type: "json" };
+import hurtAirborne from "./assets/hurt-airborne.json" with { type: "json" };
 import { canReactToHit } from "./combat.js";
 import origins from "./assets/origins.json" with { type: "json" };
 import grounded from "./assets/fusions-grounded.json" with { type: "json" };
@@ -9,7 +21,7 @@ import revised from "./assets/revised-characters.json" with { type: "json" };
 import revisedRuns from "./assets/revised-running.json" with { type: "json" };
 
 export const ORIGINS = ["water", "dark", "fire", "air", "earth", "light"];
-const frames = { ...origins, ...grounded, ...airborne, ...revised };
+const frames = { ...origins, ...grounded, ...airborne, ...revised, ...tuned };
 export const CHARACTERS = Object.keys(frames);
 export const ATTACK_NAMES = {
   water: "Tidal palm",
@@ -87,6 +99,70 @@ runs.push(
     new URL("./assets/revised-running.webp", import.meta.url).href,
   ),
 );
+atlases.push(
+  loadAtlas(
+    tuned,
+    new URL("./assets/tuned-identities.webp", import.meta.url).href,
+  ),
+);
+runs.push(
+  loadAtlas(
+    tunedRuns,
+    new URL("./assets/tuned-identities.webp", import.meta.url).href,
+  ),
+);
+const actions = [
+  loadAtlas(
+    combatOrigins,
+    new URL("./assets/combat-origins.webp", import.meta.url).href,
+  ),
+  loadAtlas(
+    combatGrounded,
+    new URL("./assets/combat-grounded.webp", import.meta.url).href,
+  ),
+  loadAtlas(
+    combatAirborne,
+    new URL("./assets/combat-airborne.webp", import.meta.url).href,
+  ),
+  loadAtlas(
+    combatGravity,
+    new URL("./assets/combat-gravity.webp", import.meta.url).href,
+  ),
+  loadAtlas(
+    combatSun,
+    new URL("./assets/combat-sun.webp", import.meta.url).href,
+  ),
+  loadAtlas(
+    combatLightning,
+    new URL("./assets/combat-lightning.webp", import.meta.url).href,
+  ),
+];
+actions.push(
+  loadAtlas(
+    combatMud,
+    new URL("./assets/combat-mud.webp", import.meta.url).href,
+  ),
+);
+const hurts = [
+  loadAtlas(
+    hurtOrigins,
+    new URL("./assets/hurt-origins.webp", import.meta.url).href,
+  ),
+  loadAtlas(
+    hurtGrounded,
+    new URL("./assets/hurt-grounded.webp", import.meta.url).href,
+  ),
+  loadAtlas(
+    hurtAirborne,
+    new URL("./assets/hurt-airborne.webp", import.meta.url).href,
+  ),
+];
+const actionByElement = Object.fromEntries(
+  actions.flatMap((atlas) => Object.keys(atlas.spec).map((e) => [e, atlas])),
+);
+const hurtByElement = Object.fromEntries(
+  hurts.flatMap((atlas) => Object.keys(atlas.spec).map((e) => [e, atlas])),
+);
 const byElement = Object.fromEntries(
   atlases.flatMap((atlas) => Object.keys(atlas.spec).map((e) => [e, atlas])),
 );
@@ -94,13 +170,14 @@ const runByElement = Object.fromEntries(
   runs.flatMap((atlas) => Object.keys(atlas.spec).map((e) => [e, atlas])),
 );
 export const charactersReady = Promise.all(
-  [...atlases, ...runs].map((a) => a.ready),
+  [...atlases, ...runs, ...actions, ...hurts].map((a) => a.ready),
 ).then((loaded) => loaded.every(Boolean));
 
 export function isRunning(a) {
   return (
     a.alive &&
     !a.ghost &&
+    !a.lock &&
     !a.parts.includes("air") &&
     !a.blink &&
     a.movingTime > 0 &&
@@ -119,6 +196,18 @@ export function characterPose(a) {
   // Match the existing 110ms strike windup. Recoil, contact, then recovery.
   const contact = progress >= 0.5 && progress < 0.92;
   const reacting = a.hitReact > 0 && canReactToHit(a);
+  const sidestepping =
+    !!a.lock &&
+    a.alive &&
+    !a.ghost &&
+    !a.blink &&
+    !a.charging &&
+    !a.shield &&
+    a.movingTime > 0 &&
+    Math.hypot(a.vx, a.vy) > 3 &&
+    progress < 0 &&
+    !clashing &&
+    !reacting;
   const running = isRunning(a) && progress < 0 && !clashing && !reacting;
   // movingTime advances only for actual voluntary movement; a wall, Shock,
   // a portal or a teleport must not produce a treadmill animation.
@@ -132,6 +221,10 @@ export function characterPose(a) {
     progress,
     running,
     reacting,
+    facing,
+    sidestepping,
+    stepFrame: sidestepping ? facing * 2 + (stride < 2 ? 0 : 1) : null,
+    hurtFrame: reacting ? facing : null,
     runFrame:
       running && ["earth", "mud"].includes(a.element)
         ? facing * 2 + (stride < 2 ? 0 : 1)
@@ -151,14 +244,27 @@ function paintFrame(
   running = false,
   flash = 0,
 ) {
-  const atlas = running ? runByElement[element] : byElement[element];
+  let atlas =
+    running === "step"
+      ? actionByElement[element]
+      : running === "hurt"
+        ? element === "mud"
+          ? null
+          : hurtByElement[element]
+        : running
+          ? runByElement[element]
+          : byElement[element];
+  if (running === "hurt" && !atlas?.loaded) {
+    atlas = actionByElement[element];
+    frame += 6;
+  }
   if (!atlas?.loaded) return false;
   const spec = atlas.spec[element];
   const f = spec.frames[frame];
   const scale = height / spec.height;
   c.save();
   c.imageSmoothingEnabled = false;
-  if (flip) c.scale(-1, 1);
+  if (!!flip !== !!f.mirror) c.scale(-1, 1);
   c.drawImage(
     atlas.image,
     f.x,
@@ -221,13 +327,28 @@ export function drawCharacter(c, a, time) {
     c.translate(a.clashFx * brace, a.clashFy * brace);
   }
   const running = pose.runFrame !== null && runByElement[a.element]?.loaded;
+  const sidestepping = pose.sidestepping && actionByElement[a.element]?.loaded;
+  const hurt =
+    pose.reacting &&
+    (hurtByElement[a.element]?.loaded || actionByElement[a.element]?.loaded);
+  if (sidestepping) {
+    // A short lateral weight transfer preserves target-facing and never plays a run cycle.
+    const shift = Math.sin(a.movingTime * 12) * 2;
+    c.translate(-a.fy * shift, a.fx * shift * 0.45);
+  }
   paintFrame(
     c,
     a.element,
-    running ? pose.runFrame : pose.frame,
+    hurt
+      ? pose.hurtFrame
+      : sidestepping
+        ? pose.stepFrame
+        : running
+          ? pose.runFrame
+          : pose.frame,
     pose.flip,
-    running && ["earth", "mud"].includes(a.element) ? 44 : 64,
-    running,
+    (running || sidestepping) && ["earth", "mud"].includes(a.element) ? 44 : 64,
+    hurt ? "hurt" : sidestepping ? "step" : running,
     a.spawnFlash > 0 ? 0.35 + Math.abs(Math.sin(a.spawnFlash * 22)) * 0.65 : 0,
   );
   if (a.parts.length === 2) {

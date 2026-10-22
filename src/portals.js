@@ -24,7 +24,7 @@ export class PortalSystem {
   begin(owner) {
     if (!owner.alive) return false;
     if (this.owned(owner).length >= 2) {
-      this.game.cue("portal", owner, "#c6b8ef");
+      this.game.cue("portal", owner, "#ffffff");
       return false;
     }
     this.placing = owner.id;
@@ -129,10 +129,10 @@ export class PortalSystem {
     }
     this.portals = this.portals.filter((p) => p !== portal);
     this.game.effects.push({
-      kind: "ring",
+      kind: "portal-close",
       x: portal.x,
       y: portal.y,
-      color: "#c5a7e6",
+      color: "#ffffff",
       r: 70,
       life: 0.4,
       max: 0.4,

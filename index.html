@@ -35,7 +35,7 @@
             How to play <span>→</span>
           </button>
         </nav>
-        <span class="build-badge"><i></i> COMBAT PROTOTYPE <b>0.7</b></span>
+        <span class="build-badge"><i></i> COMBAT PROTOTYPE <b>0.10</b></span>
       </header>
       <main>
         <div class="page-title">
@@ -84,6 +84,9 @@
               <button data-mode="ctf">Capture the flag</button>
               <button data-mode="tdm">Team deathmatch</button>
               <button data-mode="ffa">Free for all</button>
+              <button data-mode="corruption">Corruption</button>
+              <button data-mode="boss">Boss</button>
+              <button data-mode="domination">Domination</button>
             </div>
             <div id="team-sizes" class="team-sizes" hidden>
               <button data-size="2" class="selected">2 vs 2</button
@@ -92,7 +95,7 @@
             </div>
             <label id="ffa-settings" class="ffa-settings" hidden
               >Fighters
-              <select id="ffa-count" aria-label="Free for all fighter count">
+              <select id="ffa-count" aria-label="Fighter count">
                 <option>2</option>
                 <option>3</option>
                 <option selected>4</option>
@@ -102,6 +105,25 @@
                 <option>8</option>
               </select>
             </label>
+            <div id="boss-settings" class="ffa-settings" hidden>
+              <label
+                >Play as
+                <select id="boss-role" aria-label="Boss role">
+                  <option value="boss">The boss</option>
+                  <option value="challenger">A challenger</option>
+                </select></label
+              >
+              <label
+                >Challengers
+                <select id="boss-count" aria-label="Challenger count">
+                  <option selected>3</option>
+                  <option>4</option>
+                  <option>5</option>
+                  <option>6</option>
+                  <option>7</option>
+                </select></label
+              >
+            </div>
             <div class="mode-description" id="mode-description">
               <span>⚔</span>
               <div>
@@ -111,7 +133,9 @@
             </div>
             <div class="rule-row">
               <span>Friendly fire</span
-              ><span class="on-indicator">ON <i></i></span>
+              ><span id="friendly-fire-state" class="on-indicator"
+                >ON <i></i
+              ></span>
             </div>
             <div class="rule-row">
               <span>Opponent</span><span>Adaptive AI</span>
@@ -132,7 +156,7 @@
               <div>
                 <span class="live-dot"></span
                 ><strong>THE SUNKEN COLOSSEUM</strong
-                ><span class="arena-type">Touch combat · v0.9</span>
+                ><span class="arena-type">Touch combat · v0.10</span>
               </div>
               <div class="arena-tools">
                 <button id="leave-btn" aria-label="Return to battle setup">

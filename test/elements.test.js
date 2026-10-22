@@ -47,7 +47,7 @@ test("Lightning strikes hit immediately without charging and respect range and c
   assert.equal(a.charging, false);
   assert.equal(a.charge, 0);
   assert.ok(Math.abs(b.hp - 88.8) < 1e-9); // 26 base × hierarchy advantage 1.2.
-  assert.equal(a.abilityCd, 4.5);
+  assert.equal(a.abilityCd, 3);
   assert.equal(g.projectiles.length, 0);
   assert.ok(g.effects.some((e) => e.kind === "lightning"));
   assert.equal(g.startCharge(a), false);
@@ -218,6 +218,7 @@ test("idle AI probes random remembered spaces, can hit hidden Divine, and never 
   a.fy = 0;
   a.attackCd = 0;
   g.pending = [];
+  a.aiControlled = false; // Deliberate hit probe is independent of AI repetition limits.
   g.strike(a, { x: 300, y: 300 });
   advance(g, 0.15);
   assert.ok(g.player.hp < 120);

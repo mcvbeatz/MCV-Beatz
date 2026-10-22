@@ -1,4 +1,11 @@
-# Elemental — The Colosseum · v0.9
+# Elemental — The Colosseum · v0.10
+
+### New modes and Lightning update
+
+- **Corruption:** 2–8 fighters start as Light; a random fighter becomes Dark at 5 seconds. Dark melee converts Light in one hit; Light melee fells Dark in one hit. Dark has no abilities and respawns after 10 seconds. Light survival and Dark infection totals have separate winners, including ties. Ends when all are Dark or after 2 minutes. Friendly fire and fusion are disabled.
+- **Boss:** choose the Invincible boss or a level-I challenger. Supports 3–7 challengers; boss maximum health equals their combined maximum health. Last team standing wins, with no respawns, friendly fire or fusion.
+- **Domination:** 2v2–4v4, four flags, two initially owned by each team. A capture takes 10 seconds; each additional attacker doubles speed. Defenders contest and pause capture. Unattended progress drains at one capture-second per second. Each owned flag scores one flag-second each second; highest total at 3 minutes wins, with ties drawing. Respawns take 10 seconds; team wipes do not end this mode. Allied-token fusion follows Deathmatch's respawn rules.
+- **Lightning strikes:** cooldown reduced from 4.5 to **3 seconds**, with the same instant strike and range.
 
 A single-player elemental combat game with concept-based pixel characters, AI battles, fusion and touch controls. Built with vanilla JavaScript, Canvas 2D and Vite. No server, accounts, secrets or external runtime assets are required.
 
@@ -33,7 +40,7 @@ The six level-I elementals now use the supplied concepts, adapted into a consist
 
 Facing follows the actual target lock or movement direction. Each strike has recoil, contact and recovery synchronized to the existing **110ms windup / 220ms swing**. The same art is used for players and AI. All **14 fused forms** now have their own front, back, side and attack frames, combining the component concepts. Level II adds a shine; level III adds a glow. Divine remains fully concealed at rest in battle, while its selection previews show the design.
 
-The **12 grounded elementals** (Water, Dark, Fire, Earth, Light, Mud, Mirror, Sun, Smoke, Gravity, Multi-Dimensional and Invincible) have alternating directional running frames with contact poses between strides. Earth and Mud use continuous all-fours strides without upright contact frames. Cadence follows movement speed; the cycle stops when movement stops or is blocked. Attacks and clashes take precedence. Air and the seven Air-based fusions retain hovering movement. Running uses facing direction, so automatic target lock still allows strafing.
+The **12 grounded elementals** (Water, Dark, Fire, Earth, Light, Mud, Mirror, Sun, Smoke, Gravity, Multi-Dimensional and Invincible) have alternating directional running frames with contact poses between strides. Earth and Mud use continuous all-fours strides without upright contact frames. Cadence follows movement speed; the cycle stops when movement stops or is blocked. Attacks and clashes take precedence. Air and the seven Air-based fusions retain hovering movement. Target-locked movement uses dedicated sidestep frames for every elemental, including flyers.
 
 The transparent atlases ship as lossless WebP files with versioned asset URLs. Each atlas loads independently, with a procedural fallback if loading fails. No external image service is used at runtime. Frame rectangles and foot anchors are documented in `src/assets/README.md`.
 
@@ -41,7 +48,7 @@ The v0.9 revision gives Divine a featureless white-light face under its hood; In
 
 ## Game modes
 
-All modes are single-player with adaptive AI opponents. Team formats offer **2v2, 3v3 and 4v4**; friendly fire remains enabled.
+All modes are single-player with adaptive AI opponents. Team formats offer **2v2, 3v3 and 4v4**; friendly fire is enabled except in Boss and Corruption.
 
 - **Capture the Flag:** carry the enemy flag to your home flag. Your own flag must be at base to score; touch a dropped friendly flag to return it. Death drops a carried flag. First to **3 captures** wins. Fighters respawn after **10 seconds**, even after a full-team defeat. Only level-I elements are available, and tokens and fusion are disabled. AI assigns attackers and defenders, intercepts flag carriers and returns dropped flags.
 - **Team Deathmatch:** **3 minutes**, with **10-second respawns**. Most enemy kills wins; tied scores draw. A team immediately loses if all its real fighters are down together; surviving summons do not prevent this. Enemy kills by minions count for their summoner, while friendly kills and minion deaths score no points. A teammate's respawn preserves any fusion you acquired from their token. Your own respawn resets you to your starting element, full health and fresh cooldowns. Unclaimed tokens disappear when their owner respawns. Revival also resets the returned fighter without stripping other fighters' fusions.
@@ -49,6 +56,14 @@ All modes are single-player with adaptive AI opponents. Team formats offer **2v2
 - **Duel, Team Brawl, Fused II and Fused III** retain their existing elimination rules and allied-token fusion rules.
 
 The HUD shows flag/kill scores, Deathmatch time remaining, respawn countdowns and the number of surviving Free for All fighters. Match results identify captures, timeout or elimination.
+
+## v0.10 battle adjustments
+
+- **AI repetition:** after three repetitions of the same action, an AI must reposition or choose another action. Three seconds without meaningful movement, damage or fusion also triggers a new plan. Fighters actively seek visible compatible tokens, flank hazards, and can escape an existing harmful floor instead of freezing at its edge. Friendly-fire restraint and hidden-Divine visibility rules still apply.
+- **Death:** Demonic places a permanent **66-unit radius** floor sigil, the same size and forward placement as Magma. Each entry lowers a real fighter by one tier, including flyers, allies and the caster; level-I fighters are unaffected. Remaining within the sigil does not repeatedly demote, but leaving and re-entering can. Level III keeps the alphabetically first valid level-II form made from its current origins: **Demonic → Apparition; Divine → Mirror; Multi-Dimensional → Gravity; Lightning → Cloud; Invincible → Mirror**. Level II keeps its alphabetically first origin. Removed abilities and passives are stripped immediately. This neither restores fallen teammates nor drops replacement tokens. **Once per fighter per match**, including across respawns, revival and re-fusion. Death does not reflect.
+- **Invincible:** movement speed is multiplied by **0.85**, including while using inherited ability tabs.
+- **Character animation:** locked-on movement uses a guarded directional sidestep or sideways hover for every elemental. Unlocked grounded movement retains its running cycle. Directional hurt frames accompany the existing recoil wobble; attacks and other committed animations keep priority. Mud has sandy-tan hair and white eyes; Divine has a floating stance and its existing faceless white-light hood.
+- **Portals:** bright-white interiors and rims, an expanding opening animation during the existing 500ms warning, and a collapsing closing animation. Closing immediately ends transport and resolves crossings as before; the remaining animation is visual only.
 
 ## Direct fused abilities
 
@@ -99,7 +114,7 @@ Earth's Rock burst is removed; Rock shield remains. Doppelgängers pursue and st
 ## Latest elemental changes and AI
 
 - **Blaze:** Flame burst is removed. Speed burst is a directional **300ms dash at 650 world units/second**, with a fading flame trail and **zero recharge**. It follows current movement, or facing if stationary. A new dash can start as soon as the active dash ends, even if an origin utility is cooling down. Each dash hits every crossed fighter once for **22 base damage**, including teammates. Burn only applies during physical contact, with no lingering damage after the dash passes. Fire, Water and Divine resist the burn; shields, dodge and reflection still work on the impact. The flame trail itself is decorative.
-- **Lightning (Cloud + Light / Spirit + Water):** tap **Lightning strikes** for an instant hit on the nearest visible enemy within **300 world units**, with **26 base damage**, no charge, and a **4.5-second cooldown**. No valid target means no cooldown. Flood doubles strike damage at the target. **Shock** passively prevents movement, inertia, knockback, dashes and teleportation while another living fighter touches Lightning (under 30 units). It affects allies too, ends immediately when contact breaks, and does not prevent attacks. Divine is immune. Both skills/passives follow the normal inherited-form rules.
+- **Lightning (Cloud + Light / Spirit + Water):** tap **Lightning strikes** for an instant hit on the nearest visible enemy within **300 world units**, with **26 base damage**, no charge, and a **3-second cooldown**. No valid target means no cooldown. Flood doubles strike damage at the target. **Shock** passively prevents movement, inertia, knockback, dashes and teleportation while another living fighter touches Lightning (under 30 units). It affects allies when friendly fire is enabled, ends immediately when contact breaks, and does not prevent attacks. Divine is immune. Both skills/passives follow the normal inherited-form rules.
 - **Invincible (Sun + Earth / Mirror + Fire):** **2× melee damage** is passive; inherited abilities and contact burn keep normal strength. It remains active across ability sets. Reflected damage does not receive the melee bonus. Invincible has no active fused skill and still takes damage normally, with its inherited defenses.
 - **Burn vs venom:** contact burn deals **5 base damage/second only while touching a Fire-bearing elemental**; it stops immediately on separation. A Blaze dash does impact damage and does not leave a burn timer. Mud contact refreshes **5 seconds of venom**, dealing **3 base damage/second** after separation. Immunities still apply. Magma, Vog, Heatwave and direct attacks keep their separate ability damage.
 - **Smoke:** Smoke veil is removed; Vog, Shadow step and Flamethrower are available on the fused tab.
@@ -185,4 +200,4 @@ This tests, builds, adds `.nojekyll` and pushes a new publishing commit. It pres
 
 ## Remaining scope from the original design
 
-This release implements the requested mobile/combat adjustments. Earlier features still awaiting their own iterations include online multiplayer, final art, physical scenery and doors, Light’s sacrifice, separately selectable Dark blindness, progressive quicksand/rescue, simulated flood flow and swimming, rainbow aesthetics, arbitrary-object telekinesis and Gravity’s separate held flight ability. Demonic Death still consumes a rival token rather than implementing the original targeted un-fusion and special resuscitation rules. Several other active fused skills retain their first-pass behavior.
+This release implements the requested mobile/combat adjustments. Earlier features still awaiting their own iterations include online multiplayer, final art, physical scenery and doors, Light’s sacrifice, separately selectable Dark blindness, progressive quicksand/rescue, simulated flood flow and swimming, rainbow aesthetics, arbitrary-object telekinesis and Gravity’s separate held flight ability. Several other active fused skills retain their first-pass behavior.

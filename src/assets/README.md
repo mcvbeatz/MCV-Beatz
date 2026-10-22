@@ -57,3 +57,22 @@ The other two rows carry their revised anatomy/head details into running.
 Both atlases were generated from the existing concepts and encoded losslessly;
 JSON frame bounds and foot anchors do not modify the art. Summon/revival body
 flashes are white silhouettes composited from the loaded atlas at runtime.
+
+## v0.10 combat poses
+
+`tuned-identities` replaces Mud's idle/attack art (tan hair, white eyes) and
+Divine's idle/attack stance (levitating, with the same faceless light hood).
+`tuned-running.json` reads Mud's six quadruped running cells from the same image.
+
+`combat-origins`, `combat-grounded`, and `combat-airborne` provide guarded
+sidestepping poses. Per-character correction atlases preserve the established
+Gravity, Sun, Lightning and Mud designs. Runtime metadata maps front/right/back
+A/B pairs; left mirrors right. Some poses use the same art with alternating
+lateral weight transfer, rather than playing the forward running sequence.
+
+`hurt-origins`, `hurt-grounded`, and `hurt-airborne` contain front/right/back
+flinches; the individual correction atlases include their own hurt row. These
+frames accompany the existing recoil transform. Attack, clash, charge, shield,
+dash and teleport priority remains governed by combat state. All effects still
+respect Divine concealment. Generated PNG sources remain in the workspace;
+only encoded WebP assets and frame metadata ship with the game.

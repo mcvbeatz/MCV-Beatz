@@ -12,6 +12,7 @@ import {
   drawClashes,
   distortGravity,
   drawCue,
+  drawPortal,
 } from "./battle-effects.js";
 const PALETTE = {
   light: "#f5edcf",
@@ -503,6 +504,23 @@ export class Renderer {
       c.moveTo(flag.home.x, flag.home.y - 8);
       c.lineTo(flag.home.x, flag.home.y + 8);
       c.stroke();
+      if (game.mode === "domination") {
+        c.strokeStyle = flag.contested
+          ? "#ffffff"
+          : flag.capturing === game.player.team
+            ? "#75d8f3"
+            : "#f18e76";
+        c.lineWidth = 5;
+        c.beginPath();
+        c.arc(
+          flag.x,
+          flag.y,
+          42,
+          -Math.PI / 2,
+          -Math.PI / 2 + Math.PI * 2 * (flag.progress / 10),
+        );
+        c.stroke();
+      }
       const carrier = game.fighters.find((a) => a.id === flag.carrier);
       const x = (carrier?.x ?? flag.x) + (carrier ? 22 : 0),
         y = carrier?.y ?? flag.y;
@@ -526,63 +544,20 @@ export class Renderer {
       c.restore();
     }
     for (const p of game.portals.portals) {
-      if (!game.portals.active(p)) {
-        c.save();
-        c.strokeStyle = "#e2c8ff";
-        c.fillStyle = "#b295e533";
-        c.lineWidth = 3;
-        c.setLineDash([5, 5]);
-        c.beginPath();
-        c.ellipse(p.x, p.y, 30, 17, 0, 0, Math.PI * 2);
-        c.fill();
-        c.stroke();
-        c.setLineDash([]);
-        c.fillStyle = "#eee0ff";
-        c.font = "10px monospace";
-        c.textAlign = "center";
-
-        c.restore();
-        continue;
-      }
-      const pair = game.portals.portals.filter(
-        (q) => q.owner === p.owner && game.portals.active(q),
+      const progress = Math.min(
+        1,
+        Math.max(0, 1 - (p.opensAt - game.time) / 0.5),
       );
-      c.save();
-      c.translate(p.x, p.y - 12);
-      c.shadowBlur = 17;
-      c.shadowColor = "#9aaff9";
-      c.fillStyle = "#151d38";
-      c.beginPath();
-      c.ellipse(0, 0, 25, 34, 0, 0, Math.PI * 2);
-      c.fill();
-      c.strokeStyle = p.owner === game.player.id ? "#c8c3ff" : "#9aceea";
-      c.lineWidth = 4;
-      c.stroke();
-      c.shadowBlur = 0;
-      c.strokeStyle = "#7d8fd4";
-      c.lineWidth = 2;
-      for (let j = 0; j < 3; j++) {
-        c.beginPath();
-        c.ellipse(
-          0,
-          0,
-          9 + j * 5,
-          13 + j * 6,
-          Math.sin(t * 2 + j) * 0.2,
-          t * 2 + j,
-          t * 2 + j + Math.PI * 1.4,
-        );
-        c.stroke();
-      }
-      c.fillStyle = "#d4dbfc";
-      c.font = "9px monospace";
-      c.textAlign = "center";
-      for (let i = 0; i < pair.length; i++) {
-        c.beginPath();
-        c.arc((i - (pair.length - 1) / 2) * 9, 47, 2.5, 0, Math.PI * 2);
-        c.fill();
-      }
-      c.restore();
+      drawPortal(
+        c,
+        p,
+        t,
+        progress,
+        false,
+        game.portals
+          .owned({ id: p.owner })
+          .filter((q) => game.portals.active(q)).length,
+      );
     }
     for (const a of game.fighters) {
       if (!a.alive || !inWorld(a) || !a.blink) continue;
@@ -759,6 +734,11 @@ export class Renderer {
     }
     for (const e of game.effects) {
       c.globalAlpha = e.life / e.max;
+      if (e.kind === "portal-close") {
+        drawPortal(c, e, t, e.life / e.max, true);
+        c.globalAlpha = 1;
+        continue;
+      }
       if (e.kind === "cue") {
         drawCue(c, e, game);
         c.globalAlpha = 1;

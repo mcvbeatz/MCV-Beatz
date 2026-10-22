@@ -21,6 +21,40 @@ export function drawTerrain(c, game, time) {
   const flooded = hazards.some((h) => h.kind === "flood");
   for (const h of hazards) {
     if (h.kind === "gravity" || (flooded && h.kind === "quicksand")) continue;
+    if (h.kind === "death") {
+      c.save();
+      c.translate(h.x, h.y);
+      c.scale(1, 0.7);
+      c.fillStyle = "#1b1229dd";
+      c.strokeStyle = "#f3e4ca";
+      c.lineWidth = 2;
+      c.shadowColor = "#fff2db";
+      c.shadowBlur = 12;
+      c.beginPath();
+      c.arc(0, 0, h.r, 0, TAU);
+      c.fill();
+      c.stroke();
+      c.rotate(time * 0.35);
+      c.beginPath();
+      for (let i = 0; i < 6; i++) {
+        const angle = (i * TAU) / 6;
+        c.moveTo(Math.cos(angle) * h.r * 0.86, Math.sin(angle) * h.r * 0.86);
+        c.lineTo(
+          Math.cos(angle + TAU / 3) * h.r * 0.86,
+          Math.sin(angle + TAU / 3) * h.r * 0.86,
+        );
+      }
+      c.stroke();
+      c.rotate(-time * 0.7);
+      c.beginPath();
+      c.arc(0, 0, h.r * 0.42, 0, TAU);
+      c.stroke();
+      c.fillStyle = "#fff6e9";
+      c.fillRect(-3, -14, 6, 28);
+      c.fillRect(-12, -3, 24, 6);
+      c.restore();
+      continue;
+    }
     if (h.kind === "magma") {
       // Match the existing ground footprint, with molten channels and dark crust.
       c.save();
@@ -475,6 +509,74 @@ export function drawCue(c, e, game) {
       );
       c.stroke();
     }
+  }
+  c.restore();
+}
+
+// Shared bright-white portal geometry; lifecycle changes appearance, never collision timing.
+export function drawPortal(
+  c,
+  portal,
+  time,
+  progress = 1,
+  closing = false,
+  pairCount = 0,
+) {
+  const p = Math.max(0, Math.min(1, progress));
+  if (p <= 0) return;
+  c.save();
+  c.translate(portal.x, portal.y - 12);
+  c.scale(
+    closing
+      ? Math.max(0.03, p * p)
+      : Math.max(0.03, Math.sin((p * Math.PI) / 2)),
+    Math.max(0.08, p),
+  );
+  c.shadowColor = "#ffffff";
+  c.shadowBlur = 24;
+  c.strokeStyle = "#ffffff";
+  const gradient = c.createRadialGradient(0, 0, 2, 0, 0, 35);
+  gradient.addColorStop(0, "#ffffffee");
+  gradient.addColorStop(0.6, "#f3ffffa0");
+  gradient.addColorStop(1, "#ffffff22");
+  c.fillStyle = gradient;
+  c.lineWidth = 4;
+  c.beginPath();
+  c.ellipse(0, 0, 25, 34, 0, 0, TAU);
+  c.fill();
+  c.stroke();
+  c.shadowBlur = 7;
+  c.lineWidth = 1.5;
+  for (let i = 0; i < 4; i++) {
+    c.beginPath();
+    c.ellipse(
+      0,
+      0,
+      8 + i * 5,
+      12 + i * 6,
+      Math.sin(time * 3 + i) * 0.2,
+      time * 3 + i,
+      time * 3 + i + Math.PI * 1.25,
+    );
+    c.stroke();
+  }
+  for (let i = 0; i < 8; i++) {
+    const angle = (i * TAU) / 8 + time;
+    const reach = closing ? 24 + 30 * (1 - p) : 28 + 18 * (1 - p);
+    c.fillStyle = "#fff";
+    c.fillRect(
+      Math.cos(angle) * reach - 1,
+      Math.sin(angle) * reach * 1.25 - 1,
+      2,
+      2,
+    );
+  }
+  c.shadowBlur = 0;
+  c.fillStyle = "#fff";
+  for (let i = 0; i < pairCount; i++) {
+    c.beginPath();
+    c.arc((i - (pairCount - 1) / 2) * 9, 47, 2.5, 0, TAU);
+    c.fill();
   }
   c.restore();
 }

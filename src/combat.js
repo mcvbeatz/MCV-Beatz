@@ -128,8 +128,9 @@ export const EXTRA_SKILLS = {
 export const extraSkillsFor = (form) => EXTRA_SKILLS[form] || [];
 const skillForm = (a) => a.executingForm || activeForm(a);
 export const canUseSkill = (a, form, kind) =>
-  a.forms.includes(form) ||
-  extraSkillsFor(a.element).some((s) => s.form === form && s.kind === kind);
+  !a.skillsDisabled &&
+  (a.forms.includes(form) ||
+    extraSkillsFor(a.element).some((s) => s.form === form && s.kind === kind));
 export const TELEKINESIS_RANGE = 400;
 export const TELEKINESIS_PUSH = 520;
 export const canReactToHit = (a) =>
@@ -282,14 +283,28 @@ export class Combat {
     mode = "duel",
     size = 2,
     players = 4,
+    bossRole = "boss",
+    challengers = 3,
     random = Math.random,
   } = {}) {
     this.random = random;
     this.time = 0;
     this.mode = mode;
     this.scores = [0, 0];
-    this.timeLimit = mode === "tdm" ? 180 : null;
-    this.respawnDelay = ["ctf", "tdm"].includes(mode) ? 10 : null;
+    this.deathUsed = new Set();
+    this.friendlyFire = !["corruption", "boss"].includes(mode);
+    this.fusionEnabled = !["ctf", "corruption", "boss"].includes(mode);
+    this.timeLimit =
+      mode === "corruption"
+        ? 120
+        : ["tdm", "domination"].includes(mode)
+          ? 180
+          : null;
+    this.respawnDelay = ["ctf", "tdm", "corruption", "domination"].includes(
+      mode,
+    )
+      ? 10
+      : null;
     this.flags =
       mode === "ctf"
         ? [0, 1].map((team) => ({
@@ -301,6 +316,16 @@ export class Combat {
             dropped: false,
           }))
         : [];
+    if (mode === "domination")
+      this.flags = [0, 1, 2, 3].map((i) => ({
+        team: i < 2 ? 0 : 1,
+        x: i < 2 ? 285 : 739,
+        y: i % 2 ? 470 : 230,
+        home: { x: i < 2 ? 285 : 739, y: i % 2 ? 470 : 230 },
+        progress: 0,
+        capturing: null,
+        contested: false,
+      }));
     this.finishReason = null;
     this.events = [];
     this.effects = [];
@@ -314,7 +339,7 @@ export class Combat {
     this.fighters = [];
     this.sequence = 0;
     this.portals = new PortalSystem(this);
-    const n = ["team", "ctf", "tdm"].includes(mode)
+    const n = ["team", "ctf", "tdm", "domination"].includes(mode)
         ? Math.max(2, Math.min(4, Math.floor(size) || 2))
         : 1,
       pool =
@@ -346,24 +371,56 @@ export class Combat {
         ),
       );
     }
-    if (mode === "ffa") {
+    if (["ffa", "corruption"].includes(mode)) {
       const count = Math.max(2, Math.min(8, Math.floor(players) || 4));
       this.fighters = Array.from({ length: count }, (_, i) => {
         const angle = Math.PI + (i * Math.PI * 2) / count;
         return makeFighter(
           i === 0 ? "player" : `enemy-${i}`,
-          i === 0
-            ? element
-            : pool[
-                Math.min(pool.length - 1, Math.floor(random() * pool.length))
-              ],
-          i,
+          mode === "corruption"
+            ? "light"
+            : i === 0
+              ? element
+              : pool[
+                  Math.min(pool.length - 1, Math.floor(random() * pool.length))
+                ],
+          mode === "corruption" ? 0 : i,
           512 + Math.cos(angle) * 300,
           350 + Math.sin(angle) * 145,
         );
       });
     }
+    if (mode === "boss") {
+      const count = clamp(Math.floor(challengers) || 3, 3, 7);
+      const bossTeam = bossRole === "challenger" ? 1 : 0;
+      const boss = makeFighter(
+        bossTeam === 0 ? "player" : "boss",
+        "invincible",
+        bossTeam,
+        740,
+        350,
+      );
+      const rivals = Array.from({ length: count }, (_, i) =>
+        makeFighter(
+          bossTeam === 1 && i === 0 ? "player" : `challenger-${i}`,
+          bossTeam === 1 && i === 0 && ELEMENTS[element]
+            ? element
+            : pool[
+                Math.min(pool.length - 1, Math.floor(random() * pool.length))
+              ],
+          1 - bossTeam,
+          250 + (i % 2) * 55,
+          205 + i * 45,
+        ),
+      );
+      boss.hp = boss.maxHp = rivals.reduce((sum, a) => sum + a.maxHp, 0);
+      this.fighters =
+        bossTeam === 0
+          ? [boss, ...rivals]
+          : [rivals[0], boss, ...rivals.slice(1)];
+    }
     for (const a of this.fighters) {
+      a.infections = 0;
       if (mode === "ctf") a.x = a.team === 0 ? 220 : 804;
       a.spawn = { x: a.x, y: a.y, element: a.element };
       a.kills = 0;
@@ -423,6 +480,7 @@ export class Combat {
           b.id !== a.id &&
           b.alive &&
           inWorld(b) &&
+          (this.friendlyFire || a.team !== b.team) &&
           hasPassive(b, "lightning") &&
           distance(a, b) < 30,
       )
@@ -449,7 +507,8 @@ export class Combat {
       (a.boost > 0 ? 1.7 : 1) *
       (a.charging ? 0.65 : 1) *
       (a.slow > 0 ? 0.48 : 1) *
-      (a.shield ? 0.32 : 1);
+      (a.shield ? 0.32 : 1) *
+      (a.element === "invincible" ? 0.85 : 1);
     const blend = this.flying(a) ? Math.min(1, dt * 4) : 1;
     a.vx += (dx * speed * magnitude - a.vx) * blend;
     a.vy += (dy * speed * magnitude - a.vy) * blend;
@@ -474,6 +533,7 @@ export class Combat {
   strike(a, aim = null) {
     if (!a.alive || !inWorld(a) || a.attackCd > 0 || a.shield || a.stagger > 0)
       return false;
+    if (!this.aiGesture(a, "strike")) return false;
     this.autoLock(a);
     a.attackCd = 0.43;
     a.swing = 0.22;
@@ -497,9 +557,11 @@ export class Combat {
       !skillsFor(form)[0]
     )
       return false;
+    if (form !== "gravity" && !this.aiGesture(a, `ability:${form}`))
+      return false;
     if (["lightning", "gravity"].includes(form)) {
       if (this.cast(a, 1, form) === false) return false;
-      a.abilityCd = 4.5;
+      a.abilityCd = form === "lightning" ? 3 : 4.5;
       return true;
     }
     if (form === "spirit" && !this.revivalTarget(a)) {
@@ -573,7 +635,7 @@ export class Combat {
         }
       }
       this.cue("lost", { x: a.x, y: a.y }, "#cbb4e7");
-    } else if (!a.echo && this.mode !== "ctf") {
+    } else if (!a.echo && this.fusionEnabled) {
       this.tokens.push({
         x: a.x,
         y: a.y,
@@ -596,7 +658,8 @@ export class Combat {
     sourceElement = ability ? skillForm(a) : a.element,
     reflectable = true,
   ) {
-    if (!b.alive || !inWorld(b)) return 0;
+    if (!b.alive || !inWorld(b) || (!this.friendlyFire && a.team === b.team))
+      return 0;
     if (b.dodge > 0 && !a.parts.includes("light")) {
       b.dodge = 0;
       this.cue("dodge", b, "#b8a1df");
@@ -654,6 +717,13 @@ export class Combat {
     return hit;
   }
   meleeDamage(a, b, amount) {
+    if (!this.friendlyFire && a.team === b.team) return 0;
+    if (this.mode === "corruption") {
+      if (!a.alive || !b.alive || !inWorld(b)) return 0;
+      if (a.element === "dark") this.corrupt(b, a);
+      else this.fell(b, { killer: a });
+      return amount;
+    }
     const guard = this.fighters.find(
       (g) =>
         g.ghost &&
@@ -683,7 +753,7 @@ export class Combat {
     const due = this.pending.filter((p) => p.at <= this.time),
       remove = new Set();
     for (const p of due) {
-      if (remove.has(p.id)) continue;
+      if (remove.has(p.id) || !this.pending.includes(p)) continue;
       const a = p.who;
       if (!a.alive || !inWorld(a)) {
         remove.add(p.id);
@@ -699,12 +769,22 @@ export class Combat {
           q.id !== p.id &&
           !remove.has(q.id) &&
           Math.abs(q.at - p.at) <= 0.1 &&
+          (this.friendlyFire || a.team !== q.who.team) &&
           canHit(a, q.who) &&
           canHit(q.who, a),
       );
       if (clash) {
-        this.meleeDamage(a, clash.who, 3.5);
-        this.meleeDamage(clash.who, a, 3.5);
+        if (this.mode === "corruption") {
+          // Simultaneous opposing hits both land: conversion cannot cancel the
+          // Light strike already in contact, and death cannot cancel infection.
+          const dark = a.element === "dark" ? a : clash.who;
+          const light = a.element === "light" ? a : clash.who;
+          this.corrupt(light, dark);
+          this.fell(dark, { killer: light });
+        } else {
+          this.meleeDamage(a, clash.who, 3.5);
+          this.meleeDamage(clash.who, a, 3.5);
+        }
         remove.add(clash.id);
         for (const [fighter, other] of [
           [a, clash.who],
@@ -994,6 +1074,7 @@ export class Combat {
       length <= 0
     )
       return false;
+    if (!this.aiGesture(a, "ability:gravity")) return false;
     a.charging = false;
     a.charge = 0;
     a.abilityCd = 4.5;
@@ -1033,6 +1114,7 @@ export class Combat {
       if (this.isShocked(a)) return false;
       // An active dash finishes before the next one begins; there is no recharge.
       if (a.burst > 0) return true;
+      if (!this.aiGesture(a, "utility:blaze")) return false;
       const speed = Math.hypot(a.vx, a.vy);
       a.burstX = speed > 15 ? a.vx / speed : a.fx;
       a.burstY = speed > 15 ? a.vy / speed : a.fy;
@@ -1048,12 +1130,16 @@ export class Combat {
     }
     if (e === "earth") {
       if (a.utilityCd > 0 || a.shieldHp <= 0) return false;
+      if (a.shield) return true;
+      if (!this.aiGesture(a, "utility:earth")) return false;
       a.charging = false;
       a.shield = 1;
       a.shieldTime = 0;
       return true;
     }
-    if (a.utilityCd > 0) return false;
+    if (a.utilityCd > 0 || (e === "demonic" && this.deathUsed.has(a.id)))
+      return false;
+    if (!this.aiGesture(a, `utility:${e}`)) return false;
     a.reveal = 0.45;
     a.utilityCd = 7;
     if (e === "fire") this.area(a, 1, "magma", 66, Infinity);
@@ -1063,6 +1149,7 @@ export class Combat {
           b.id !== a.id &&
           b.alive &&
           inWorld(b) &&
+          (this.friendlyFire || a.team !== b.team) &&
           distance(a, b) < 260 &&
           !hasPassive(b, "divine")
         ) {
@@ -1096,25 +1183,56 @@ export class Combat {
     else if (e === "gravity") this.area(a, 1, "gravity", 150, 6);
     else if (e === "sun") this.area(a, 1, "heatwave", 300, 5);
     else if (e === "demonic") {
-      const token = this.tokens
-        .filter((t) => t.team !== a.team)
-        .sort((b, c) => distance(a, b) - distance(a, c))[0];
-      if (token) {
-        this.tokens = this.tokens.filter((t) => t !== token);
-        const dead = this.fighters.find((b) => b.id === token.owner);
-        if (dead) {
-          dead.lost = true;
-          dead.ghost = false;
-        }
-        this.cue("lost", a, "#dc6d73");
-      }
+      this.deathUsed.add(a.id);
+      this.area(a, 1, "death", 66, Infinity);
     }
+    return true;
+  }
+  demote(a) {
+    if (!a.alive || a.echo || a.parts.length < 2) return false;
+    const form =
+      a.parts.length >= 3
+        ? Object.entries(COMBOS)
+            .filter(
+              ([parts]) =>
+                parts.split("+").length === 2 &&
+                parts.split("+").every((p) => a.parts.includes(p)),
+            )
+            .map(([, name]) => name)
+            .sort()[0]
+        : [...a.parts].sort()[0];
+    if (!form) return false;
+    const kept = recipe(form);
+    a.nativeParts = a.nativeParts.filter((p) => kept.includes(p));
+    a.absorbed = a.absorbed
+      .map((soul) => ({
+        ...soul,
+        parts: soul.parts.filter((p) => kept.includes(p)),
+      }))
+      .filter((soul) => soul.parts.length);
+    // Native-less fusions still belong to the same fighter; never revive removed souls.
+    a.parts = kept;
+    a.forms = [...new Set([...kept, form])];
+    a.element = form;
+    a.base = kept[0];
+    a.demotedBase = kept[0];
+    a.form = a.forms.indexOf(form);
+    a.charging = false;
+    a.charge = 0;
+    a.chargeForm = null;
+    a.shield = a.burst = a.boost = a.dodge = 0;
+    a.blink = null;
+    a.portalRoute = null;
+    a.spawnFlash = 0.45;
+    this.pending = this.pending.filter((p) => p.who !== a);
+    this.cue("shatter", a, "#fff3d7");
     return true;
   }
   rebuildFusion(a) {
     a.parts = [
       ...new Set([...a.nativeParts, ...a.absorbed.flatMap((s) => s.parts)]),
     ];
+    if (!a.parts.length) a.parts = [a.demotedBase || a.base];
     const fused = COMBOS[[...a.parts].sort().join("+")];
     a.element = fused || a.parts[0];
     const previous = a.forms.filter((f) =>
@@ -1126,7 +1244,7 @@ export class Combat {
     a.shield = 0;
   }
   applyFusion(a, parts, { burst = true } = {}) {
-    if (this.mode === "ctf") return false;
+    if (!this.fusionEnabled) return false;
     const fused = combination(a.parts, parts),
       all = [...new Set([...a.parts, ...parts])];
     if (!a.alive || !fused || all.length <= a.parts.length) return false;
@@ -1164,7 +1282,7 @@ export class Combat {
     return true;
   }
   touchTokens(a) {
-    if (this.mode === "ctf" || !a.alive || !inWorld(a) || a.echo) return false;
+    if (!this.fusionEnabled || !a.alive || !inWorld(a) || a.echo) return false;
     const token = this.tokens.find(
       (t) =>
         inWorld(t) &&
@@ -1214,7 +1332,7 @@ export class Combat {
     )
       return false;
     const d = Math.hypot(x - a.x, y - a.y);
-    if (d < 1) return false;
+    if (d < 1 || !this.aiGesture(a, "teleport")) return false;
     const scale = Math.min(1, TELEPORT_RANGE / d);
     a.blink = {
       x: a.x + (x - a.x) * scale,
@@ -1276,6 +1394,7 @@ export class Combat {
   // strike allies, and attacks already in flight can still catch a moving ally.
   safeAttack(a, target, kind = "melee", form = activeForm(a)) {
     if (!target) return false;
+    if (!this.friendlyFire) return true;
     const enemies = this.enemies(a);
     const nearestEnemy = Math.min(
       distance(a, target),
@@ -1314,6 +1433,154 @@ export class Combat {
       );
     });
   }
+  aiGesture(a, key) {
+    if (!a.aiControlled) return true;
+    if (a.aiLastGesture === key && a.aiRepeat >= 3) {
+      a.aiNeedChange = true;
+      return false;
+    }
+    a.aiRepeat = a.aiLastGesture === key ? a.aiRepeat + 1 : 1;
+    a.aiLastGesture = key;
+    return true;
+  }
+  aiProgress(a) {
+    // Holding a capture point is useful progress, not an idle combat loop.
+    if (
+      this.mode === "domination" &&
+      this.flags.some(
+        (f) => f.team !== a.team && !f.contested && distance(a, f) <= 42,
+      )
+    ) {
+      a.aiStalled = 0;
+      a.aiProgressSample = null;
+      return;
+    }
+    if (this.time < (a.aiProgressAt || 0)) return;
+    a.aiProgressAt = this.time + 1;
+    const previous = a.aiProgressSample;
+    // A repeating safe-distance loop counts as stalled even if the feet shuffle.
+    const enemyHp = this.fighters
+      .filter((b) => b.team !== a.team && !b.echo)
+      .reduce((sum, b) => sum + b.hp, 0);
+    const sample = { x: a.x, y: a.y, enemyHp, hp: a.hp, parts: a.parts.length };
+    a.aiStalled =
+      previous &&
+      distance(previous, a) < 50 &&
+      Math.abs(previous.enemyHp - enemyHp) < 1 &&
+      Math.abs(previous.hp - a.hp) < 1 &&
+      previous.parts === sample.parts
+        ? (a.aiStalled || 0) + 1
+        : 0;
+    a.aiProgressSample = sample;
+    if (a.aiStalled >= 3) a.aiNeedChange = true;
+  }
+  aiTactic(a, target) {
+    if (a.aiPlan) {
+      const p = a.aiPlan;
+      const gone = p.token && !this.tokens.includes(p.token);
+      if (gone || this.time > p.until || distance(a, p) < 24) {
+        a.aiPlan = null;
+        if (distance(a, p.start) > 35) {
+          a.aiLastGesture = "reposition";
+          a.aiRepeat = 1;
+        }
+      } else return p;
+    }
+    const token = (a.echo || !this.fusionEnabled ? [] : this.tokens)
+      .filter(
+        (t) =>
+          !t.removed &&
+          inWorld(t) &&
+          (this.mode === "ffa" || t.team === a.team) &&
+          combination(a.parts, t.parts),
+      )
+      .sort((b, c) => distance(a, b) - distance(a, c))[0];
+    if (
+      !a.aiNeedChange &&
+      !(
+        token &&
+        distance(a, token) < 260 &&
+        (!target || distance(a, target) > 90)
+      )
+    )
+      return null;
+    a.aiNeedChange = false;
+    a.aiStalled = 0;
+    if (a.shield) this.utility(a, false);
+    a.charging = false;
+    a.charge = 0;
+    const candidates = [];
+    if (token) candidates.push({ x: token.x, y: token.y, token });
+    // Flank around hostile terrain instead of standing at its edge. Alternate sides.
+    a.aiFlank = -(a.aiFlank || 1);
+    const focus = target || (a.lastSeen?.divine ? a.lastSeen : null);
+    const angle = focus
+      ? Math.atan2(a.y - focus.y, a.x - focus.x)
+      : this.random() * Math.PI * 2;
+    for (const turn of [a.aiFlank * 1.2, -a.aiFlank * 1.2, Math.PI]) {
+      const center = focus || a;
+      const reach =
+        !target && focus
+          ? 60
+          : target
+            ? Math.max(110, Math.min(190, distance(a, target)))
+            : 140;
+      candidates.push({
+        x: clamp(center.x + Math.cos(angle + turn) * reach, 155, 869),
+        y: clamp(center.y + Math.sin(angle + turn) * reach, 195, 540),
+      });
+    }
+    const goal = candidates.find(
+      (p) => distance(a, p) > 35 && this.mobilitySafe(a, p),
+    );
+    if (!goal) return null;
+    a.aiPlan = { ...goal, start: { x: a.x, y: a.y }, until: this.time + 4 };
+    return a.aiPlan;
+  }
+  aiRoute(a, goal) {
+    const desired = Math.atan2(goal.y - a.y, goal.x - a.x);
+    let best = null,
+      score = Infinity;
+    const risk = (point) =>
+      this.hazards
+        .filter(
+          (h) =>
+            inWorld(h) &&
+            (h.kind === "death"
+              ? a.parts.length > 1
+              : h.kind === "quicksand"
+                ? !this.flying(a) && !hasPassive(a, "mud")
+                : h.kind === "gravity"
+                  ? h.owner.team !== a.team && !hasPassive(a, "apparition")
+                  : ["magma", "heatwave", "vog"].includes(h.kind) &&
+                    !burnImmune(a)),
+        )
+        .reduce(
+          (sum, h) => sum + Math.max(0, h.r + 12 - distance(point, h)),
+          0,
+        );
+    const currentRisk = risk(a);
+    for (const turn of [0, 0.5, -0.5, 1, -1, 1.5, -1.5, Math.PI]) {
+      const point = {
+        x: a.x + Math.cos(desired + turn) * 42,
+        y: a.y + Math.sin(desired + turn) * 42,
+      };
+      if (point.x < 135 || point.x > 889 || point.y < 175 || point.y > 560)
+        continue;
+      const nextRisk = risk(point);
+      if (
+        !this.mobilitySafe(a, point) &&
+        !(currentRisk > 0 && nextRisk < currentRisk)
+      )
+        continue;
+      const cost = distance(point, goal) + Math.abs(turn) * 4 + nextRisk * 4;
+      if (cost < score) {
+        best = point;
+        score = cost;
+      }
+    }
+    return best ? { x: best.x - a.x, y: best.y - a.y } : { x: 0, y: 0 };
+  }
   mobilitySafe(a, point) {
     if (point.x < 155 || point.x > 869 || point.y < 195 || point.y > 540)
       return false;
@@ -1326,6 +1593,7 @@ export class Combat {
       return false;
     return !this.hazards.some((h) => {
       if (!inWorld(h) || distance(h, point) > h.r + 12) return false;
+      if (h.kind === "death") return a.parts.length > 1;
       if (h.kind === "quicksand")
         return !this.flying(a) && !hasPassive(a, "mud");
       if (h.kind === "gravity")
@@ -1438,7 +1706,7 @@ export class Combat {
         break;
       }
     }
-    if (!entry || !exit) return null;
+    if (!entry || !exit || !this.aiGesture(a, "portals")) return null;
     for (const p of owned) this.portals.close(a, p.id);
     if (!this.portals.place(a, entry.x, entry.y, { autonomous: true }))
       return null;
@@ -1455,6 +1723,7 @@ export class Combat {
     return pair[0];
   }
   ai(a, dt) {
+    if (this.mode === "corruption") return this.aiCorruption(a, dt);
     const enemies = this.enemies(a);
     const allies = this.fighters.filter(
       (b) => b.id !== a.id && b.team === a.team && b.alive && inWorld(b),
@@ -1480,6 +1749,7 @@ export class Combat {
       return;
     }
     a.aiControlled = true;
+    this.aiProgress(a);
     // Prefer a vulnerable nearby rival, especially one threatening a hurt ally.
     const score = (b) =>
       distance(a, b) +
@@ -1487,9 +1757,20 @@ export class Combat {
       (allies.some((c) => c.hp < 60 && distance(c, b) < 110) ? 90 : 0);
     const target = enemies.sort((b, c) => score(b) - score(c))[0];
     const patient = this.healingTarget(a);
-    const route = this.aiMobility(a, target, patient);
+    const tactical = this.aiTactic(a, target);
+    const route = tactical || this.aiMobility(a, target, patient);
     if (route) {
-      this.move(a, route.x - a.x, route.y - a.y, dt);
+      const direction = tactical
+        ? this.aiRoute(a, route)
+        : { x: route.x - a.x, y: route.y - a.y };
+      this.move(a, direction.x, direction.y, dt);
+      if (
+        tactical &&
+        target &&
+        distance(a, target) <= STRIKE_RANGE &&
+        this.safeAttack(a, target)
+      )
+        this.strike(a);
       return;
     }
     const heal =
@@ -1554,11 +1835,13 @@ export class Combat {
     // Step out of hostile floor effects and incoming attack lanes.
     for (const h of this.hazards.filter(inWorld)) {
       const harmful =
-        h.kind === "gravity"
-          ? h.owner.team !== a.team && !hasPassive(a, "apparition")
-          : h.kind === "quicksand"
-            ? !this.flying(a) && !hasPassive(a, "mud")
-            : ["magma", "heatwave", "vog"].includes(h.kind) && !burnImmune(a);
+        h.kind === "death"
+          ? a.parts.length > 1
+          : h.kind === "gravity"
+            ? h.owner.team !== a.team && !hasPassive(a, "apparition")
+            : h.kind === "quicksand"
+              ? !this.flying(a) && !hasPassive(a, "mud")
+              : ["magma", "heatwave", "vog"].includes(h.kind) && !burnImmune(a);
       const gap = distance(a, h);
       if (harmful && gap < h.r + 25) {
         dx += ((a.x - h.x) / (gap || 1)) * 2;
@@ -1664,6 +1947,13 @@ export class Combat {
     // Support waits for a healing opportunity instead of wasting its main skill.
     if (light) return;
     let attackForm = a.element;
+    if (a.aiLastGesture === `ability:${attackForm}` && a.aiRepeat >= 3)
+      attackForm = a.forms.find(
+        (f) =>
+          f !== attackForm &&
+          skillsFor(f)[0] &&
+          !["light", "spirit", "divine"].includes(f),
+      );
     if (!skillsFor(attackForm)[0] || ["spirit", "divine"].includes(attackForm))
       attackForm = a.parts.find(
         (e) => !["light"].includes(e) && skillsFor(e)[0],
@@ -1728,6 +2018,7 @@ export class Combat {
       for (const b of this.fighters) {
         if (
           b.id === p.owner.id ||
+          (!this.friendlyFire && b.team === p.owner.team) ||
           !b.alive ||
           !inWorld(b) ||
           p.hit.has(b.id) ||
@@ -1810,11 +2101,26 @@ export class Combat {
       if (h.removed || this.portals.tick(h, dt) || this.portals.enter(h, h))
         continue;
       h.life -= dt;
+      if (h.kind === "death") {
+        const touching = this.fighters.filter(
+          (b) => b.alive && !b.echo && inWorld(b) && distance(h, b) <= h.r,
+        );
+        h.occupants ??= new Set();
+        for (const b of touching) if (!h.occupants.has(b.id)) this.demote(b);
+        h.occupants = new Set(touching.map((b) => b.id));
+        continue;
+      }
       h.tick -= dt;
       if (h.tick > 0) continue;
       h.tick = 0.35;
       for (const b of this.fighters) {
-        if (!b.alive || !inWorld(b) || distance(h, b) > h.r) continue;
+        if (
+          !b.alive ||
+          !inWorld(b) ||
+          distance(h, b) > h.r ||
+          (!this.friendlyFire && b.team === h.owner.team)
+        )
+          continue;
         const flying = this.flying(b),
           immune = hasPassive(b, "divine");
         if (h.kind === "flood") {
@@ -1876,6 +2182,22 @@ export class Combat {
     dt = Math.min(dt, 0.05);
     if (this.mode === "tdm" && this.checkMatchEnd()) return;
     this.time += dt;
+    if (
+      this.mode === "corruption" &&
+      !this.corruptionStarted &&
+      this.time >= 5
+    ) {
+      this.corruptionStarted = true;
+      const candidates = this.fighters.filter((a) => a.alive && !a.echo);
+      this.corrupt(
+        candidates[
+          Math.min(
+            candidates.length - 1,
+            Math.floor(this.random() * candidates.length),
+          )
+        ],
+      );
+    }
     for (const a of this.fighters) {
       if (!a.alive && a.respawnAt !== undefined && this.time >= a.respawnAt)
         this.respawn(a);
@@ -1942,7 +2264,13 @@ export class Combat {
     for (const a of this.fighters) {
       if (!a.alive || !inWorld(a)) continue;
       for (const b of this.fighters) {
-        if (b.id === a.id || !b.alive || !inWorld(b) || distance(a, b) >= 30)
+        if (
+          b.id === a.id ||
+          !b.alive ||
+          !inWorld(b) ||
+          (!this.friendlyFire && b.team === a.team) ||
+          distance(a, b) >= 30
+        )
           continue;
         if (
           a.parts.includes("fire") &&
@@ -1965,16 +2293,104 @@ export class Combat {
     this.effects = this.effects.filter((e) => e.life > 0);
     this.events = this.events.filter((e) => this.time - e.time < 1.4);
     this.updateFlags();
+    this.updateDomination(dt);
     this.checkMatchEnd();
+  }
+  corrupt(a, source = null) {
+    if (!a || a.element !== "light") return false;
+    const { id, x, y, spawn, kills, deaths } = a;
+    if (source) source.infections = (source.infections || 0) + 1;
+    const fresh = makeFighter(id, "dark", 1, x, y);
+    for (const key of Object.keys(a)) delete a[key];
+    Object.assign(a, fresh, {
+      spawn: { ...spawn, element: "dark" },
+      kills,
+      deaths,
+      infectedAt: this.time,
+      infections: 0,
+      skillsDisabled: true,
+      spawnFlash: 0.65,
+    });
+    this.pending = this.pending.filter((p) => p.who !== a);
+    this.cue("shatter", a, "#a59dc1");
+    return true;
+  }
+  aiCorruption(a, dt) {
+    a.aiControlled = true;
+    this.aiProgress(a);
+    const target = this.enemies(a).sort(
+      (b, c) => distance(a, b) - distance(a, c),
+    )[0];
+    if (!target) {
+      this.move(a, 0, 0, dt);
+      return;
+    }
+    const tactic = this.aiTactic(a, target);
+    if (tactic) {
+      const route = this.aiRoute(a, tactic);
+      this.move(a, route.x, route.y, dt);
+    } else {
+      const d = distance(a, target);
+      const direction = a.element === "dark" || d > 60 ? 1 : d < 40 ? -1 : 0;
+      this.move(
+        a,
+        (target.x - a.x) * direction,
+        (target.y - a.y) * direction,
+        dt,
+      );
+    }
+    if (distance(a, target) <= STRIKE_RANGE) this.strike(a);
+    if (
+      a.element === "light" &&
+      distance(a, target) < 160 &&
+      !target.blind &&
+      !a.utilityCd
+    )
+      this.utility(a);
+  }
+  updateDomination(dt) {
+    if (this.mode !== "domination") return;
+    const living = this.fighters.filter(
+      (a) => a.alive && !a.echo && inWorld(a),
+    );
+    for (const flag of this.flags) {
+      // Score the elapsed interval for its existing owner before changing hands.
+      this.scores[flag.team] += dt;
+      const nearby = living.filter((a) => distance(a, flag) <= 42);
+      const attackers = nearby.filter((a) => a.team !== flag.team);
+      const defenders = nearby.filter((a) => a.team === flag.team);
+      flag.contested = attackers.length > 0 && defenders.length > 0;
+      flag.capturing = attackers.length ? 1 - flag.team : null;
+      if (flag.contested) continue;
+      if (!attackers.length) {
+        flag.progress = Math.max(0, flag.progress - dt);
+        continue;
+      }
+      flag.progress += dt * 2 ** (attackers.length - 1);
+      if (flag.progress >= 10 - 1e-9) {
+        flag.team = 1 - flag.team;
+        flag.progress = 0;
+        flag.capturing = null;
+        this.cue("revive", flag, flag.team === 0 ? "#82d7eb" : "#ed947d");
+      }
+    }
   }
   respawn(a) {
     if (!a.spawn || a.echo) return false;
-    const { spawn, kills, deaths } = a;
+    const { spawn, kills, deaths, infectedAt, infections, skillsDisabled } = a;
     const fresh = makeFighter(a.id, spawn.element, a.team, spawn.x, spawn.y);
     // Keep the object identity used by controls and projectiles, but clear every
     // temporary status, fusion, portal route and death from the previous life.
     for (const key of Object.keys(a)) delete a[key];
-    Object.assign(a, fresh, { spawn, kills, deaths, spawnFlash: 0.65 });
+    Object.assign(a, fresh, {
+      spawn,
+      kills,
+      deaths,
+      infectedAt,
+      infections,
+      skillsDisabled,
+      spawnFlash: 0.65,
+    });
     this.tokens = this.tokens.filter((t) => t.owner !== a.id);
     this.pending = this.pending.filter((p) => p.who !== a);
     // Other fighters keep all tokens they absorbed, even when their source respawns.
@@ -2021,6 +2437,26 @@ export class Combat {
     }
   }
   flagObjective(a) {
+    if (this.mode === "domination" && !a.echo) {
+      const threatened = this.flags.filter(
+        (f) => f.team === a.team && f.progress > 0,
+      );
+      const candidates = threatened.length
+        ? threatened
+        : this.flags.filter((f) => f.team !== a.team);
+      const allies = this.fighters.filter(
+        (b) => b !== a && b.alive && b.team === a.team && !b.echo,
+      );
+      return (
+        candidates.sort(
+          (b, c) =>
+            distance(a, b) +
+            allies.filter((f) => distance(f, b) < 70).length * 90 -
+            (distance(a, c) +
+              allies.filter((f) => distance(f, c) < 70).length * 90),
+        )[0] || this.flags[0]
+      );
+    }
     if (this.mode !== "ctf" || a.echo) return null;
     const own = this.flags[a.team],
       enemy = this.flags[1 - a.team];
@@ -2057,6 +2493,43 @@ export class Combat {
   }
   checkMatchEnd() {
     if (this.finished) return true;
+    if (this.mode === "corruption") {
+      if (
+        !this.corruptionStarted ||
+        (this.time < this.timeLimit &&
+          this.fighters.some((a) => a.element === "light"))
+      )
+        return false;
+      const longest = Math.max(
+        ...this.fighters.map((a) => a.infectedAt ?? this.time),
+      );
+      const lights = this.fighters.filter(
+        (a) => (a.infectedAt ?? this.time) === longest,
+      );
+      const darks = this.fighters.filter((a) => a.infectedAt !== undefined);
+      const high = Math.max(0, ...darks.map((a) => a.infections || 0));
+      const darkWinners = darks.filter((a) => (a.infections || 0) === high);
+      this.winners = {
+        light: lights.map((a) => a.id),
+        dark: darkWinners.map((a) => a.id),
+      };
+      const label = (a) =>
+        a.id === "player" ? "You" : `Fighter ${this.fighters.indexOf(a) + 1}`;
+      this.finished = true;
+      this.result = [...lights, ...darkWinners].includes(this.player)
+        ? "victory"
+        : "defeat";
+      this.finishReason = `Light survival: ${lights.map(label).join(", ")} (${Math.min(longest, 120).toFixed(1)}s). Dark infections: ${darkWinners.map(label).join(", ")} (${high})`;
+      return true;
+    }
+    if (this.mode === "domination") {
+      if (this.time < this.timeLimit) return false;
+      const diff = this.scores[0] - this.scores[1];
+      return this.finish(
+        Math.abs(diff) < 0.001 ? null : diff > 0 ? 0 : 1,
+        "Flag-control time decided the match",
+      );
+    }
     if (this.mode === "ctf") {
       const winner = this.scores.findIndex((score) => score >= 3);
       return winner >= 0 ? this.finish(winner, "Three flags captured") : false;
