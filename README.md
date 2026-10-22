@@ -1,10 +1,10 @@
-# Elemental — The Colosseum · v0.10
+# Elemental — The Colosseum · v0.11
 
-### New modes and Lightning update
+### Modes and battle behavior
 
-- **Corruption:** 2–8 fighters start as Light; a random fighter becomes Dark at 5 seconds. Dark melee converts Light in one hit; Light melee fells Dark in one hit. Dark has no abilities and respawns after 10 seconds. Light survival and Dark infection totals have separate winners, including ties. Ends when all are Dark or after 2 minutes. Friendly fire and fusion are disabled.
-- **Boss:** choose the Invincible boss or a level-I challenger. Supports 3–7 challengers; boss maximum health equals their combined maximum health. Last team standing wins, with no respawns, friendly fire or fusion.
-- **Domination:** 2v2–4v4, four flags, two initially owned by each team. A capture takes 10 seconds; each additional attacker doubles speed. Defenders contest and pause capture. Unattended progress drains at one capture-second per second. Each owned flag scores one flag-second each second; highest total at 3 minutes wins, with ties drawing. Respawns take 10 seconds; team wipes do not end this mode. Allied-token fusion follows Deathmatch's respawn rules.
+- **Corruption:** 2–8 fighters start as Light; a random fighter becomes Dark at 5 seconds. Dark melee converts Light in one hit; each Light strike removes one Dark health point. Fresh Dark fighters have one point per remaining living Light fighter (seven Lights means seven hits). The cap falls as Lights convert, without healing existing damage; respawns use the current cap. Corrupted AI relentlessly pursues the nearest visible Light and attacks at its normal maximum cadence. Dark has no abilities and respawns after 10 seconds. Light survival and Dark infection totals have separate winners, including ties. Ends when all are Dark or after 2 minutes. Friendly fire and fusion are disabled.
+- **Boss:** choose the Invincible boss or a level-I challenger. Supports 3–7 challengers; boss maximum health equals their combined maximum health. The AI boss relentlessly targets the nearest healer first, then the nearest remaining opponent, using melee and fire abilities. Last team standing wins, with no respawns, friendly fire or fusion.
+- **Domination:** 2v2–4v4, four flags, two initially owned by each team. A capture takes 10 seconds; each additional attacker doubles speed. Defenders contest and pause capture. Unattended progress drains at one capture-second per second. Each owned flag scores one flag-second each second; highest total at 3 minutes wins, with ties drawing. Respawns take 10 seconds; team wipes do not end this mode. Friendly fire is disabled; AI can attack through allies. Allied-token fusion follows Deathmatch's respawn rules.
 - **Lightning strikes:** cooldown reduced from 4.5 to **3 seconds**, with the same instant strike and range.
 
 A single-player elemental combat game with concept-based pixel characters, AI battles, fusion and touch controls. Built with vanilla JavaScript, Canvas 2D and Vite. No server, accounts, secrets or external runtime assets are required.
@@ -48,7 +48,7 @@ The v0.9 revision gives Divine a featureless white-light face under its hood; In
 
 ## Game modes
 
-All modes are single-player with adaptive AI opponents. Team formats offer **2v2, 3v3 and 4v4**; friendly fire is enabled except in Boss and Corruption.
+All modes are single-player with adaptive AI opponents. Team formats offer **2v2, 3v3 and 4v4**; friendly fire is enabled except in Boss, Corruption and Domination.
 
 - **Capture the Flag:** carry the enemy flag to your home flag. Your own flag must be at base to score; touch a dropped friendly flag to return it. Death drops a carried flag. First to **3 captures** wins. Fighters respawn after **10 seconds**, even after a full-team defeat. Only level-I elements are available, and tokens and fusion are disabled. AI assigns attackers and defenders, intercepts flag carriers and returns dropped flags.
 - **Team Deathmatch:** **3 minutes**, with **10-second respawns**. Most enemy kills wins; tied scores draw. A team immediately loses if all its real fighters are down together; surviving summons do not prevent this. Enemy kills by minions count for their summoner, while friendly kills and minion deaths score no points. A teammate's respawn preserves any fusion you acquired from their token. Your own respawn resets you to your starting element, full health and fresh cooldowns. Unclaimed tokens disappear when their owner respawns. Revival also resets the returned fighter without stripping other fighters' fusions.

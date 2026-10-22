@@ -292,7 +292,7 @@ export class Combat {
     this.mode = mode;
     this.scores = [0, 0];
     this.deathUsed = new Set();
-    this.friendlyFire = !["corruption", "boss"].includes(mode);
+    this.friendlyFire = !["corruption", "boss", "domination"].includes(mode);
     this.fusionEnabled = !["ctf", "corruption", "boss"].includes(mode);
     this.timeLimit =
       mode === "corruption"
@@ -460,7 +460,7 @@ export class Combat {
           b.team !== a.team &&
           distance(a, b) <= STRIKE_RANGE,
       )
-      .sort((b, c) => distance(a, b) - distance(a, c))[0];
+      .sort((b, c) => this.pursuitOrder(a, b, c))[0];
     if (t) {
       a.lock = t.id;
       const d = distance(a, t);
@@ -500,9 +500,17 @@ export class Combat {
       dx /= length;
       dy /= length;
     }
+    const movementHealth =
+      this.mode === "corruption" && a.element === "dark"
+        ? (a.hp / a.maxHp) * 120
+        : a.hp;
     let speed =
       150 *
-      (a.ghost ? 1.1 : a.hp < 40 ? 0.55 + (0.45 * a.hp) / 40 : 1) *
+      (a.ghost
+        ? 1.1
+        : movementHealth < 40
+          ? 0.55 + (0.45 * movementHealth) / 40
+          : 1) *
       (this.flying(a) ? 1.28 : 1) *
       (a.boost > 0 ? 1.7 : 1) *
       (a.charging ? 0.65 : 1) *
@@ -668,9 +676,11 @@ export class Combat {
     // Split the incoming ability before either recipient's defenses. The
     // reflected portion retains the original matchup modifier and cannot bounce.
     let hit =
-      amount *
-      (!ability && hasPassive(a, "invincible") ? 2 : 1) *
-      (reflected ? 1 : multiplier(sourceElement, b.element, ability));
+      this.mode === "corruption" && !ability
+        ? 1
+        : amount *
+          (!ability && hasPassive(a, "invincible") ? 2 : 1) *
+          (reflected ? 1 : multiplier(sourceElement, b.element, ability));
     if (
       ability &&
       reflectable &&
@@ -721,7 +731,7 @@ export class Combat {
     if (this.mode === "corruption") {
       if (!a.alive || !b.alive || !inWorld(b)) return 0;
       if (a.element === "dark") this.corrupt(b, a);
-      else this.fell(b, { killer: a });
+      else return this.damage(a, b, 1);
       return amount;
     }
     const guard = this.fighters.find(
@@ -775,12 +785,12 @@ export class Combat {
       );
       if (clash) {
         if (this.mode === "corruption") {
-          // Simultaneous opposing hits both land: conversion cannot cancel the
-          // Light strike already in contact, and death cannot cancel infection.
+          // Both simultaneous hits land. Apply the Light hit before conversion
+          // changes the health cap, even if that hit fells the Dark attacker.
           const dark = a.element === "dark" ? a : clash.who;
           const light = a.element === "light" ? a : clash.who;
+          this.damage(light, dark, 1);
           this.corrupt(light, dark);
-          this.fell(dark, { killer: light });
         } else {
           this.meleeDamage(a, clash.who, 3.5);
           this.meleeDamage(clash.who, a, 3.5);
@@ -1434,7 +1444,7 @@ export class Combat {
     });
   }
   aiGesture(a, key) {
-    if (!a.aiControlled) return true;
+    if (!a.aiControlled || this.relentless(a)) return true;
     if (a.aiLastGesture === key && a.aiRepeat >= 3) {
       a.aiNeedChange = true;
       return false;
@@ -1724,6 +1734,8 @@ export class Combat {
   }
   ai(a, dt) {
     if (this.mode === "corruption") return this.aiCorruption(a, dt);
+    if (this.mode === "boss" && a.element === "invincible")
+      return this.aiPursuit(a, dt);
     const enemies = this.enemies(a);
     const allies = this.fighters.filter(
       (b) => b.id !== a.id && b.team === a.team && b.alive && inWorld(b),
@@ -1803,7 +1815,9 @@ export class Combat {
       dx = nx * approach;
       dy = ny * approach;
       // Take a side lane rather than attacking through the nearest teammate.
-      const blocker = allies.find((b) => distance(a, b) < Math.min(d, 110));
+      const blocker =
+        this.friendlyFire &&
+        allies.find((b) => distance(a, b) < Math.min(d, 110));
       if (blocker) {
         const side =
           (blocker.x - a.x) * ny - (blocker.y - a.y) * nx >= 0 ? 1 : -1;
@@ -2103,7 +2117,12 @@ export class Combat {
       h.life -= dt;
       if (h.kind === "death") {
         const touching = this.fighters.filter(
-          (b) => b.alive && !b.echo && inWorld(b) && distance(h, b) <= h.r,
+          (b) =>
+            b.alive &&
+            !b.echo &&
+            inWorld(b) &&
+            (this.friendlyFire || b.team !== h.owner.team) &&
+            distance(h, b) <= h.r,
         );
         h.occupants ??= new Set();
         for (const b of touching) if (!h.occupants.has(b.id)) this.demote(b);
@@ -2312,10 +2331,72 @@ export class Combat {
       spawnFlash: 0.65,
     });
     this.pending = this.pending.filter((p) => p.who !== a);
+    this.syncCorruptionHealth();
     this.cue("shatter", a, "#a59dc1");
     return true;
   }
+  syncCorruptionHealth() {
+    if (this.mode !== "corruption") return;
+    const cap = Math.max(
+      1,
+      this.fighters.filter((a) => a.element === "light" && a.alive && !a.echo)
+        .length,
+    );
+    for (const a of this.fighters)
+      if (a.element === "dark" && !a.echo) {
+        a.maxHp = cap;
+        if (a.alive) a.hp = Math.min(a.hp, cap);
+      }
+  }
+  relentless(a) {
+    return (
+      !a.echo &&
+      ((this.mode === "corruption" && a.element === "dark") ||
+        (this.mode === "boss" && a.element === "invincible"))
+    );
+  }
+  pursuitOrder(a, b, c) {
+    const healer = (b) =>
+      canUseSkill(b, "light", "ability") || canUseSkill(b, "divine", "ability");
+    const priority =
+      this.mode === "boss" && a.element === "invincible" && a.aiControlled
+        ? Number(healer(c)) - Number(healer(b))
+        : 0;
+    return priority || distance(a, b) - distance(a, c);
+  }
+  aiPursuit(a, dt) {
+    a.aiControlled = true;
+    a.aiPlan = null;
+    a.aiNeedChange = false;
+    if (a.shield) this.utility(a, false);
+    const target = this.enemies(a).sort((b, c) =>
+      this.pursuitOrder(a, b, c),
+    )[0];
+    if (target)
+      a.pursuitMemory = { x: target.x, y: target.y, until: this.time + 3.1 };
+    // Flash still hides distant opponents; continue toward their last seen spot.
+    const focus =
+      target || (a.pursuitMemory?.until > this.time ? a.pursuitMemory : null);
+    if (!focus) {
+      this.move(a, 0, 0, dt);
+      return;
+    }
+    const gap = distance(a, focus);
+    this.move(
+      a,
+      gap > 22 ? focus.x - a.x : 0,
+      gap > 22 ? focus.y - a.y : 0,
+      dt,
+    );
+    if (gap <= STRIKE_RANGE) this.strike(a, focus);
+    if (this.mode === "boss") {
+      if (a.charging && a.charge >= 0.35) this.releaseCharge(a);
+      else if (!a.charging && target && gap < 300) this.startCharge(a, "fire");
+      if (target && gap < 100) this.utility(a, true, "fire");
+    }
+  }
   aiCorruption(a, dt) {
+    if (a.element === "dark") return this.aiPursuit(a, dt);
     a.aiControlled = true;
     this.aiProgress(a);
     const target = this.enemies(a).sort(
@@ -2393,6 +2474,7 @@ export class Combat {
     });
     this.tokens = this.tokens.filter((t) => t.owner !== a.id);
     this.pending = this.pending.filter((p) => p.who !== a);
+    this.syncCorruptionHealth();
     // Other fighters keep all tokens they absorbed, even when their source respawns.
     return true;
   }

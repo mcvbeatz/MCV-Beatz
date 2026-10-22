@@ -20,6 +20,15 @@ test("Corruption locks selection to Light, supports eight fighters, hides Dark s
   await expect(page.locator("#utility-btn")).toBeHidden();
   await expect(page.locator("#passive-note")).toContainText("Strike a Light");
   await expect(page.locator("#objective-score")).toContainText("7 LIGHT");
+  await expect(page.locator("#health-label")).toHaveText("7 / 7 HITS");
+  await page.evaluate(() => {
+    const g = __arena.game;
+    g.meleeDamage(g.fighters[1], g.player, 14);
+    g.meleeDamage(g.fighters[1], g.player, 14);
+    g.corrupt(g.fighters[1], g.player);
+  });
+  await expect(page.locator("#health-label")).toHaveText("5 / 6 HITS");
+  await expect(page.locator("#objective-score")).toContainText("6 LIGHT");
   await page.evaluate(() => {
     const g = __arena.game;
     g.time = 120;
@@ -52,7 +61,7 @@ test("Domination exposes team sizes, capture progress and flag-control scoring",
   await page.goto("/");
   await page.locator('[data-mode="domination"]').click();
   await expect(page.locator("#team-sizes")).toBeVisible();
-  await expect(page.locator("#friendly-fire-state")).toHaveText("ON");
+  await expect(page.locator("#friendly-fire-state")).toHaveText("OFF");
   await page.locator('[data-size="4"]').click();
   await page.locator("#begin-btn").click();
   const state = await page.evaluate(() => {

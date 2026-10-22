@@ -35,6 +35,8 @@ test("Corruption converts in one hit, scores infections, respawns Dark without s
   assert.equal(light.infectedAt, 12);
   assert.equal(dark.infections, 1);
   g.meleeDamage(hunter, light, 0.01);
+  assert.equal(light.alive, true);
+  g.meleeDamage(hunter, light, 0.01);
   assert.equal(light.alive, false);
   assert.equal(light.respawnAt, 22);
   assert.equal(g.tokens.length, 0);
@@ -244,7 +246,7 @@ test("simultaneous Corruption strikes convert Light and fell Dark regardless of 
     g.time = 5;
     g.corruptionStarted = true;
     g.corrupt(dark);
-    Object.assign(dark, { x: 300, y: 300 });
+    Object.assign(dark, { x: 300, y: 300, hp: 1 });
     Object.assign(light, { x: 340, y: 300 });
     g.strike(g.fighters[0]);
     g.strike(g.fighters[1]);
