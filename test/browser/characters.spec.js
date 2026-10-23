@@ -5,7 +5,8 @@ const origins = ["water", "dark", "fire", "air", "earth", "light"];
 test("all grounded atlases animate opposing strides while flyers retain their hovering pose", async ({
   page,
 }) => {
-  await page.goto("/");
+  await page.goto("/?mode=duel");
+  await page.waitForFunction(() => window.__app?.screen === "setup");
   const result = await page.evaluate(async () => {
     const { drawCharacter, CHARACTERS, charactersReady } =
       await import("/src/characters.js");
@@ -53,7 +54,8 @@ test("an unavailable sprite atlas leaves combat playable with the procedural ava
   const errors = [];
   page.on("pageerror", (e) => errors.push(e.message));
   await page.route(/\/origins[^/]*\.webp(?:\?.*)?$/, (route) => route.abort());
-  await page.goto("/");
+  await page.goto("/?mode=duel");
+  await page.waitForFunction(() => window.__app?.screen === "setup");
   expect(
     await page.evaluate(
       async () => (await import("/src/characters.js")).charactersReady,
@@ -75,7 +77,8 @@ test("an unavailable sprite atlas leaves combat playable with the procedural ava
 test("all six concepts have populated, distinct turnaround previews", async ({
   page,
 }) => {
-  await page.goto("/");
+  await page.goto("/?mode=duel");
+  await page.waitForFunction(() => window.__app?.screen === "setup");
   expect(
     await page.evaluate(
       async () => (await import("/src/characters.js")).charactersReady,
@@ -100,14 +103,15 @@ test("all six concepts have populated, distinct turnaround previews", async ({
     expect(new Set(images.map((i) => i.image)).size).toBe(3);
     for (const i of images) expect(i.pixels).toBeGreaterThan(350);
   }
-  await page.locator('[data-mode="fused"]').click();
+  await page.evaluate(() => __app.chooseMode("fused"));
   await expect(page.locator("#character-views")).toBeVisible();
 });
 
 test("every elemental draws four directions and distinct attack frames without mutating combat", async ({
   page,
 }) => {
-  await page.goto("/");
+  await page.goto("/?mode=duel");
+  await page.waitForFunction(() => window.__app?.screen === "setup");
   const result = await page.evaluate(async () => {
     const { drawCharacter, charactersReady, CHARACTERS } =
       await import("/src/characters.js");
@@ -148,7 +152,8 @@ test("every elemental draws four directions and distinct attack frames without m
 test("attack poses enter contact when melee hits and recover on the existing timer", async ({
   page,
 }) => {
-  await page.goto("/");
+  await page.goto("/?mode=duel");
+  await page.waitForFunction(() => window.__app?.screen === "setup");
   await page.locator('[data-element="water"]').click();
   await page.locator("#begin-btn").click();
   const result = await page.evaluate(async () => {

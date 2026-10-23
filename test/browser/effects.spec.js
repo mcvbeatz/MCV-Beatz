@@ -26,8 +26,9 @@ test.describe("swipe telekinesis on a phone", () => {
     await page.addInitScript(() => {
       HTMLElement.prototype.requestFullscreen = undefined;
     });
-    await page.goto("/");
-    await page.locator('[data-mode="fused"]').click();
+    await page.goto("/?mode=duel");
+    await page.waitForFunction(() => window.__app?.screen === "setup");
+    await page.evaluate(() => __app.chooseMode("fused"));
     await page.locator('[data-element="gravity"]').click();
     await page.locator("#begin-btn").click();
     await page.evaluate(() => {
@@ -114,7 +115,8 @@ test.describe("swipe telekinesis on a phone", () => {
 test("water and quicksand hide the correct portion of grounded sprites", async ({
   page,
 }) => {
-  await page.goto("/");
+  await page.goto("/?mode=duel");
+  await page.waitForFunction(() => window.__app?.screen === "setup");
   const counts = await page.evaluate(async () => {
     await (
       await import("/src/characters.js")
@@ -146,7 +148,8 @@ test("water and quicksand hide the correct portion of grounded sprites", async (
 test("gravity fuzz stays inside its area and does not reveal an invisible Divine", async ({
   page,
 }) => {
-  await page.goto("/");
+  await page.goto("/?mode=duel");
+  await page.waitForFunction(() => window.__app?.screen === "setup");
   const result = await page.evaluate(async () => {
     await (
       await import("/src/characters.js")

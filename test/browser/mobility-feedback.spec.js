@@ -12,8 +12,9 @@ async function point(page, x, y) {
 test("Spirit healing and Divine portal placement work directly from their fused tabs", async ({
   page,
 }) => {
-  await page.goto("/");
-  await page.locator('[data-mode="fused"]').click();
+  await page.goto("/?mode=duel");
+  await page.waitForFunction(() => window.__app?.screen === "setup");
+  await page.evaluate(() => __app.chooseMode("fused"));
   await page.locator('[data-element="spirit"]').click();
   await page.locator("#begin-btn").click();
   await page.evaluate(() => {
@@ -54,7 +55,8 @@ test("Spirit healing and Divine portal placement work directly from their fused 
 test("summon bodies flash, tokens shine, and combat cues never draw floating text or reveal hidden Divine", async ({
   page,
 }) => {
-  await page.goto("/");
+  await page.goto("/?mode=duel");
+  await page.waitForFunction(() => window.__app?.screen === "setup");
   const result = await page.evaluate(async () => {
     const { charactersReady, drawCharacter } =
       await import("/src/characters.js");
@@ -132,7 +134,8 @@ test("AI portal crossings and teleport preparation render during real simulation
 }) => {
   const errors = [];
   page.on("pageerror", (e) => errors.push(e.message));
-  await page.goto("/");
+  await page.goto("/?mode=duel");
+  await page.waitForFunction(() => window.__app?.screen === "setup");
   const results = await page.evaluate(async () => {
     const { Combat, makeFighter } = await import("/src/combat.js");
     const r = __arena.renderer;

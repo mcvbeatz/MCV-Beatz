@@ -8,7 +8,8 @@ async function prepare(page) {
   await page.addInitScript(() => {
     HTMLElement.prototype.requestFullscreen = undefined;
   });
-  await page.goto("/");
+  await page.goto("/?mode=duel");
+  await page.waitForFunction(() => window.__app?.screen === "setup");
 }
 async function fighter(page, element) {
   await page.evaluate(async (element) => {

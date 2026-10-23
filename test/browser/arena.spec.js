@@ -1,7 +1,9 @@
 import { test, expect } from "@playwright/test";
 async function begin(page, { mode = "duel", element = "fire" } = {}) {
-  await page.goto("/");
-  if (mode !== "duel") await page.locator(`[data-mode="${mode}"]`).click();
+  await page.goto("/?mode=duel");
+  await page.waitForFunction(() => window.__app?.screen === "setup");
+  if (mode !== "duel")
+    await page.evaluate((mode) => __app.chooseMode(mode), mode);
   await page.locator(`[data-element="${element}"]`).click();
   await page.locator("#begin-btn").click();
 }
@@ -75,8 +77,9 @@ test("automatic locking, keyboard movement, charging and pause", async ({
 test("fused selector shows nine level-two elements and Mirror exposes shield and healing without switching", async ({
   page,
 }) => {
-  await page.goto("/");
-  await page.locator('[data-mode="fused"]').click();
+  await page.goto("/?mode=duel");
+  await page.waitForFunction(() => window.__app?.screen === "setup");
+  await page.evaluate(() => __app.chooseMode("fused"));
   await expect(page.locator("[data-element]")).toHaveCount(9);
   await expect(page.locator('[data-element="fire"]')).toHaveCount(0);
   await page.locator('[data-element="mirror"]').click();
@@ -370,7 +373,6 @@ test("native fullscreen enters and exits without leaving the game trapped", asyn
   page,
 }) => {
   await begin(page);
-  await page.locator("#fullscreen-btn").click();
   await expect
     .poll(() => page.evaluate(() => document.fullscreenElement?.id))
     .toBe("arena-panel");
@@ -384,8 +386,9 @@ test("native fullscreen enters and exits without leaving the game trapped", asyn
 test("level III selector starts each fusion and Divine disappears completely at rest", async ({
   page,
 }) => {
-  await page.goto("/");
-  await page.locator('[data-mode="fused3"]').click();
+  await page.goto("/?mode=duel");
+  await page.waitForFunction(() => window.__app?.screen === "setup");
+  await page.evaluate(() => __app.chooseMode("fused3"));
   await expect(page.locator("[data-element]")).toHaveCount(5);
   await expect(page.locator(".tier")).toHaveText("III");
   for (const element of [

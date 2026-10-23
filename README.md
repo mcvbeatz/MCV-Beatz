@@ -1,4 +1,25 @@
-# Elemental — The Colosseum · v0.11
+# Elemental — The Colosseum · v0.12
+
+## App navigation and new modes
+
+The app opens with the configured logo video, then Home: **Play, Practice, Leaderboard, My Account, Settings**. No logo video was supplied for this release, so Home opens immediately. Add the video and set `introVideo` in `public/app-config.json` to activate the intro. Playback completion, Skip, and video failures all return to Home; blocked autoplay offers a Play button.
+
+Screens fit the viewport without page scrolling. Play mode lists use pages; only the character picker scrolls. Each mode has a swipeable How to Play slideshow. Practice includes controls and element/fusion ability tutorials, plus Duel, Fused II, Fused III and Team Brawl. Tutorial's Try Controls opens an unranked AI practice duel. Random chooses a Play mode, never Practice. `?mode=rush` (and other mode IDs) are supported setup deep links.
+
+- **Fusion Rush:** 3v3 or 4v4, three minutes, 10-second respawns. Neutral compatible shards appear at distributed positions: six at start, up to two every eight seconds, capped at eight and expiring after 32 seconds. Either team can collect them. Eliminations give 1 point; first reaching tier II gives 3 and tier III gives 5, once per fighter per match (not farmable by respawning). Highest score wins; ties draw. Fusion resets on your respawn. Friendly fire is on, and ordinary ally-token fusion remains available.
+- **Elemental Gauntlet Solo:** start with an origin, clear escalating waves, then choose a compatible shard, full healing, or +25% damage / +15% speed for the next wave. Waves increase in number, health and elemental tier. Reaching tier III unlocks the final Invincible boss on the following wave. Beat the boss to win; dying ends the run. Rewards pause combat and the clock.
+- **Elemental Gauntlet Teams:** two to four allies, currently one human and adaptive AI teammates. The same survival progression applies. Any surviving teammate keeps the run alive; felled allies return at half health between waves. Healing/upgrade rewards affect the team, and a shard choice also gives each AI ally a compatible evolution when possible. A full team wipe ends the run. Friendly fire remains on.
+- **Elemental Roulette:** 2–8 independent fighters, random transformations every 25 seconds. The HUD reveals your next form five seconds before the change. Current HP, maximum HP, cooldowns and incoming status effects carry over; old forms, passives, charges, shields and dashes are replaced. No fusion or respawns. Last living real fighter wins.
+
+Settings independently control SFX and the procedural ambient soundtrack. Both volumes and landscape/portrait preference persist on the device. Landscape uses the existing rotation fallback; Portrait keeps the arena and controls upright. This is a mobile web/PWA layout, not a packaged App Store binary.
+
+## Account service setup
+
+Sign-in, email/username/password registration, email password recovery, personal stats and the five leaderboard metrics are integrated with **Supabase Auth/Postgres**, but a hosted project has not been configured. The UI clearly marks these services unavailable until connected. Guest play works and neither guest nor Practice results are stored or queued. Completed, signed-in Play matches save kills, deaths, wins/losses and K/D (kills divided by at least one death); a unique match ID prevents duplicate credit.
+
+See [backend/README.md](backend/README.md) and [backend/supabase.sql](backend/supabase.sql) for the schema, row-level access policies, Auth setup, email sender and redirect configuration. Only the public project URL and publishable key belong in `public/app-config.json`. Passwords are sent to the authentication provider over HTTPS, never stored by this app; Auth stores password hashes. Local storage contains only settings; sessionStorage contains Auth session tokens.
+
+Online multiplayer remains future work. Its lobby requirements are recorded in the backend guide: a 60-second countdown, early start when everyone readies, and adaptive-AI takeover of players who leave after a match starts. There is no fake online lobby or fabricated leaderboard. Current saved results are client-submitted AI-match stats; authoritative server-side results are required before competitive online leaderboards.
 
 ### Modes and battle behavior
 
@@ -7,13 +28,13 @@
 - **Domination:** 2v2–4v4, four flags, two initially owned by each team. A capture takes 10 seconds; each additional attacker doubles speed. Defenders contest and pause capture. Unattended progress drains at one capture-second per second. Each owned flag scores one flag-second each second; highest total at 3 minutes wins, with ties drawing. Respawns take 10 seconds; team wipes do not end this mode. Friendly fire is disabled; AI can attack through allies. Allied-token fusion follows Deathmatch's respawn rules.
 - **Lightning strikes:** cooldown reduced from 4.5 to **3 seconds**, with the same instant strike and range.
 
-A single-player elemental combat game with concept-based pixel characters, AI battles, fusion and touch controls. Built with vanilla JavaScript, Canvas 2D and Vite. No server, accounts, secrets or external runtime assets are required.
+A single-player elemental combat game with concept-based pixel characters, AI battles, fusion and touch controls. Built with vanilla JavaScript, Canvas 2D and Vite. Guest play requires no server or account. Optional accounts and leaderboards use a configured hosted backend.
 
 **Public site:** https://mcvbeatz.github.io/MCV-Beatz/
 
 ## Playing on an iPhone
 
-Open the site in Safari. Select a format and elemental, then enter the battle. Phone play fills the viewport in landscape, with a rotated landscape fallback when the device is held vertically. The controls are:
+Open the site in Safari. Choose Play or Practice, select a mode and elemental, then enter the battle. Phone play fills the viewport. Choose upright Portrait or the Landscape rotation fallback in Settings. The controls are:
 
 - **Bottom left:** analog movement stick, in any direction. Movement and skill buttons support simultaneous touches.
 - **Bottom right:** Strike. The nearest opponent is automatically targeted when within melee range.

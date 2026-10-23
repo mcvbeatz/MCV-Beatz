@@ -2,8 +2,9 @@ import { test, expect } from "@playwright/test";
 test("Corruption locks selection to Light, supports eight fighters, hides Dark skills and reports both winners", async ({
   page,
 }) => {
-  await page.goto("/");
-  await page.locator('[data-mode="corruption"]').click();
+  await page.goto("/?mode=duel");
+  await page.waitForFunction(() => window.__app?.screen === "setup");
+  await page.evaluate(() => __app.chooseMode("corruption"));
   await expect(page.locator("[data-element]")).toHaveCount(1);
   await expect(page.locator("#friendly-fire-state")).toHaveText("OFF");
   await page.locator("#ffa-count").selectOption("8");
@@ -40,8 +41,9 @@ test("Corruption locks selection to Light, supports eight fighters, hides Dark s
 test("Boss setup permits either role and seven challengers with scaled HP", async ({
   page,
 }) => {
-  await page.goto("/");
-  await page.locator('[data-mode="boss"]').click();
+  await page.goto("/?mode=duel");
+  await page.waitForFunction(() => window.__app?.screen === "setup");
+  await page.evaluate(() => __app.chooseMode("boss"));
   await expect(page.locator('[data-element="invincible"]')).toBeVisible();
   await page.locator("#boss-role").selectOption("challenger");
   await expect(page.locator("[data-element]")).toHaveCount(6);
@@ -58,8 +60,9 @@ test("Boss setup permits either role and seven challengers with scaled HP", asyn
 test("Domination exposes team sizes, capture progress and flag-control scoring", async ({
   page,
 }) => {
-  await page.goto("/");
-  await page.locator('[data-mode="domination"]').click();
+  await page.goto("/?mode=duel");
+  await page.waitForFunction(() => window.__app?.screen === "setup");
+  await page.evaluate(() => __app.chooseMode("domination"));
   await expect(page.locator("#team-sizes")).toBeVisible();
   await expect(page.locator("#friendly-fire-state")).toHaveText("OFF");
   await page.locator('[data-size="4"]').click();
@@ -93,8 +96,9 @@ test("Domination exposes team sizes, capture progress and flag-control scoring",
   );
 });
 test("Lightning HUD counts down a three-second recharge", async ({ page }) => {
-  await page.goto("/");
-  await page.locator('[data-mode="fused3"]').click();
+  await page.goto("/?mode=duel");
+  await page.waitForFunction(() => window.__app?.screen === "setup");
+  await page.evaluate(() => __app.chooseMode("fused3"));
   await page.locator('[data-element="lightning"]').click();
   await page.locator("#begin-btn").click();
   await page.evaluate(() => {
@@ -120,8 +124,9 @@ for (const mode of ["corruption", "boss", "domination"]) {
     await page.addInitScript(() => {
       HTMLElement.prototype.requestFullscreen = undefined;
     });
-    await page.goto("/");
-    await page.locator(`[data-mode="${mode}"]`).click();
+    await page.goto("/?mode=duel");
+    await page.waitForFunction(() => window.__app?.screen === "setup");
+    await page.evaluate((mode) => __app.chooseMode(mode), mode);
     await page.locator("#begin-btn").click();
     await page.evaluate(() => {
       __arena.game.update = () => {};

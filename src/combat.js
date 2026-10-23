@@ -1,3 +1,12 @@
+import {
+  initializeAdvanced,
+  updateAdvanced,
+  advancedEnd,
+  fusionScore,
+  rewardChoices,
+  chooseReward,
+  isGauntlet,
+} from "./advanced-modes.js";
 import { PortalSystem, inWorld, segmentDistance } from "./portals.js";
 export { inWorld } from "./portals.js";
 export const ELEMENTS = {
@@ -293,16 +302,22 @@ export class Combat {
     this.scores = [0, 0];
     this.deathUsed = new Set();
     this.friendlyFire = !["corruption", "boss", "domination"].includes(mode);
-    this.fusionEnabled = !["ctf", "corruption", "boss"].includes(mode);
+    this.fusionEnabled = !["ctf", "corruption", "boss", "roulette"].includes(
+      mode,
+    );
     this.timeLimit =
       mode === "corruption"
         ? 120
-        : ["tdm", "domination"].includes(mode)
+        : ["tdm", "domination", "rush"].includes(mode)
           ? 180
           : null;
-    this.respawnDelay = ["ctf", "tdm", "corruption", "domination"].includes(
-      mode,
-    )
+    this.respawnDelay = [
+      "ctf",
+      "tdm",
+      "corruption",
+      "domination",
+      "rush",
+    ].includes(mode)
       ? 10
       : null;
     this.flags =
@@ -339,8 +354,8 @@ export class Combat {
     this.fighters = [];
     this.sequence = 0;
     this.portals = new PortalSystem(this);
-    const n = ["team", "ctf", "tdm", "domination"].includes(mode)
-        ? Math.max(2, Math.min(4, Math.floor(size) || 2))
+    const n = ["team", "ctf", "tdm", "domination", "rush"].includes(mode)
+        ? Math.max(mode === "rush" ? 3 : 2, Math.min(4, Math.floor(size) || 2))
         : 1,
       pool =
         mode === "fused"
@@ -371,7 +386,7 @@ export class Combat {
         ),
       );
     }
-    if (["ffa", "corruption"].includes(mode)) {
+    if (["ffa", "corruption", "roulette"].includes(mode)) {
       const count = Math.max(2, Math.min(8, Math.floor(players) || 4));
       this.fighters = Array.from({ length: count }, (_, i) => {
         const angle = Math.PI + (i * Math.PI * 2) / count;
@@ -427,6 +442,17 @@ export class Combat {
       a.deaths = 0;
     }
     this.player = this.fighters[0];
+    initializeAdvanced(this, {
+      element: ELEMENTS[element] ? element : "fire",
+      size,
+      players,
+    });
+  }
+  rewardChoices() {
+    return rewardChoices(this);
+  }
+  chooseReward(id) {
+    return chooseReward(this, id);
   }
   cue(cue, subject, color = "#e9cc91") {
     this.effects.push({
@@ -506,6 +532,7 @@ export class Combat {
         : a.hp;
     let speed =
       150 *
+      (a.waveSpeed || 1) *
       (a.ghost
         ? 1.1
         : movementHealth < 40
@@ -539,6 +566,7 @@ export class Combat {
     this.autoLock(a);
   }
   strike(a, aim = null) {
+    if (this.intermission) return false;
     if (!a.alive || !inWorld(a) || a.attackCd > 0 || a.shield || a.stagger > 0)
       return false;
     if (!this.aiGesture(a, "strike")) return false;
@@ -555,6 +583,7 @@ export class Combat {
     return true;
   }
   startCharge(a, form = activeForm(a)) {
+    if (this.intermission) return false;
     if (!canUseSkill(a, form, "ability") || a.charging) return false;
     if (
       !a.alive ||
@@ -606,7 +635,7 @@ export class Combat {
         : source;
       if (credited && credited.team !== a.team) {
         credited.kills = (credited.kills || 0) + 1;
-        if (this.mode === "tdm") this.scores[credited.team]++;
+        if (["tdm", "rush"].includes(this.mode)) this.scores[credited.team]++;
       }
       if (this.respawnDelay) a.respawnAt = this.time + this.respawnDelay;
       for (const flag of this.flags)
@@ -681,6 +710,7 @@ export class Combat {
         : amount *
           (!ability && hasPassive(a, "invincible") ? 2 : 1) *
           (reflected ? 1 : multiplier(sourceElement, b.element, ability));
+    if (!reflected) hit *= a.waveDamage || 1;
     if (
       ability &&
       reflectable &&
@@ -1107,6 +1137,7 @@ export class Combat {
     return true;
   }
   utility(a, hold = true, form = activeForm(a)) {
+    if (hold && this.intermission) return false;
     if (hold && !canUseSkill(a, form, "utility")) return false;
     return this.executeSkill(a, form, () => this.utilitySkill(a, hold));
   }
@@ -1258,10 +1289,12 @@ export class Combat {
     const fused = combination(a.parts, parts),
       all = [...new Set([...a.parts, ...parts])];
     if (!a.alive || !fused || all.length <= a.parts.length) return false;
+    const oldTier = a.parts.length;
     a.parts = all;
     a.forms = [...new Set([...a.forms, ...parts, fused])];
     a.element = fused;
     a.form = a.forms.length - 1;
+    fusionScore(this, a, oldTier);
     a.hp = Math.min(a.maxHp, a.hp + 30);
     a.charging = false;
     a.shield = 0;
@@ -1297,11 +1330,13 @@ export class Combat {
       (t) =>
         inWorld(t) &&
         !t.removed &&
-        (this.mode === "ffa" || t.team === a.team) &&
+        (t.neutral || this.mode === "ffa" || t.team === a.team) &&
         distance(a, t) <= TOKEN_TOUCH_RANGE &&
         combination(a.parts, t.parts),
     );
     if (!token || !this.applyFusion(a, token.parts)) return false;
+    if (token.shard)
+      a.nativeParts = [...new Set([...a.nativeParts, ...token.parts])];
     const souls = token.souls || [{ owner: token.owner, parts: token.parts }];
     a.absorbed.push(...souls);
     for (const soul of souls) {
@@ -1313,7 +1348,8 @@ export class Combat {
   }
   visibleTokens(team = this.player.team) {
     return this.tokens.filter(
-      (t) => (this.mode === "ffa" || t.team === team) && inWorld(t),
+      (t) =>
+        (t.neutral || this.mode === "ffa" || t.team === team) && inWorld(t),
     );
   }
   switchForm(a, form) {
@@ -1501,7 +1537,7 @@ export class Combat {
         (t) =>
           !t.removed &&
           inWorld(t) &&
-          (this.mode === "ffa" || t.team === a.team) &&
+          (t.neutral || this.mode === "ffa" || t.team === a.team) &&
           combination(a.parts, t.parts),
       )
       .sort((b, c) => distance(a, b) - distance(a, c))[0];
@@ -1734,7 +1770,10 @@ export class Combat {
   }
   ai(a, dt) {
     if (this.mode === "corruption") return this.aiCorruption(a, dt);
-    if (this.mode === "boss" && a.element === "invincible")
+    if (
+      (this.mode === "boss" || (isGauntlet(this) && this.finalWave)) &&
+      a.element === "invincible"
+    )
       return this.aiPursuit(a, dt);
     const enemies = this.enemies(a);
     const allies = this.fighters.filter(
@@ -2197,10 +2236,11 @@ export class Combat {
     );
   }
   update(dt, input = { x: 0, y: 0 }, runAI = true) {
-    if (this.finished) return;
+    if (this.finished || this.intermission) return;
     dt = Math.min(dt, 0.05);
     if (this.mode === "tdm" && this.checkMatchEnd()) return;
     this.time += dt;
+    updateAdvanced(this);
     if (
       this.mode === "corruption" &&
       !this.corruptionStarted &&
@@ -2352,14 +2392,17 @@ export class Combat {
     return (
       !a.echo &&
       ((this.mode === "corruption" && a.element === "dark") ||
-        (this.mode === "boss" && a.element === "invincible"))
+        ((this.mode === "boss" || (isGauntlet(this) && this.finalWave)) &&
+          a.element === "invincible"))
     );
   }
   pursuitOrder(a, b, c) {
     const healer = (b) =>
       canUseSkill(b, "light", "ability") || canUseSkill(b, "divine", "ability");
     const priority =
-      this.mode === "boss" && a.element === "invincible" && a.aiControlled
+      (this.mode === "boss" || (isGauntlet(this) && this.finalWave)) &&
+      a.element === "invincible" &&
+      a.aiControlled
         ? Number(healer(c)) - Number(healer(b))
         : 0;
     return priority || distance(a, b) - distance(a, c);
@@ -2389,7 +2432,7 @@ export class Combat {
       dt,
     );
     if (gap <= STRIKE_RANGE) this.strike(a, focus);
-    if (this.mode === "boss") {
+    if (this.mode === "boss" || (isGauntlet(this) && this.finalWave)) {
       if (a.charging && a.charge >= 0.35) this.releaseCharge(a);
       else if (!a.charging && target && gap < 300) this.startCharge(a, "fire");
       if (target && gap < 100) this.utility(a, true, "fire");
@@ -2458,7 +2501,15 @@ export class Combat {
   }
   respawn(a) {
     if (!a.spawn || a.echo) return false;
-    const { spawn, kills, deaths, infectedAt, infections, skillsDisabled } = a;
+    const {
+      spawn,
+      kills,
+      deaths,
+      infectedAt,
+      infections,
+      skillsDisabled,
+      highestTier,
+    } = a;
     const fresh = makeFighter(a.id, spawn.element, a.team, spawn.x, spawn.y);
     // Keep the object identity used by controls and projectiles, but clear every
     // temporary status, fusion, portal route and death from the previous life.
@@ -2470,6 +2521,7 @@ export class Combat {
       infectedAt,
       infections,
       skillsDisabled,
+      highestTier,
       spawnFlash: 0.65,
     });
     this.tokens = this.tokens.filter((t) => t.owner !== a.id);
@@ -2575,6 +2627,8 @@ export class Combat {
   }
   checkMatchEnd() {
     if (this.finished) return true;
+    const advanced = advancedEnd(this);
+    if (advanced !== null) return advanced;
     if (this.mode === "corruption") {
       if (
         !this.corruptionStarted ||

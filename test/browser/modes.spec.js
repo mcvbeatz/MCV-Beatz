@@ -3,8 +3,9 @@ import { test, expect } from "@playwright/test";
 test("CTF can be selected, shows flags and scores, drops on death and respawns without tokens", async ({
   page,
 }) => {
-  await page.goto("/");
-  await page.locator('[data-mode="ctf"]').click();
+  await page.goto("/?mode=duel");
+  await page.waitForFunction(() => window.__app?.screen === "setup");
+  await page.evaluate(() => __app.chooseMode("ctf"));
   await expect(page.locator("#team-sizes")).toBeVisible();
   await page.locator('[data-size="3"]').click();
   await page.locator("#begin-btn").click();
@@ -41,8 +42,9 @@ test("CTF can be selected, shows flags and scores, drops on death and respawns w
 test("deathmatch shows remaining time, kills, and an explicit timeout result", async ({
   page,
 }) => {
-  await page.goto("/");
-  await page.locator('[data-mode="tdm"]').click();
+  await page.goto("/?mode=duel");
+  await page.waitForFunction(() => window.__app?.screen === "setup");
+  await page.evaluate(() => __app.chooseMode("tdm"));
   await page.locator("#begin-btn").click();
   await page.evaluate(() => {
     const g = __arena.game;
@@ -69,8 +71,9 @@ test("deathmatch shows remaining time, kills, and an explicit timeout result", a
 test("eight-player free for all exposes enemy tokens and counts every rival", async ({
   page,
 }) => {
-  await page.goto("/");
-  await page.locator('[data-mode="ffa"]').click();
+  await page.goto("/?mode=duel");
+  await page.waitForFunction(() => window.__app?.screen === "setup");
+  await page.evaluate(() => __app.chooseMode("ffa"));
   await expect(page.locator("#team-sizes")).toBeHidden();
   await page.locator("#ffa-count").selectOption("8");
   await page.locator("#begin-btn").click();
@@ -104,8 +107,9 @@ test("phone landscape keeps mode score and touch controls within the screen", as
   await page.addInitScript(() => {
     HTMLElement.prototype.requestFullscreen = undefined;
   });
-  await page.goto("/");
-  await page.locator('[data-mode="ctf"]').click();
+  await page.goto("/?mode=duel");
+  await page.waitForFunction(() => window.__app?.screen === "setup");
+  await page.evaluate(() => __app.chooseMode("ctf"));
   await page.locator("#begin-btn").click();
   await page.evaluate(() => {
     __arena.game.update = () => {};

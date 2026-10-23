@@ -3,7 +3,8 @@ import { test, expect } from "@playwright/test";
 test("every elemental uses distinct directional sidestep and damaged frames with attack priority", async ({
   page,
 }) => {
-  await page.goto("/");
+  await page.goto("/?mode=duel");
+  await page.waitForFunction(() => window.__app?.screen === "setup");
   const result = await page.evaluate(async () => {
     const { charactersReady, CHARACTERS, drawCharacter, characterPose } =
       await import("/src/characters.js");
@@ -63,8 +64,9 @@ test("every elemental uses distinct directional sidestep and damaged frames with
 test("Death button places a floor sigil, stays spent, and demotion updates ability tabs", async ({
   page,
 }) => {
-  await page.goto("/");
-  await page.locator('[data-mode="fused3"]').click();
+  await page.goto("/?mode=duel");
+  await page.waitForFunction(() => window.__app?.screen === "setup");
+  await page.evaluate(() => __app.chooseMode("fused3"));
   await page.locator('[data-element="demonic"]').click();
   await page.locator("#begin-btn").click();
   await page.evaluate(() => {
@@ -107,7 +109,8 @@ test("Death button places a floor sigil, stays spent, and demotion updates abili
 test("white portals animate opening and closing while keeping transport timing", async ({
   page,
 }) => {
-  await page.goto("/");
+  await page.goto("/?mode=duel");
+  await page.waitForFunction(() => window.__app?.screen === "setup");
   const result = await page.evaluate(async () => {
     const { drawPortal } = await import("/src/battle-effects.js");
     const g = __arena.game;
