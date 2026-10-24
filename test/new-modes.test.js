@@ -23,13 +23,16 @@ test("Corruption starts with up to eight Lights and seeds exactly one random Dar
   assert.equal(g.startCharge(g.player), false);
   assert.equal(g.timeLimit, 120);
 });
-test("Corruption converts in one hit, scores infections, respawns Dark without skills or tokens", () => {
+test("Corruption converts in two hits, scores infections, respawns Dark without skills or tokens", () => {
   const g = corruption(),
     [dark, light, hunter] = g.fighters;
   g.time = 5;
   g.corruptionStarted = true;
   g.corrupt(dark);
   g.time = 12;
+  g.meleeDamage(dark, light, 0.01);
+  assert.equal(light.element, "light");
+  assert.equal(light.hp, 1);
   g.meleeDamage(dark, light, 0.01);
   assert.equal(light.element, "dark");
   assert.equal(light.infectedAt, 12);
@@ -57,7 +60,7 @@ test("Corruption disables friendly strikes, damage and Flash, and cancels pre-co
   assert.equal(b.blind, 0);
   g.meleeDamage(a, b, 999);
   g.damage(a, b, 999, true);
-  assert.equal(b.hp, 120);
+  assert.equal(b.hp, b.maxHp);
   g.corrupt(c);
   g.corrupt(b, c);
   assert.equal(
@@ -99,15 +102,14 @@ test("Corruption ends when the last Light converts and ignores all-Dark respawn 
   assert.deepEqual(g.winners.light, [c.id]);
   assert.deepEqual(g.winners.dark, [a.id, b.id]);
 });
-test("Boss supports either role, three to seven origins, combined HP and last-team standing", () => {
+test("Boss randomly assigns either role among four to eight players, with combined HP and last-team standing", () => {
   for (const bossRole of ["boss", "challenger"])
     for (const challengers of [3, 7]) {
       const g = new Combat({
         mode: "boss",
-        bossRole,
-        challengers,
+        players: challengers + 1,
         element: "water",
-        random: () => 0.4,
+        random: () => (bossRole === "boss" ? 0 : 0.9),
       });
       const boss = g.fighters.find((a) => a.element === "invincible"),
         rivals = g.fighters.filter((a) => a !== boss);
@@ -134,8 +136,8 @@ test("Boss supports either role, three to seven origins, combined HP and last-te
 test("Boss allied water projectiles neither hurt nor push challengers", () => {
   const g = new Combat({
     mode: "boss",
-    bossRole: "challenger",
     element: "water",
+    random: () => 0.9,
   });
   const a = g.player,
     b = g.fighters[2];
@@ -143,7 +145,7 @@ test("Boss allied water projectiles neither hurt nor push challengers", () => {
   Object.assign(b, { x: 345, y: 300 });
   g.projectile(a, 1, { kind: "water" });
   g.updateProjectiles(0.02);
-  assert.equal(b.hp, 120);
+  assert.equal(b.hp, b.maxHp);
   assert.equal(b.knockX, 0);
 });
 const domination = () => {
@@ -247,7 +249,7 @@ test("simultaneous Corruption strikes convert Light and fell Dark regardless of 
     g.corruptionStarted = true;
     g.corrupt(dark);
     Object.assign(dark, { x: 300, y: 300, hp: 1 });
-    Object.assign(light, { x: 340, y: 300 });
+    Object.assign(light, { x: 340, y: 300, hp: 1 });
     g.strike(g.fighters[0]);
     g.strike(g.fighters[1]);
     g.time += 0.12;

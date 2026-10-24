@@ -181,6 +181,7 @@ test("portrait orientation stays upright, preserves touch movement and fits all 
     sfx: 0.35,
     music: 0.1,
     orientation: "portrait",
+    charging: "hold",
   });
   await page.evaluate(() => __app.chooseMode("fused3"));
   await page.locator('[data-element="demonic"]').click();

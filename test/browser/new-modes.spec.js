@@ -19,7 +19,9 @@ test("Corruption locks selection to Light, supports eight fighters, hides Dark s
   await expect(page.locator("#hud-name")).toHaveText("DARK");
   await expect(page.locator("#charge-btn")).toBeHidden();
   await expect(page.locator("#utility-btn")).toBeHidden();
-  await expect(page.locator("#passive-note")).toContainText("Strike a Light");
+  await expect(page.locator("#passive-note")).toContainText(
+    "Strike Light twice",
+  );
   await expect(page.locator("#objective-score")).toContainText("7 LIGHT");
   await expect(page.locator("#health-label")).toHaveText("7 / 7 HITS");
   await page.evaluate(() => {
@@ -38,20 +40,27 @@ test("Corruption locks selection to Light, supports eight fighters, hides Dark s
   await expect(page.locator("#overlay-text")).toContainText("Light survival:");
   await expect(page.locator("#overlay-text")).toContainText("Dark infections:");
 });
-test("Boss setup permits either role and seven challengers with scaled HP", async ({
+test("Boss setup selects an origin and randomly assigns one boss among eight fighters", async ({
   page,
 }) => {
   await page.goto("/?mode=duel");
   await page.waitForFunction(() => window.__app?.screen === "setup");
   await page.evaluate(() => __app.chooseMode("boss"));
-  await expect(page.locator('[data-element="invincible"]')).toBeVisible();
-  await page.locator("#boss-role").selectOption("challenger");
   await expect(page.locator("[data-element]")).toHaveCount(6);
-  await page.locator("#boss-role").selectOption("boss");
-  await page.locator("#boss-count").selectOption("7");
+  await page.locator('[data-element="water"]').click();
+  await page.locator("#ffa-count").selectOption("8");
   await page.locator("#begin-btn").click();
-  await page.evaluate(() => (__arena.game.update = () => {}));
-  await expect(page.locator("#health-label")).toHaveText("840 / 840 HP");
+  const state = await page.evaluate(() => {
+    const g = __arena.game;
+    g.update = () => {};
+    return {
+      count: g.fighters.length,
+      bosses: g.fighters.filter((a) => a.element === "invincible").length,
+      chosen: g.player.chosenOrigin,
+      health: g.fighters.find((a) => a.element === "invincible").maxHp,
+    };
+  });
+  expect(state).toEqual({ count: 8, bosses: 1, chosen: "water", health: 840 });
   await expect(page.locator("#objective-score")).toHaveText(
     "BOSS 840 HP · 7 CHALLENGERS",
   );

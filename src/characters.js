@@ -1,3 +1,4 @@
+import victoryFrames from "./assets/victory.json" with { type: "json" };
 import combatMud from "./assets/combat-mud.json" with { type: "json" };
 import tuned from "./assets/tuned-identities.json" with { type: "json" };
 import tunedRuns from "./assets/tuned-running.json" with { type: "json" };
@@ -66,6 +67,10 @@ function loadAtlas(spec, url) {
   });
   return atlas;
 }
+const victory = loadAtlas(
+  victoryFrames,
+  new URL("./assets/victory.png", import.meta.url).href,
+);
 const atlases = [
   loadAtlas(origins, new URL("./assets/origins.webp", import.meta.url).href),
   loadAtlas(
@@ -170,7 +175,7 @@ const runByElement = Object.fromEntries(
   runs.flatMap((atlas) => Object.keys(atlas.spec).map((e) => [e, atlas])),
 );
 export const charactersReady = Promise.all(
-  [...atlases, ...runs, ...actions, ...hurts].map((a) => a.ready),
+  [victory, ...atlases, ...runs, ...actions, ...hurts].map((a) => a.ready),
 ).then((loaded) => loaded.every(Boolean));
 
 export function isRunning(a) {
@@ -306,6 +311,22 @@ function paintFrame(
 
 // All coordinates are visual only: facing and hit timing come from Combat.
 export function drawCharacter(c, a, time) {
+  if (a.victory && victory.loaded) {
+    const f = victoryFrames[a.element],
+      scale = 76 / f.h;
+    c.drawImage(
+      victory.image,
+      f.x,
+      f.y,
+      f.w,
+      f.h,
+      (-f.w * scale) / 2,
+      8 - f.h * scale,
+      f.w * scale,
+      f.h * scale,
+    );
+    return true;
+  }
   if (!byElement[a.element]?.loaded) return false;
   const pose = characterPose(a);
   const p = pose.progress;

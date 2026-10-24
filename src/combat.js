@@ -100,7 +100,7 @@ export const FUSED = {
   demonic: ["Minions", "Death"],
   divine: ["Radiance", null],
   "multi-dimensional": [null, null],
-  lightning: ["Lightning strikes", null],
+  lightning: ["Lightning strikes", "Tailwind"],
   invincible: [null, null],
 };
 // Direct access on the fused tab; the origin tabs remain available too.
@@ -129,15 +129,13 @@ export const EXTRA_SKILLS = {
     { name: "Healing", form: "light", kind: "ability" },
     { name: "Shadow step", form: "dark", kind: "utility" },
   ],
-  lightning: [
-    { name: "Healing", form: "light", kind: "ability" },
-    { name: "Gust", form: "air", kind: "utility" },
-  ],
+  lightning: [{ name: "Healing", form: "light", kind: "ability" }],
 };
 export const extraSkillsFor = (form) => EXTRA_SKILLS[form] || [];
 const skillForm = (a) => a.executingForm || activeForm(a);
 export const canUseSkill = (a, form, kind) =>
   !a.skillsDisabled &&
+  !(a.selfHealOnly && form === "light" && kind === "utility") &&
   (a.forms.includes(form) ||
     extraSkillsFor(a.element).some((s) => s.form === form && s.kind === kind));
 export const TELEKINESIS_RANGE = 400;
@@ -292,8 +290,6 @@ export class Combat {
     mode = "duel",
     size = 2,
     players = 4,
-    bossRole = "boss",
-    challengers = 3,
     random = Math.random,
   } = {}) {
     this.random = random;
@@ -308,7 +304,7 @@ export class Combat {
     this.timeLimit =
       mode === "corruption"
         ? 120
-        : ["tdm", "domination", "rush"].includes(mode)
+        : ["tdm", "domination", "rush", "roulette"].includes(mode)
           ? 180
           : null;
     this.respawnDelay = [
@@ -317,6 +313,7 @@ export class Combat {
       "corruption",
       "domination",
       "rush",
+      "roulette",
     ].includes(mode)
       ? 10
       : null;
@@ -406,36 +403,34 @@ export class Combat {
       });
     }
     if (mode === "boss") {
-      const count = clamp(Math.floor(challengers) || 3, 3, 7);
-      const bossTeam = bossRole === "challenger" ? 1 : 0;
-      const boss = makeFighter(
-        bossTeam === 0 ? "player" : "boss",
-        "invincible",
-        bossTeam,
-        740,
-        350,
-      );
-      const rivals = Array.from({ length: count }, (_, i) =>
-        makeFighter(
-          bossTeam === 1 && i === 0 ? "player" : `challenger-${i}`,
-          bossTeam === 1 && i === 0 && ELEMENTS[element]
+      const count = clamp(Math.floor(players) || 4, 4, 8);
+      const bossIndex = Math.min(count - 1, Math.floor(random() * count));
+      this.fighters = Array.from({ length: count }, (_, i) => {
+        const boss = i === bossIndex;
+        const origin =
+          i === 0 && ELEMENTS[element]
             ? element
             : pool[
                 Math.min(pool.length - 1, Math.floor(random() * pool.length))
-              ],
-          1 - bossTeam,
-          250 + (i % 2) * 55,
-          205 + i * 45,
-        ),
-      );
-      boss.hp = boss.maxHp = rivals.reduce((sum, a) => sum + a.maxHp, 0);
-      this.fighters =
-        bossTeam === 0
-          ? [boss, ...rivals]
-          : [rivals[0], boss, ...rivals.slice(1)];
+              ];
+        const a = makeFighter(
+          i === 0 ? "player" : `enemy-${i}`,
+          boss ? "invincible" : origin,
+          boss ? 1 : 0,
+          boss ? 740 : 250 + (i % 2) * 55,
+          boss ? 350 : 180 + i * 50,
+        );
+        a.chosenOrigin = origin;
+        if (boss) a.hp = a.maxHp = 120 * (count - 1);
+        return a;
+      });
     }
     for (const a of this.fighters) {
       a.infections = 0;
+      if (mode === "corruption") {
+        a.hp = a.maxHp = 2;
+        a.selfHealOnly = true;
+      }
       if (mode === "ctf") a.x = a.team === 0 ? 220 : 804;
       a.spawn = { x: a.x, y: a.y, element: a.element };
       a.kills = 0;
@@ -527,9 +522,7 @@ export class Combat {
       dy /= length;
     }
     const movementHealth =
-      this.mode === "corruption" && a.element === "dark"
-        ? (a.hp / a.maxHp) * 120
-        : a.hp;
+      this.mode === "corruption" ? (a.hp / a.maxHp) * 120 : a.hp;
     let speed =
       150 *
       (a.waveSpeed || 1) *
@@ -760,7 +753,7 @@ export class Combat {
     if (!this.friendlyFire && a.team === b.team) return 0;
     if (this.mode === "corruption") {
       if (!a.alive || !b.alive || !inWorld(b)) return 0;
-      if (a.element === "dark") this.corrupt(b, a);
+      if (a.element === "dark") this.corruptionHit(a, b);
       else return this.damage(a, b, 1);
       return amount;
     }
@@ -820,7 +813,7 @@ export class Combat {
           const dark = a.element === "dark" ? a : clash.who;
           const light = a.element === "light" ? a : clash.who;
           this.damage(light, dark, 1);
-          this.corrupt(light, dark);
+          this.corruptionHit(dark, light);
         } else {
           this.meleeDamage(a, clash.who, 3.5);
           this.meleeDamage(clash.who, a, 3.5);
@@ -1209,8 +1202,15 @@ export class Combat {
     } else if (e === "dark" || e === "apparition") {
       a.dodge = 4;
       this.cue("dodge", a, "#b8a1df");
-    } else if (e === "air") {
-      a.boost = 2;
+    } else if (e === "air" || e === "lightning") {
+      const team =
+        a.element === "lightning"
+          ? this.fighters.filter((b) => b.alive && !b.echo && b.team === a.team)
+          : [a];
+      for (const b of team) {
+        b.boost = 2;
+        this.cue("shatter", b, "#b4f1e7");
+      }
       this.effects.push({
         kind: "ring",
         x: a.x,
@@ -1422,6 +1422,7 @@ export class Combat {
     this.portals.enter(a, a);
   }
   healingTarget(a) {
+    if (a.selfHealOnly) return a.alive && inWorld(a) ? a : null;
     return this.fighters
       .filter((b) => b.alive && !b.echo && inWorld(b) && b.team === a.team)
       .sort((b, c) => b.hp - c.hp || distance(a, b) - distance(a, c))[0];
@@ -2238,7 +2239,7 @@ export class Combat {
   update(dt, input = { x: 0, y: 0 }, runAI = true) {
     if (this.finished || this.intermission) return;
     dt = Math.min(dt, 0.05);
-    if (this.mode === "tdm" && this.checkMatchEnd()) return;
+    if (["tdm", "roulette"].includes(this.mode) && this.checkMatchEnd()) return;
     this.time += dt;
     updateAdvanced(this);
     if (
@@ -2355,6 +2356,12 @@ export class Combat {
     this.updateDomination(dt);
     this.checkMatchEnd();
   }
+  corruptionHit(source, target) {
+    if (!target.alive || target.element !== "light") return false;
+    if (target.hp <= 1) return this.corrupt(target, source);
+    this.damage(source, target, 1);
+    return true;
+  }
   corrupt(a, source = null) {
     if (!a || a.element !== "light") return false;
     const { id, x, y, spawn, kills, deaths } = a;
@@ -2464,13 +2471,10 @@ export class Combat {
       );
     }
     if (distance(a, target) <= STRIKE_RANGE) this.strike(a);
-    if (
-      a.element === "light" &&
-      distance(a, target) < 160 &&
-      !target.blind &&
-      !a.utilityCd
-    )
-      this.utility(a);
+    if (a.element === "light" && a.hp < a.maxHp) {
+      if (a.charging && a.charge >= 0.25) this.releaseCharge(a);
+      else if (!a.charging && !a.abilityCd) this.startCharge(a, "light");
+    }
   }
   updateDomination(dt) {
     if (this.mode !== "domination") return;
@@ -2614,6 +2618,33 @@ export class Combat {
       ? this.fighters.find((b) => b.id === enemy.carrier)
       : enemy;
   }
+  celebrate(ids) {
+    this.winnerIds = ids;
+    this.celebrationRemaining = this.fighters.some(
+      (a) => a.alive && !a.echo && ids.includes(a.id),
+    )
+      ? 4
+      : 0;
+    this.celebrationElapsed = 0;
+    this.effects = [];
+    for (const a of this.fighters) {
+      a.victory = a.alive && !a.echo && ids.includes(a.id);
+      a.charging = false;
+      a.swing = a.clash = a.hitReact = a.burst = a.shield = 0;
+      a.vx = a.vy = 0;
+      if (a.victory) {
+        a.dimension = a.transit = a.blink = null;
+      }
+    }
+  }
+  advanceCelebration(dt) {
+    const elapsed = Math.min(Math.max(0, dt), this.celebrationRemaining || 0);
+    this.celebrationRemaining = Math.max(
+      0,
+      (this.celebrationRemaining || 0) - elapsed,
+    );
+    this.celebrationElapsed = (this.celebrationElapsed || 0) + elapsed;
+  }
   finish(winner, reason) {
     this.finished = true;
     this.result =
@@ -2623,6 +2654,12 @@ export class Combat {
           ? "victory"
           : "defeat";
     this.finishReason = reason;
+    this.winnerTeam = winner;
+    this.celebrate(
+      this.fighters
+        .filter((a) => winner !== null && a.team === winner)
+        .map((a) => a.id),
+    );
     return true;
   }
   checkMatchEnd() {
@@ -2652,6 +2689,7 @@ export class Combat {
       const label = (a) =>
         a.id === "player" ? "You" : `Fighter ${this.fighters.indexOf(a) + 1}`;
       this.finished = true;
+      this.celebrate([...lights, ...darkWinners].map((a) => a.id));
       this.result = [...lights, ...darkWinners].includes(this.player)
         ? "victory"
         : "defeat";
@@ -2694,4 +2732,11 @@ export class Combat {
     }
     return false;
   }
+}
+
+export function viewerVisibility(a, viewer) {
+  if (a.victory) return 1;
+  return a.id === viewer?.id && a.element === "divine"
+    ? Math.max(0.25, visibility(a))
+    : visibility(a);
 }

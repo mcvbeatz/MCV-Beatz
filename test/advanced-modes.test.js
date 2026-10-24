@@ -136,7 +136,7 @@ test("Gauntlet progresses through choices and unlocks the final boss on tier III
   assert.equal(g.finalWave, true);
   assert.equal(g.fighters.filter((a) => a.team === 1).length, 1);
   assert.equal(g.fighters[1].element, "invincible");
-  assert.ok(g.fighters[1].maxHp >= 360);
+  assert.equal(g.fighters[1].maxHp, 180);
   clearWave(g);
   assert.equal(g.finished, true);
   assert.equal(g.result, "victory");

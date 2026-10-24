@@ -1,4 +1,14 @@
-# Elemental — The Colosseum · v0.12
+# Elemental — The Colosseum · v0.13
+
+## v0.13 mobile and battle update
+
+- A prominent **Leave** button replaces Setup as soon as a match ends and returns to Home. All surviving winners display their own victory pose for four real seconds before results; all 20 elementals have a pose.
+- The chosen **Landscape / Portrait** orientation applies to Home, setup, guides, account/settings and battles. The entire app rotates when needed, with matching touch coordinates. The viewport disables gesture zoom and form fields use a 16px minimum font to prevent iOS focus zoom. Fullscreen is optional; the web fallback keeps the same layout.
+- **Gauntlet enemies have half their previous health**, including solo and team final bosses: first-wave enemies have 60 HP, wave two 69 HP; the solo final boss has 180 HP.
+- **Divine owners see a 25% opaque silhouette** even at rest. Enemy visibility and AI targeting still use the existing concealment/reveal rules.
+- **Lightning's Tailwind** replaces its personal Gust with a two-second movement boost for all living real teammates, including the caster, on a seven-second cooldown. It is available directly on the Lightning tab and replaces Gust on its inherited Air tab. In free-for-all, only the caster benefits. Ordinary Air keeps Gust.
+- **Charging controls** in Settings offer hold/release or tap-to-start/tap-to-release, including fused shortcuts. Rock shield stays hold-based; Lightning strikes and telekinesis stay instant.
+- Every mode guide and elemental tutorial includes actual game screenshots. Refresh the 35 images with `node scripts/capture-guides.mjs` while Vite is running.
 
 ## App navigation and new modes
 
@@ -9,9 +19,9 @@ Screens fit the viewport without page scrolling. Play mode lists use pages; only
 - **Fusion Rush:** 3v3 or 4v4, three minutes, 10-second respawns. Neutral compatible shards appear at distributed positions: six at start, up to two every eight seconds, capped at eight and expiring after 32 seconds. Either team can collect them. Eliminations give 1 point; first reaching tier II gives 3 and tier III gives 5, once per fighter per match (not farmable by respawning). Highest score wins; ties draw. Fusion resets on your respawn. Friendly fire is on, and ordinary ally-token fusion remains available.
 - **Elemental Gauntlet Solo:** start with an origin, clear escalating waves, then choose a compatible shard, full healing, or +25% damage / +15% speed for the next wave. Waves increase in number, health and elemental tier. Reaching tier III unlocks the final Invincible boss on the following wave. Beat the boss to win; dying ends the run. Rewards pause combat and the clock.
 - **Elemental Gauntlet Teams:** two to four allies, currently one human and adaptive AI teammates. The same survival progression applies. Any surviving teammate keeps the run alive; felled allies return at half health between waves. Healing/upgrade rewards affect the team, and a shard choice also gives each AI ally a compatible evolution when possible. A full team wipe ends the run. Friendly fire remains on.
-- **Elemental Roulette:** 2–8 independent fighters, random transformations every 25 seconds. The HUD reveals your next form five seconds before the change. Current HP, maximum HP, cooldowns and incoming status effects carry over; old forms, passives, charges, shields and dashes are replaced. No fusion or respawns. Last living real fighter wins.
+- **Elemental Roulette:** 2–8 independent fighters, random transformations every 25 seconds. The HUD reveals your next form five seconds before the change. Current HP, maximum HP, cooldowns and incoming status effects carry over; old forms, passives, charges, shields and dashes are replaced. No fusion. Respawns take 10 seconds, using the latest rolled form, and transformations also update waiting fighters without reviving them early. A single standing real fighter wins immediately; otherwise most kills at three minutes wins, with ties drawing.
 
-Settings independently control SFX and the procedural ambient soundtrack. Both volumes and landscape/portrait preference persist on the device. Landscape uses the existing rotation fallback; Portrait keeps the arena and controls upright. This is a mobile web/PWA layout, not a packaged App Store binary.
+Settings independently control SFX and the procedural ambient soundtrack. Volumes, orientation and charging preferences persist on the device. The chosen orientation applies across the entire app, rotating the layout and input coordinates when necessary. This is a mobile web/PWA layout, not a packaged App Store binary.
 
 ## Account service setup
 
@@ -23,8 +33,8 @@ Online multiplayer remains future work. Its lobby requirements are recorded in t
 
 ### Modes and battle behavior
 
-- **Corruption:** 2–8 fighters start as Light; a random fighter becomes Dark at 5 seconds. Dark melee converts Light in one hit; each Light strike removes one Dark health point. Fresh Dark fighters have one point per remaining living Light fighter (seven Lights means seven hits). The cap falls as Lights convert, without healing existing damage; respawns use the current cap. Corrupted AI relentlessly pursues the nearest visible Light and attacks at its normal maximum cadence. Dark has no abilities and respawns after 10 seconds. Light survival and Dark infection totals have separate winners, including ties. Ends when all are Dark or after 2 minutes. Friendly fire and fusion are disabled.
-- **Boss:** choose the Invincible boss or a level-I challenger. Supports 3–7 challengers; boss maximum health equals their combined maximum health. The AI boss relentlessly targets the nearest healer first, then the nearest remaining opponent, using melee and fire abilities. Last team standing wins, with no respawns, friendly fire or fusion.
+- **Corruption:** 2–8 fighters start as Light; a random fighter becomes Dark at 5 seconds. Dark melee converts Light after two hits. Light healing restores only the caster’s two-hit resistance; Flash is unavailable. Each Light strike removes one Dark health point. Fresh Dark fighters have one point per remaining living Light fighter (seven Lights means seven hits). The cap falls as Lights convert, without healing existing damage; respawns use the current cap. Corrupted AI relentlessly pursues the nearest visible Light and attacks at its normal maximum cadence. Dark has no abilities and respawns after 10 seconds. Light survival and Dark infection totals have separate winners, including ties. Ends when all are Dark or after 2 minutes. Friendly fire and fusion are disabled.
+- **Boss:** choose a level-I origin among 4–8 fighters; one fighter becomes the Invincible boss at random. The other 3–7 retain their origins, and boss maximum health equals their combined maximum health. The AI boss relentlessly targets the nearest healer first, then the nearest remaining opponent, using melee and fire abilities. Last team standing wins, with no respawns, friendly fire or fusion.
 - **Domination:** 2v2–4v4, four flags, two initially owned by each team. A capture takes 10 seconds; each additional attacker doubles speed. Defenders contest and pause capture. Unattended progress drains at one capture-second per second. Each owned flag scores one flag-second each second; highest total at 3 minutes wins, with ties drawing. Respawns take 10 seconds; team wipes do not end this mode. Friendly fire is disabled; AI can attack through allies. Allied-token fusion follows Deathmatch's respawn rules.
 - **Lightning strikes:** cooldown reduced from 4.5 to **3 seconds**, with the same instant strike and range.
 
@@ -40,7 +50,7 @@ Open the site in Safari. Choose Play or Practice, select a mode and elemental, t
 - **Bottom right:** Strike. The nearest opponent is automatically targeted when within melee range.
 - **Bottom middle:** active skills. Hold the main skill to charge, then release. Earth’s Rock shield stays up while its button is held, until it breaks.
 - **Across the top:** available ability sets. A Mirror can choose Earth, Light or Mirror; switching skills does not change its fused identity, passives or cooldowns.
-- **Top right:** pause, fullscreen and return to setup.
+- **Top right:** pause, fullscreen and return to setup. After a match, the prominent Leave button returns to Home.
 
 The fullscreen button requests browser fullscreen where supported. On iOS versions that do not support element fullscreen, the game fills the available browser viewport. Safari’s **Share → Add to Home Screen** provides a standalone view without normal browser bars. A manifest and Apple standalone metadata are included; offline play is not implemented.
 
@@ -101,7 +111,7 @@ The fused tab now exposes these added buttons without switching origin tabs:
 | Gravity           | Rock shield                                      |
 | Apparition        | Sonic boom                                       |
 | Multi-Dimensional | Healing, Shadow step                             |
-| Lightning         | Healing, Gust                                    |
+| Lightning         | Healing (Tailwind is the main utility)           |
 
 Buttons fit between the stick and Strike, using two rows on narrower screens. Added charge skills share the existing main-ability cooldown, and added utilities share the utility cooldown; Speed burst retains zero recharge. A held charge stays tied to the pressed ability. Passives remain automatic. The origin selector scrolls horizontally on phones, keeping Fire reachable.
 
@@ -141,7 +151,7 @@ Earth's Rock burst is removed; Rock shield remains. Doppelgängers pursue and st
 - **Smoke:** Smoke veil is removed; Vog, Shadow step and Flamethrower are available on the fused tab.
 - **Gravity:** purple across the avatar, selector, HUD and token.
 - **Healing:** automatically heals the living, on-screen teammate with the **lowest current HP**, including the caster, without a range limit. Selection happens when the charge is released. Fallen allies, temporary minions and fighters trapped in another dimension are excluded; Spirit and Divine Revival handle fallen allies. **Radiance heals all living, on-screen teammates**, including Divine itself, by the same charged amount per recipient (23 × charge power, capped at max HP). It does not revive fallen allies.
-- **Divine:** fully invisible at rest, including its shadow, glow, health bar and player marker. Actions reveal a **30% opaque silhouette** while charging/holding a shield and for **450ms** after a strike or cast. Continuous movement reveals **10% opacity for 150ms after each full second**; stopping resets the cadence. Taking actual health damage reveals **10% opacity for 150ms**, then hides again; action visibility takes priority. Damage labels do not leave a lingering position marker. This remains active across origin skill sets and applies to the player's own avatar too. Hidden fighters cannot be locked or selected by the AI, but physical hits and area effects can still connect.
+- **Divine:** fully invisible to other fighters at rest, including its shadow, glow and health bar; its owner sees a 25%-opaque silhouette. Actions reveal a **30% opaque silhouette** while charging/holding a shield and for **450ms** after a strike or cast. Continuous movement reveals **10% opacity for 150ms after each full second**; stopping resets the cadence. Taking actual health damage reveals **10% opacity for 150ms**, then hides again; action visibility takes priority. Damage labels do not leave a lingering position marker. These opponent-visibility rules remain active across origin skill sets; the owner’s silhouette stays visible. Hidden fighters cannot be locked or selected by the AI, but physical hits and area effects can still connect.
 - **AI:** Fire closes to burn-contact distance against vulnerable enemies. Light prioritizes healing and a teammate-safe Flash, maintains distance while supporting, and still strikes any enemy within melee range whenever healing or support does not take priority. It closes in with a health advantage of at least 15 HP. Fighters prioritize nearby threats to wounded allies, separate from teammates, avoid harmful floor effects and dodge incoming projectiles. They decline attacks when an ally is closer than the nearest visible rival, also check melee arcs and ability paths, and cancel unsafe wind-ups. When otherwise idle, they move to and attack random spaces within 65 units of a Divine's last seen location. Search attacks still check friendly-fire risk and can physically hit a hidden fighter; they never read its hidden live coordinates. Friendly fire remains enabled; a teammate can still move into an attack already in flight.
 
 Demonic minions now have **8 HP** and retain their existing count, lifetime and contact burn. Apparition doubles remain at **1 HP**. An ordinary direct melee hit can still kill a Demonic minion.
@@ -198,7 +208,7 @@ npm run test:browser
 npm run build
 ```
 
-Browser tests use `/usr/bin/chromium`; set `CHROMIUM_PATH` for another installed Chromium. The suite starts Vite if necessary. Tests cover flag pickup/return/capture, objective AI, timed scores, respawn fusion retention/reset, team wipes, Free for All sizes and tokens, combat timing, automatic lock/fusion, hidden enemy tokens, passives, randomized formats, damage tuning, portal entity transport, dimensional losses, revival, Angel guard and teleportation. Browser checks exercise landscape and rotated-portrait layouts, real multi-touch stick-and-charge input, portal hit mapping, ability switching, shield holding returning to setup, zero-cooldown dashes, level-III controls and complete Divine concealment. These are Chromium mobile emulation checks; real iPhone Safari validation remains useful.
+Browser tests use `/usr/bin/chromium`; set `CHROMIUM_PATH` for another installed Chromium. The suite starts Vite if necessary. Tests cover flag pickup/return/capture, objective AI, timed scores, respawn fusion retention/reset, team wipes, Free for All sizes and tokens, combat timing, automatic lock/fusion, hidden enemy tokens, passives, randomized formats, damage tuning, portal entity transport, dimensional losses, revival, Angel guard and teleportation. Browser checks exercise landscape and rotated-portrait layouts, real multi-touch stick-and-charge input, portal hit mapping, ability switching, shield holding returning to setup, zero-cooldown dashes, level-III controls Divine opponent concealment and owner silhouette, both charging styles, illustrated guides and victory timing. These are Chromium mobile emulation checks; real iPhone Safari validation remains useful.
 
 - `src/combat.js`: combat, AI, abilities, fusion and revival.
 - `src/portals.js`: shared portal transport and dimensional state for all mobile entities.

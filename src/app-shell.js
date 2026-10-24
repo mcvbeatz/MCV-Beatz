@@ -1,3 +1,4 @@
+import { orientationPoint } from "./orientation.js";
 import {
   MODES,
   PLAY_MODES,
@@ -17,7 +18,12 @@ import { AccountService } from "./account.js";
 import { Soundtrack } from "./sound.js";
 const $ = (id) => document.getElementById(id);
 export function createApp(api) {
-  let settings = { sfx: 0.6, music: 0.25, orientation: "landscape" };
+  let settings = {
+    sfx: 0.6,
+    music: 0.25,
+    orientation: "landscape",
+    charging: "hold",
+  };
   try {
     const saved = JSON.parse(
       localStorage.getItem("elemental-settings") || "{}",
@@ -27,6 +33,8 @@ export function createApp(api) {
         settings[key] = Math.max(0, Math.min(1, saved[key]));
     if (["portrait", "landscape"].includes(saved.orientation))
       settings.orientation = saved.orientation;
+    if (["hold", "tap"].includes(saved.charging))
+      settings.charging = saved.charging;
   } catch {}
   const sound = new Soundtrack(settings),
     account = new AccountService();
@@ -43,11 +51,11 @@ export function createApp(api) {
   const root = document.createElement("section");
   root.id = "app-shell";
   root.innerHTML = `<header class="shell-header"><button id="shell-back" aria-label="Back to home">← Back</button><div><span class="shell-wordmark">◇ ELEMENTAL</span><span id="shell-title">THE COLOSSEUM</span></div><button id="shell-account">Guest</button></header><main id="shell-content"></main><div id="intro-screen" hidden><video id="logo-video" playsinline muted preload="auto" aria-label="Opening logo video"></video><button id="intro-play" hidden>Play intro</button><button id="intro-skip">Skip intro →</button></div>`;
-  document.body.prepend(root);
+  document.getElementById("orientation-root").prepend(root);
   const dialog = document.createElement("dialog");
   dialog.id = "slides-dialog";
-  dialog.innerHTML = `<header><span id="slides-label">HOW TO PLAY</span><button id="slides-close" aria-label="Close how to play">×</button></header><article id="slide-card" tabindex="0"><div id="slide-art" aria-hidden="true"></div><h2 id="slide-title"></h2><p id="slide-body"></p></article><footer><button id="slide-prev" aria-label="Previous slide">← Previous</button><span id="slide-count"></span><button id="slide-next" aria-label="Next slide">Next →</button></footer>`;
-  document.body.append(dialog);
+  dialog.innerHTML = `<header><span id="slides-label">HOW TO PLAY</span><button id="slides-close" aria-label="Close how to play">×</button></header><article id="slide-card" tabindex="0"><img id="slide-screenshot" alt=""><div id="slide-art" aria-hidden="true"></div><h2 id="slide-title"></h2><p id="slide-body"></p></article><footer><button id="slide-prev" aria-label="Previous slide">← Previous</button><span id="slide-count"></span><button id="slide-next" aria-label="Next slide">Next →</button></footer>`;
+  document.getElementById("orientation-root").append(dialog);
   const reward = document.createElement("div");
   reward.id = "wave-reward";
   reward.hidden = true;
@@ -100,7 +108,7 @@ export function createApp(api) {
     setScreen(next);
     const c = $("shell-content");
     if (next === "home")
-      c.innerHTML = `<section class="home-hero"><span class="eyebrow">THE COLOSSEUM · v0.12</span><h1>Power is elemental.</h1><p>Choose your arena. Find your next form.</p><div class="home-elements" aria-hidden="true">✦ ◐ ◉ ≋ ◈ ♨</div></section><nav class="home-menu"><button data-screen="play"><strong>Play</strong><span>Enter the colosseum →</span></button><button data-screen="practice"><strong>Practice</strong><span>Learn. Experiment. Improve.</span></button><button data-screen="leaderboard"><strong>Leaderboard</strong><span>Compare your records</span></button><button data-screen="account"><strong>My Account</strong><span>Sign in & view stats</span></button><button data-screen="settings"><strong>Settings</strong><span>Sound & orientation</span></button></nav><p class="shell-note">Single-player battles with adaptive AI. Online multiplayer comes later.</p>`;
+      c.innerHTML = `<section class="home-hero"><span class="eyebrow">THE COLOSSEUM · v0.13</span><h1>Power is elemental.</h1><p>Choose your arena. Find your next form.</p><div class="home-elements" aria-hidden="true">✦ ◐ ◉ ≋ ◈ ♨</div></section><nav class="home-menu"><button data-screen="play"><strong>Play</strong><span>Enter the colosseum →</span></button><button data-screen="practice"><strong>Practice</strong><span>Learn. Experiment. Improve.</span></button><button data-screen="leaderboard"><strong>Leaderboard</strong><span>Compare your records</span></button><button data-screen="account"><strong>My Account</strong><span>Sign in & view stats</span></button><button data-screen="settings"><strong>Settings</strong><span>Sound & orientation</span></button></nav><p class="shell-note">Single-player battles with adaptive AI. Online multiplayer comes later.</p>`;
     else if (next === "play" || next === "practice") {
       category = next;
       renderModes();
@@ -196,18 +204,23 @@ export function createApp(api) {
     );
   }
   function modeGuide(id) {
-    openSlides(MODES[id].slides, MODES[id].name.toUpperCase());
+    openSlides(
+      MODES[id].slides.map((s) => [...s, `guides/${id}.png`]),
+      MODES[id].name.toUpperCase(),
+    );
   }
   function openSlides(items, label) {
     api.pause();
-    slides = items;
+    slides = items.map((s) => (s[3] ? s : [...s, "guides/controls.png"]));
     slide = 0;
     $("slides-label").textContent = label;
     renderSlide();
     if (!dialog.open) dialog.showModal();
   }
   function renderSlide() {
-    const [title, body, art] = slides[slide];
+    const [title, body, art, screenshot] = slides[slide];
+    $("slide-screenshot").src = `${import.meta.env.BASE_URL}${screenshot}`;
+    $("slide-screenshot").alt = `${title} — in-game example`;
     $("slide-title").textContent = title;
     $("slide-body").textContent = body;
     $("slide-art").textContent = art || "◇";
@@ -227,6 +240,7 @@ export function createApp(api) {
         nameOf(id),
         `${parts.length > 1 ? `Fusion: ${parts.map(nameOf).join(" + ")}. ` : ""}${p.desc} Passive: ${p.passive}.`,
         "ⅠⅡⅢ"[parts.length - 1],
+        `guides/${id}.png`,
       ]);
       for (const name of [
         ...new Set(
@@ -240,6 +254,7 @@ export function createApp(api) {
           SKILL_HELP[name] ||
             "Use the matching skill button in battle. Inherited skills are also available in the top tabs.",
           "✦",
+          `guides/${id}.png`,
         ]);
       if (id === "multi-dimensional")
         items.push([
@@ -265,15 +280,16 @@ export function createApp(api) {
   };
   let swipe = null;
   dialog.addEventListener("pointerdown", (e) => {
-    swipe = { x: e.clientX, y: e.clientY };
+    swipe = orientationPoint(dialog, e.clientX, e.clientY);
   });
   dialog.addEventListener("pointerup", (e) => {
+    const point = orientationPoint(dialog, e.clientX, e.clientY);
     if (
       swipe &&
-      Math.abs(e.clientX - swipe.x) > 45 &&
-      Math.abs(e.clientY - swipe.y) < 80
+      Math.abs(point.x - swipe.x) > 45 &&
+      Math.abs(point.y - swipe.y) < 80
     ) {
-      const delta = e.clientX - swipe.x < 0 ? 1 : -1;
+      const delta = point.x - swipe.x < 0 ? 1 : -1;
       slide = Math.max(0, Math.min(slides.length - 1, slide + delta));
       renderSlide();
     }
@@ -285,8 +301,14 @@ export function createApp(api) {
   });
   function renderSettings() {
     $("shell-content").innerHTML =
-      `<div class="screen-intro"><h1>Make it yours.</h1><p>Settings are saved on this device.</p></div><div class="settings-panel"><label for="sfx-volume">SFX volume <output id="sfx-value">${Math.round(settings.sfx * 100)}%</output></label><input id="sfx-volume" type="range" min="0" max="100" value="${settings.sfx * 100}"><label for="music-volume">Music volume <output id="music-value">${Math.round(settings.music * 100)}%</output></label><input id="music-volume" type="range" min="0" max="100" value="${settings.music * 100}"><label for="orientation-setting">Play orientation</label><select id="orientation-setting"><option value="landscape">Landscape</option><option value="portrait">Portrait</option></select><p>Portrait keeps the arena upright. Landscape uses the full-width layout, with rotation when needed.</p></div>`;
+      `<div class="screen-intro"><h1>Make it yours.</h1><p>Settings are saved on this device.</p></div><div class="settings-panel"><label for="sfx-volume">SFX volume <output id="sfx-value">${Math.round(settings.sfx * 100)}%</output></label><input id="sfx-volume" type="range" min="0" max="100" value="${settings.sfx * 100}"><label for="music-volume">Music volume <output id="music-value">${Math.round(settings.music * 100)}%</output></label><input id="music-volume" type="range" min="0" max="100" value="${settings.music * 100}"><label for="orientation-setting">Play orientation</label><select id="orientation-setting"><option value="landscape">Landscape</option><option value="portrait">Portrait</option></select><label for="charging-setting">Charging abilities</label><select id="charging-setting"><option value="hold">Hold and release</option><option value="tap">Tap to charge, tap to release</option></select><p>Orientation applies everywhere. Rock shield is always held; instant skills remain a single tap.</p></div>`;
     $("orientation-setting").value = settings.orientation;
+    $("charging-setting").value = settings.charging;
+    $("charging-setting").onchange = (e) => {
+      settings.charging = e.target.value;
+      api.releaseInput();
+      saveSettings();
+    };
     for (const kind of ["sfx", "music"])
       $(`${kind}-volume`).oninput = (e) => {
         sound.volume(kind, Number(e.target.value) / 100);

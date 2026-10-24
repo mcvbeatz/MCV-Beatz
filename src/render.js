@@ -1,4 +1,4 @@
-import { inWorld, visibility } from "./combat.js";
+import { inWorld, visibility, viewerVisibility } from "./combat.js";
 import {
   drawCharacter,
   drawCharacterStrike,
@@ -642,11 +642,16 @@ export class Renderer {
       c.restore();
     }
     for (const a of [...game.fighters]
-      .filter((a) => (a.alive || a.ghost) && inWorld(a) && visibility(a) > 0)
+      .filter(
+        (a) =>
+          (a.alive || a.ghost) &&
+          inWorld(a) &&
+          viewerVisibility(a, game.player) > 0,
+      )
       .sort((a, b) => a.y - b.y)) {
       c.save();
-      c.globalAlpha = a.ghost ? 0.38 : visibility(a);
-      const immersion = immersionFor(game, a);
+      c.globalAlpha = a.ghost ? 0.38 : viewerVisibility(a, game.player);
+      const immersion = a.victory ? 0 : immersionFor(game, a);
       this.avatar(c, a, t, immersion);
       drawWaterline(c, a, immersion, t);
       c.restore();

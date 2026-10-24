@@ -31,6 +31,12 @@ async function fighter(page, element) {
 test("phone origin menu scrolls all the way to Fire without overflowing the page", async ({
   page,
 }) => {
+  await page.addInitScript(() =>
+    localStorage.setItem(
+      "elemental-settings",
+      JSON.stringify({ orientation: "portrait" }),
+    ),
+  );
   await prepare(page);
   await page.locator("#element-grid").scrollIntoViewIfNeeded();
   const grid = page.locator("#element-grid"),
@@ -97,7 +103,7 @@ test("every added fused skill remains visible and fits beside movement and strik
     gravity: ["Telekinesis", "Gravity x2", "Rock shield"],
     apparition: ["Doppelgänger", "Phase", "Sonic boom"],
     "multi-dimensional": ["Teleport", "Healing", "Shadow step"],
-    lightning: ["Lightning strikes", "Healing", "Gust"],
+    lightning: ["Lightning strikes", "Tailwind", "Healing"],
   };
   for (const viewport of [
     { width: 320, height: 568 },

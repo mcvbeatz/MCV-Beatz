@@ -5,7 +5,7 @@ export const MODES = {
     slides: [
       [
         "Face the titan",
-        "Play as Invincible or join a team of origins. Boss health equals the combined health of the challengers.",
+        "Choose a level-I origin. One of 4–8 fighters becomes Invincible at random. Boss health equals all challengers combined.",
         "♜",
       ],
       [
@@ -110,7 +110,7 @@ export const MODES = {
     slides: [
       [
         "Expect a new form",
-        "Every 25 seconds each surviving fighter transforms into a random origin or fusion.",
+        "Every 25 seconds every fighter transforms into a random origin or fusion.",
         "↻",
       ],
       [
@@ -120,7 +120,7 @@ export const MODES = {
       ],
       [
         "Health carries over",
-        "Transforming does not heal you. Abilities and passives change, but cooldowns carry over. No fusion or respawns; last fighter standing wins.",
+        "Transforming does not heal you. Abilities and passives change, but cooldowns carry over. Respawns take 10 seconds. A lone standing fighter wins immediately; otherwise most kills at 3 minutes wins. Ties draw. No fusion.",
         "♥",
       ],
     ],
@@ -199,7 +199,7 @@ export const MODES = {
       ],
       [
         "Survive or spread",
-        "One Dark strike corrupts Light. A fresh Dark takes one hit per remaining Light to defeat, then respawns after 10 seconds.",
+        "Two Dark strikes corrupt Light. Light can heal itself, but cannot heal others or use Flash. Dark health matches the number of remaining Lights; Dark respawns in 10 seconds.",
         "◐",
       ],
       [
@@ -316,7 +316,7 @@ export const CONTROL_SLIDES = [
   ],
   [
     "Use your skills",
-    "Hold most main abilities to charge; release to cast. Utilities are taps, except Rock shield: keep holding to block. Keyboard: K and L.",
+    "Hold and release to charge, or choose tap-to-charge/tap-to-release in Settings. Utilities are taps; Rock shield always requires holding. Keyboard: K and L.",
     "✦",
   ],
   [
@@ -342,7 +342,7 @@ export const CONTROL_SLIDES = [
 ];
 export const SKILL_HELP = {
   Healing:
-    "Hold and release to heal the living ally with the lowest health, including yourself.",
+    "Charge and release to heal the living ally with the lowest health, including yourself. In Corruption, Healing restores only you.",
   Flash: "Tap to blind nearby fighters. Light creates room to recover.",
   Sabotage:
     "Charge and release to interrupt and cancel a nearby enemy ability.",
@@ -353,6 +353,8 @@ export const SKILL_HELP = {
   "Sonic boom":
     "Charge and release a wide wind shockwave in your facing direction. Damage fades with distance.",
   Gust: "Tap for a temporary movement boost.",
+  Tailwind:
+    "Tap to boost all living teammates’ movement for two seconds. Seven-second cooldown. In free-for-all modes, only you benefit.",
   "Rock shield":
     "Hold to surround yourself with rocks. Blocks attacks until released or its 65-HP shield breaks.",
   Flamethrower:

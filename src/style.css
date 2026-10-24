@@ -1003,7 +1003,7 @@ dialog .codex-grid article {
 dialog article h3 {
   margin-top: 0;
 }
-@media (min-width: 1500px) {
+@container app (min-width: 1500px) {
   .workspace {
     grid-template-columns: 260px minmax(480px, 1fr) 230px;
   }
@@ -1026,7 +1026,7 @@ dialog article h3 {
     height: 80px;
   }
 }
-@media (max-width: 1200px) {
+@container app (max-width: 1200px) {
   .workspace {
     grid-template-columns: 210px minmax(450px, 1fr);
   }
@@ -1052,7 +1052,7 @@ dialog article h3 {
     display: none;
   }
 }
-@media (max-width: 760px) {
+@container app (max-width: 760px) {
   .topbar {
     height: 70px;
     padding: 0 18px;
@@ -1599,8 +1599,8 @@ dialog article h3 {
   position: fixed;
   inset: 0;
   z-index: 1000;
-  width: 100dvw;
-  height: 100dvh;
+  width: var(--app-width);
+  height: var(--app-height);
   max-width: none;
   border: 0;
   border-radius: 0;
@@ -1659,7 +1659,7 @@ dialog article h3 {
 .form-button:disabled {
   opacity: 0.5;
 }
-@media (max-width: 760px) {
+@container app (max-width: 760px) {
   .game-wrap {
     min-height: 360px;
   }
@@ -1745,13 +1745,13 @@ dialog article h3 {
     max-width: 130px;
   }
 }
-@media (orientation: portrait) {
+@container app (orientation: portrait) {
   .arena-panel.immersive {
     inset: auto;
     left: 50%;
     top: 50%;
-    width: 100dvh;
-    height: 100dvw;
+    width: var(--app-height);
+    height: var(--app-width);
     transform: translate(-50%, -50%) rotate(90deg);
     transform-origin: center;
   }
@@ -1802,7 +1802,7 @@ dialog article h3 {
     font-size: 8px;
   }
 }
-@media (orientation: landscape) and (max-height: 500px) {
+@container app (orientation: landscape) and (max-height: 500px) {
   .immersive .joystick {
     width: 96px;
     height: 96px;
@@ -1851,7 +1851,7 @@ dialog article h3 {
     display: none;
   }
 }
-@media (orientation: portrait) {
+@container app (orientation: portrait) {
   .immersive .battle-controls,
   .immersive .game-hud {
     left: max(16px, env(safe-area-inset-top));
@@ -1875,7 +1875,7 @@ dialog article h3 {
   min-width: 0;
   max-width: 100%;
 }
-@media (max-width: 900px) {
+@container app (max-width: 900px) {
   .setup-panel .element-grid,
   .element-grid:has(.element-option:nth-child(7)) {
     display: grid;
@@ -1923,7 +1923,7 @@ dialog article h3 {
 .skill-controls.expanded-skills .ability kbd {
   display: none;
 }
-@media (min-width: 700px) and (orientation: landscape) {
+@container app (min-width: 700px) and (orientation: landscape) {
   .immersive .skill-controls.expanded-skills {
     display: flex;
   }
@@ -1934,7 +1934,7 @@ dialog article h3 {
   }
 }
 
-@media (min-width: 700px) and (orientation: landscape) {
+@container app (min-width: 700px) and (orientation: landscape) {
   .immersive .skill-controls.expanded-skills .ability-icon {
     display: block;
     height: 22px;

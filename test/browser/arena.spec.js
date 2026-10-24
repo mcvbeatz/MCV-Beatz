@@ -374,8 +374,8 @@ test("native fullscreen enters and exits without leaving the game trapped", asyn
 }) => {
   await begin(page);
   await expect
-    .poll(() => page.evaluate(() => document.fullscreenElement?.id))
-    .toBe("arena-panel");
+    .poll(() => page.evaluate(() => document.fullscreenElement?.tagName))
+    .toBe("HTML");
   await page.locator("#fullscreen-btn").click();
   await expect
     .poll(() => page.evaluate(() => document.fullscreenElement === null))
@@ -383,7 +383,7 @@ test("native fullscreen enters and exits without leaving the game trapped", asyn
   expect(await page.evaluate(() => __arena.immersive)).toBe(false);
 });
 
-test("level III selector starts each fusion and Divine disappears completely at rest", async ({
+test("level III selector starts each fusion and Divine retains an owner-only silhouette at rest", async ({
   page,
 }) => {
   await page.goto("/?mode=duel");
@@ -433,7 +433,7 @@ test("level III selector starts each fusion and Divine disappears completely at 
       ),
     };
   });
-  expect(pixels.hiddenDifference).toBe(0);
+  expect(pixels.hiddenDifference).toBeGreaterThan(0);
   expect(pixels.actionDifference).toBeGreaterThan(0);
 });
 
@@ -555,6 +555,7 @@ test("Divine hit feedback draws a faint clue, then the canvas returns to hidden"
   const result = await page.evaluate(() => {
     const { game: g, renderer: r } = __arena,
       a = g.player;
+    g.player = g.fighters[1]; // View Divine as an opponent.
     a.reveal = 0;
     a.movingTime = 0;
     a.hurtReveal = 0;

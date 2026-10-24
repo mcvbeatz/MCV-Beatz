@@ -53,7 +53,7 @@ test("nonlethal simultaneous Light/Dark strikes convert Light and deduct exactly
     dark = g.player,
     light = g.fighters[1];
   Object.assign(dark, { x: 300, y: 300 });
-  Object.assign(light, { x: 340, y: 300 });
+  Object.assign(light, { x: 340, y: 300, hp: 1 });
   for (const other of g.fighters.slice(2))
     Object.assign(other, { x: 850, y: 550 });
   g.strike(dark);
@@ -97,7 +97,8 @@ test("AI boss hunts the closest healer first, retargets when felled, then hunts 
   const g = new Combat({
     mode: "boss",
     bossRole: "challenger",
-    challengers: 4,
+    players: 5,
+    random: () => 0.9,
     element: "water",
   });
   const boss = g.fighters.find((a) => a.element === "invincible");

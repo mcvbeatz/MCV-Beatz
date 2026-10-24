@@ -93,7 +93,7 @@ export function updateAdvanced(g) {
       const pool = [...Object.keys(ELEMENTS), ...LEVEL_TWO, ...LEVEL_THREE];
       g.nextForms = Object.fromEntries(
         g.fighters
-          .filter((a) => a.alive && !a.echo)
+          .filter((a) => !a.echo)
           .map((a) => [
             a.id,
             pick(
@@ -104,13 +104,16 @@ export function updateAdvanced(g) {
       );
     }
     if (g.time >= g.nextShuffleAt) {
-      for (const a of g.fighters.filter((a) => a.alive && !a.echo)) {
+      for (const a of g.fighters.filter((a) => !a.echo)) {
         const form = g.nextForms?.[a.id];
         if (!form) continue;
         const previous = { ...a };
         const fresh = makeFighter(a.id, form, a.team, a.x, a.y);
         // Health, incoming status, cooldowns and statistics survive; old forms' powers do not.
         Object.assign(a, fresh, {
+          alive: previous.alive,
+          respawnAt: previous.respawnAt,
+          spawn: { ...previous.spawn, element: form },
           hp: previous.hp,
           maxHp: previous.maxHp,
           kills: previous.kills,
@@ -226,8 +229,11 @@ export function nextWave(g) {
       200 + i * 48,
     );
     a.hp = a.maxHp = g.finalWave
-      ? Math.max(360, team.reduce((n, b) => n + b.maxHp, 0) * 2)
-      : 120 + Math.min(180, (g.wave - 1) * 18);
+      ? Math.max(
+          180,
+          team.reduce((n, b) => n + b.maxHp, 0),
+        )
+      : 60 + Math.min(90, (g.wave - 1) * 9);
     a.kills = 0;
     a.deaths = 0;
     return a;
@@ -258,6 +264,19 @@ export function nextWave(g) {
   g.portals.placing = null;
 }
 export function advancedEnd(g) {
+  if (g.mode === "roulette") {
+    const players = g.fighters.filter((a) => !a.echo),
+      standing = players.filter((a) => a.alive);
+    if (standing.length === 1)
+      return g.finish(standing[0].team, "Last fighter standing");
+    if (g.time < 180) return false;
+    const high = Math.max(...players.map((a) => a.kills || 0));
+    const leaders = players.filter((a) => (a.kills || 0) === high);
+    return g.finish(
+      leaders.length === 1 ? leaders[0].team : null,
+      `Most eliminations · ${high} kills`,
+    );
+  }
   if (g.mode === "rush") {
     if (g.time < 180) return false;
     return g.finish(
