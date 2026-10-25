@@ -10,6 +10,9 @@ async function begin(page, { mode = "duel", element = "fire" } = {}) {
 async function stillRival(page) {
   await page.evaluate(() => {
     __arena.game.ai = () => {};
+    __arena.game.portals.portals = __arena.game.portals.owned(
+      __arena.game.player,
+    );
     for (const a of __arena.game.fighters)
       if (a.team === 1) {
         a.x = 820;

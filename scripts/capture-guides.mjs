@@ -6,6 +6,9 @@ const browser = await chromium.launch({
   args: ["--no-sandbox"],
 });
 const page = await browser.newPage({ viewport: { width: 1024, height: 576 } });
+await page.addInitScript(() => {
+  Math.random = () => 0.35;
+});
 const errors = [];
 page.on("pageerror", (e) => errors.push(e.message));
 await mkdir("public/guides", { recursive: true });

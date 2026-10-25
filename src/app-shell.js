@@ -1,7 +1,11 @@
-import { orientationPoint } from "./orientation.js";
+import { icon } from "./icons.js";
+import { portraitMarkup, paintPortraits } from "./characters.js";
+import { orientationPoint, enableOrientedScroll } from "./orientation.js";
 import {
   MODES,
   PLAY_MODES,
+  TEAM_MODES,
+  SOLO_MODES,
   PRACTICE_LIST,
   CONTROL_SLIDES,
   SKILL_HELP,
@@ -40,7 +44,6 @@ export function createApp(api) {
     account = new AccountService();
   let screen = "home",
     category = "play",
-    menuPage = 0,
     slide = 0,
     slides = [],
     matchTicket = null,
@@ -91,6 +94,9 @@ export function createApp(api) {
       {
         home: "THE COLOSSEUM",
         play: "PLAY",
+        "team-battles": "TEAM BATTLES",
+        "solo-battles": "SOLO BATTLES",
+        elements: "ELEMENTS & FUSIONS",
         practice: "PRACTICE",
         tutorial: "TUTORIAL",
         settings: "SETTINGS",
@@ -108,55 +114,53 @@ export function createApp(api) {
     setScreen(next);
     const c = $("shell-content");
     if (next === "home")
-      c.innerHTML = `<section class="home-hero"><span class="eyebrow">THE COLOSSEUM · v0.13</span><h1>Power is elemental.</h1><p>Choose your arena. Find your next form.</p><div class="home-elements" aria-hidden="true">✦ ◐ ◉ ≋ ◈ ♨</div></section><nav class="home-menu"><button data-screen="play"><strong>Play</strong><span>Enter the colosseum →</span></button><button data-screen="practice"><strong>Practice</strong><span>Learn. Experiment. Improve.</span></button><button data-screen="leaderboard"><strong>Leaderboard</strong><span>Compare your records</span></button><button data-screen="account"><strong>My Account</strong><span>Sign in & view stats</span></button><button data-screen="settings"><strong>Settings</strong><span>Sound & orientation</span></button></nav><p class="shell-note">Single-player battles with adaptive AI. Online multiplayer comes later.</p>`;
-    else if (next === "play" || next === "practice") {
+      c.innerHTML = `<section class="home-hero"><span class="eyebrow">THE COLOSSEUM · v0.14</span><h1>Power is elemental.</h1><p>Choose your arena. Find your next form.</p><div class="home-elements" aria-label="Light, Dark, Water, Air, Earth and Fire">${Object.keys(
+        ELEMENTS,
+      )
+        .map(
+          (e) =>
+            `<span style="color:${ELEMENTS[e].color}" title="${nameOf(e)}">${icon(e)}</span>`,
+        )
+        .join(
+          "",
+        )}</div></section><nav class="home-menu"><button data-screen="play"><strong>Play</strong><span>Enter the colosseum →</span></button><button data-screen="practice"><strong>Practice</strong><span>Learn. Experiment. Improve.</span></button><button data-screen="leaderboard"><strong>Leaderboard</strong><span>Compare your records</span></button><button data-screen="account"><strong>My Account</strong><span>Sign in & view stats</span></button><button data-screen="settings"><strong>Settings</strong><span>Sound & orientation</span></button></nav><p class="shell-note">Single-player battles with adaptive AI. Online multiplayer comes later.</p>`;
+    else if (next === "play") {
+      category = "play";
+      c.innerHTML = `<div class="screen-intro"><h1>Choose your battles.</h1><p>Find your team. Face the arena alone. Or let Quick Match decide.</p></div><nav class="battle-categories"><button data-screen="team-battles"><strong>Team Battles</strong><span>Six ways to fight together →</span></button><button data-screen="solo-battles"><strong>Solo Battles</strong><span>Four ways to test yourself →</span></button><button id="quick-match"><strong>Quick Match</strong><span>A random Team or Solo mode →</span></button></nav>`;
+      $("quick-match").onclick = () => chooseMode("random");
+    } else if (["team-battles", "solo-battles", "practice"].includes(next)) {
       category = next;
       renderModes();
     } else if (next === "tutorial")
       c.innerHTML = `<div class="screen-intro"><h1>Learn the arena.</h1><p>Swipe through a lesson, then try it in Practice. No stats are saved.</p></div><div class="tutorial-menu"><button id="tutorial-controls">Controls <span>Movement, attacks, skills and touch gestures →</span></button><button id="tutorial-elements">Elements & fusions <span>Every form, its powers, and how to use them →</span></button><button id="tutorial-play">Try the controls <span>Start a practice duel against adaptive AI →</span></button></div>`;
+    else if (next === "elements") renderElements();
     else if (next === "settings") renderSettings();
     else if (next === "account") renderAccount();
     else if (next === "leaderboard") renderLeaderboard();
     c.querySelectorAll("[data-screen]").forEach(
       (b) =>
         (b.onclick = () => {
-          menuPage = 0;
           show(b.dataset.screen);
         }),
     );
     if (next === "tutorial") {
       $("tutorial-controls").onclick = () =>
         openSlides(CONTROL_SLIDES, "CONTROLS");
-      $("tutorial-elements").onclick = () => elementSlides();
+      $("tutorial-elements").onclick = () => show("elements");
       $("tutorial-play").onclick = () => chooseMode("duel");
     }
   }
   function renderModes() {
-    const list =
-      category === "play"
-        ? [...PLAY_MODES, "random"]
-        : ["tutorial", ...PRACTICE_LIST];
-    const pageSize = 4;
-    menuPage = Math.min(menuPage, Math.ceil(list.length / pageSize) - 1);
+    const practice = category === "practice";
+    const list = practice
+      ? ["tutorial", ...PRACTICE_LIST]
+      : category === "team-battles"
+        ? TEAM_MODES
+        : SOLO_MODES;
     $("shell-content").innerHTML =
-      `<div class="screen-intro"><h1>${category === "play" ? "Choose your arena." : "Make every move count."}</h1><p>${category === "play" ? "Adaptive AI battles. Guests can play without saving stats." : "Tutorials and AI practice. Results never enter your stats."}</p></div><div class="mode-menu">${list
-        .slice(menuPage * pageSize, (menuPage + 1) * pageSize)
-        .map(
-          (id) =>
-            `<article class="mode-card"><button data-launch="${id}"><strong>${MODES[id]?.name || (id === "random" ? "Random" : "Tutorial")}</strong><span>${MODES[id]?.tag || (id === "random" ? "A random Play mode" : "Controls · elements · fusion abilities")}</span></button><button data-help="${id}" aria-label="How to play ${MODES[id]?.name || id}">How to play</button></article>`,
-        )
-        .join(
-          "",
-        )}</div><div class="menu-pagination"><button id="mode-prev" ${menuPage === 0 ? "disabled" : ""}>← Previous</button><span>${menuPage + 1} / ${Math.ceil(list.length / pageSize)}</span><button id="mode-next" ${(menuPage + 1) * pageSize >= list.length ? "disabled" : ""}>Next →</button></div>`;
-    $("mode-prev").onclick = () => {
-      menuPage--;
-      renderModes();
-    };
-    $("mode-next").onclick = () => {
-      menuPage++;
-      renderModes();
-    };
-    document
+      `<div class="screen-intro"><h1>${practice ? "Make every move count." : category === "team-battles" ? "Team Battles" : "Solo Battles"}</h1><p>${practice ? "Tutorials and adaptive AI practice. No stats are saved." : "Choose a mode. Scroll to explore every battle."}</p></div><div class="mode-menu mode-scroll" tabindex="0" aria-label="${practice ? "Practice modes" : category === "team-battles" ? "Team battle modes" : "Solo battle modes"}">${list.map((id) => `<article class="mode-card"><button data-launch="${id}"><strong>${MODES[id]?.name || "Tutorial"}</strong><span>${MODES[id]?.tag || "Controls · elements · fusion abilities"}</span></button><button data-help="${id}" aria-label="How to play ${MODES[id]?.name || id}">How to play</button></article>`).join("")}</div>`;
+    enableOrientedScroll(document.querySelector(".mode-scroll"));
+    $("shell-content")
       .querySelectorAll("[data-launch]")
       .forEach(
         (b) =>
@@ -165,32 +169,48 @@ export function createApp(api) {
               ? show("tutorial")
               : chooseMode(b.dataset.launch)),
       );
-    document
+    $("shell-content")
       .querySelectorAll("[data-help]")
       .forEach(
         (b) =>
           (b.onclick = () =>
             b.dataset.help === "tutorial"
-              ? openSlides(CONTROL_SLIDES, "TUTORIAL")
-              : b.dataset.help === "random"
-                ? openSlides(
-                    [
-                      [
-                        "Let the arena decide",
-                        "Random selects one of the Play modes. You can review its rules and choose your elemental before starting.",
-                        "?",
-                      ],
-                    ],
-                    "RANDOM",
-                  )
-                : modeGuide(b.dataset.help)),
+              ? openSlides(CONTROL_SLIDES, "CONTROLS")
+              : modeGuide(b.dataset.help)),
       );
+  }
+  function renderElements() {
+    const forms = [...Object.keys(ELEMENTS), ...Object.values(COMBOS)];
+    $("shell-content").innerHTML =
+      `<div class="screen-intro"><h1>Choose an elemental.</h1><p>Open its chapter to explore its abilities and fusion recipe.</p></div><div class="element-library" tabindex="0" aria-label="Elemental chapters">${[
+        1, 2, 3,
+      ]
+        .map(
+          (tier) =>
+            `<section><h2>${["", "Origins · Level I", "Fusions · Level II", "Fusions · Level III"][tier]}</h2><div class="chapter-grid">${forms
+              .filter((id) => recipe(id).length === tier)
+              .map(
+                (id) =>
+                  `<button data-chapter="${id}">${portraitMarkup(id)}<strong>${nameOf(id)}</strong></button>`,
+              )
+              .join("")}</div></section>`,
+        )
+        .join("")}</div>`;
+    enableOrientedScroll(document.querySelector(".element-library"));
+    $("shell-content")
+      .querySelectorAll("[data-chapter]")
+      .forEach((b) => (b.onclick = () => elementSlides(b.dataset.chapter)));
+    paintPortraits();
   }
   function chooseMode(id) {
     if (id === "random")
       id = PLAY_MODES[Math.floor(Math.random() * PLAY_MODES.length)];
     if (!MODES[id]) id = "duel";
-    category = PRACTICE_LIST.includes(id) ? "practice" : "play";
+    category = PRACTICE_LIST.includes(id)
+      ? "practice"
+      : TEAM_MODES.includes(id)
+        ? "team-battles"
+        : "solo-battles";
     api.chooseMode(id);
     setScreen("setup");
     $("setup-mode-title").textContent = MODES[id].name;
@@ -229,6 +249,10 @@ export function createApp(api) {
     $("slide-next").disabled = slide === slides.length - 1;
   }
   function elementSlides(only) {
+    if (!only) {
+      show("elements");
+      return;
+    }
     const forms = only
       ? [only]
       : [...Object.keys(ELEMENTS), ...Object.values(COMBOS)];
@@ -261,9 +285,10 @@ export function createApp(api) {
           "Multi-Dimensional · Teleport",
           "Tap an arena destination to teleport up to 180 units after a 0.2-second vulnerable preparation. No cooldown. Portal taps take priority.",
           "⌖",
+          "guides/control-teleport.png",
         ]);
     }
-    openSlides(items, "ELEMENTS & FUSIONS");
+    openSlides(items, `${nameOf(only).toUpperCase()} · ELEMENTAL GUIDE`);
   }
   $("slides-close").onclick = () => dialog.close();
   $("slide-prev").onclick = () => {
@@ -484,9 +509,13 @@ export function createApp(api) {
     show(
       screen === "setup"
         ? category
-        : screen === "tutorial"
-          ? "practice"
-          : "home",
+        : screen === "elements"
+          ? "tutorial"
+          : screen === "tutorial"
+            ? "practice"
+            : ["team-battles", "solo-battles"].includes(screen)
+              ? "play"
+              : "home",
     );
   };
   $("resume-btn").onclick = () => {

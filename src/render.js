@@ -1,3 +1,4 @@
+import { cameraView } from "./camera.js";
 import { inWorld, visibility, viewerVisibility } from "./combat.js";
 import {
   drawCharacter,
@@ -477,10 +478,15 @@ export class Renderer {
     c.setTransform(1, 0, 0, 1, 0, 0);
     c.fillStyle = "#1a2c25";
     c.fillRect(0, 0, w, h);
-    const scale = Math.min(w / 834, h / 530),
-      tx = (w - 834 * scale) / 2 - 95 * scale,
-      ty = (h - 530 * scale) / 2 - 100 * scale;
-    this.view = { scale, tx, ty };
+    const root = document.getElementById("orientation-root");
+    const view = cameraView(w, h, {
+      portrait: root?.dataset.orientation === "portrait" && !game.finished,
+      screenWidth: root?.clientWidth || w,
+      screenHeight: root?.clientHeight || h,
+      focus: game.player,
+    });
+    const { scale, tx, ty } = view;
+    this.view = view;
     c.save();
     c.translate(tx, ty);
     c.scale(scale, scale);

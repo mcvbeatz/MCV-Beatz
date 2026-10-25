@@ -5,7 +5,11 @@ const ready = async (page) => {
 };
 async function fits(page, selector) {
   for (const e of await page.locator(selector).all()) {
-    if (!(await e.isVisible())) continue;
+    if (
+      !(await e.isVisible()) ||
+      (await e.evaluate((el) => !!el.closest(".mode-scroll,.element-library")))
+    )
+      continue;
     const r = await e.boundingBox(),
       v = page.viewportSize();
     expect(r.x, selector).toBeGreaterThanOrEqual(-1);
@@ -14,7 +18,7 @@ async function fits(page, selector) {
     expect(r.y + r.height, selector).toBeLessThanOrEqual(v.height + 1);
   }
 }
-test("app menus, account, settings and paged mode lists fit phones without page scrolling", async ({
+test("app menus, account, settings and scrollable mode lists fit phones without page scrolling", async ({
   browser,
 }) => {
   const context = await browser.newContext({
@@ -56,28 +60,26 @@ test("app menus, account, settings and paged mode lists fit phones without page 
   await page.setViewportSize({ width: 390, height: 844 });
   await page.evaluate(() => __app.show("play"));
   const modes = [];
-  while (true) {
+  for (const category of ["team-battles", "solo-battles"]) {
+    await page.evaluate((s) => __app.show(s), category);
     modes.push(
       ...(await page
         .locator("[data-launch]")
         .evaluateAll((es) => es.map((e) => e.dataset.launch))),
     );
-    if (await page.locator("#mode-next").isDisabled()) break;
-    await page.locator("#mode-next").click();
   }
-  for (const m of [
-    "rush",
-    "gauntlet",
-    "gauntlet-team",
-    "roulette",
-    "boss",
-    "ctf",
-    "domination",
-    "ffa",
+  expect(modes).toEqual([
     "tdm",
-    "random",
-  ])
-    expect(modes).toContain(m);
+    "gauntlet-team",
+    "domination",
+    "ctf",
+    "rush",
+    "boss",
+    "ffa",
+    "roulette",
+    "gauntlet",
+    "corruption",
+  ]);
   await context.close();
 });
 test("each Play mode has an accessible swipeable slideshow and Random opens a valid setup", async ({
@@ -85,6 +87,7 @@ test("each Play mode has an accessible swipeable slideshow and Random opens a va
 }) => {
   await ready(page);
   await page.locator('[data-screen="play"]').click();
+  await page.locator('[data-screen="team-battles"]').click();
   await page.locator('[data-help="boss"]').click();
   await expect(page.locator("#slides-dialog")).toBeVisible();
   await expect(page.locator("#slide-count")).toHaveText("1 / 3");
@@ -98,9 +101,8 @@ test("each Play mode has an accessible swipeable slideshow and Random opens a va
     .dispatchEvent("pointerup", { clientX: 140, clientY: 250 });
   await expect(page.locator("#slide-count")).toHaveText("3 / 3");
   await page.locator("#slides-close").click();
-  await page.locator("#mode-next").click();
-  await page.locator("#mode-next").click();
-  await page.locator('[data-launch="random"]').click();
+  await page.locator("#shell-back").click();
+  await page.locator("#quick-match").click();
   await expect(page.locator("#begin-btn")).toBeVisible();
   expect(
     await page.evaluate(() =>

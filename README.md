@@ -1,8 +1,18 @@
-# Elemental — The Colosseum · v0.13
+# Elemental — The Colosseum · v0.14
+
+## v0.14 navigation, camera and lessons
+
+- **Leave** is visible from the start of battle and always returns to that match’s setup. Unfinished matches can be resumed; completed matches offer a new battle.
+- **Play → Team Battles:** Team Death Match, Team Waves, Domination, Capture the Flag, Fusion Rush, Boss. **Play → Solo Battles:** Free For All, Elemental Roulette, Solo Waves, Corruption. Each category uses a single, compact, full-width scrolling list. **Quick Match** randomly selects from both categories. Practice remains unranked.
+- **Solo Waves / Team Waves** are the new display names for the Gauntlet modes. Existing URLs and saved mode IDs remain compatible.
+- **Portrait battles** use a dedicated arena window above the movement/Strike row, with all active skills in a full-width row underneath. Fighters stay at least as large as the equivalent landscape view. The camera follows the player and clamps at map edges; screen gestures use the same camera transform. The victory sequence fits the arena so every survivor’s pose can be seen. Landscape keeps its whole-arena view.
+- **Elemental selection cards** retain their 90×75 proportions in both orientations. The Home row uses the same six SVG symbols as the battle HUD.
+- **Elements & Fusions** opens a 20-character chapter picker. Selecting one shows only that elemental’s swipeable chapter.
+- **Controls** has nine illustrated lessons: movement direction, automatic lock and a connected strike, an active Sonic boom, origin/fused skill switching, before/after token absorption, portal placement, teleport preparation, enemy-swiping telekinesis, and current Settings/Leave behavior. The three tap/swipe techniques have separate screenshots for clarity. `node scripts/capture-controls.mjs` reproduces these real engine/input demonstrations with temporary teaching annotations.
 
 ## v0.13 mobile and battle update
 
-- A prominent **Leave** button replaces Setup as soon as a match ends and returns to Home. All surviving winners display their own victory pose for four real seconds before results; all 20 elementals have a pose.
+- A prominent **Leave** button is available throughout the battle and returns to battle setup. All surviving winners display their own victory pose for four real seconds before results; all 20 elementals have a pose.
 - The chosen **Landscape / Portrait** orientation applies to Home, setup, guides, account/settings and battles. The entire app rotates when needed, with matching touch coordinates. The viewport disables gesture zoom and form fields use a 16px minimum font to prevent iOS focus zoom. Fullscreen is optional; the web fallback keeps the same layout.
 - **Gauntlet enemies have half their previous health**, including solo and team final bosses: first-wave enemies have 60 HP, wave two 69 HP; the solo final boss has 180 HP.
 - **Divine owners see a 25% opaque silhouette** even at rest. Enemy visibility and AI targeting still use the existing concealment/reveal rules.
@@ -14,11 +24,11 @@
 
 The app opens with the configured logo video, then Home: **Play, Practice, Leaderboard, My Account, Settings**. No logo video was supplied for this release, so Home opens immediately. Add the video and set `introVideo` in `public/app-config.json` to activate the intro. Playback completion, Skip, and video failures all return to Home; blocked autoplay offers a Play button.
 
-Screens fit the viewport without page scrolling. Play mode lists use pages; only the character picker scrolls. Each mode has a swipeable How to Play slideshow. Practice includes controls and element/fusion ability tutorials, plus Duel, Fused II, Fused III and Team Brawl. Tutorial's Try Controls opens an unranked AI practice duel. Random chooses a Play mode, never Practice. `?mode=rush` (and other mode IDs) are supported setup deep links.
+Screens fit the viewport without page scrolling. Mode lists and the elemental chapter library scroll within the screen; the character picker scrolls horizontally. Each mode has a swipeable How to Play slideshow. Practice includes controls and element/fusion ability tutorials, plus Duel, Fused II, Fused III and Team Brawl. Tutorial's Try Controls opens an unranked AI practice duel. Random chooses a Play mode, never Practice. `?mode=rush` (and other mode IDs) are supported setup deep links.
 
 - **Fusion Rush:** 3v3 or 4v4, three minutes, 10-second respawns. Neutral compatible shards appear at distributed positions: six at start, up to two every eight seconds, capped at eight and expiring after 32 seconds. Either team can collect them. Eliminations give 1 point; first reaching tier II gives 3 and tier III gives 5, once per fighter per match (not farmable by respawning). Highest score wins; ties draw. Fusion resets on your respawn. Friendly fire is on, and ordinary ally-token fusion remains available.
-- **Elemental Gauntlet Solo:** start with an origin, clear escalating waves, then choose a compatible shard, full healing, or +25% damage / +15% speed for the next wave. Waves increase in number, health and elemental tier. Reaching tier III unlocks the final Invincible boss on the following wave. Beat the boss to win; dying ends the run. Rewards pause combat and the clock.
-- **Elemental Gauntlet Teams:** two to four allies, currently one human and adaptive AI teammates. The same survival progression applies. Any surviving teammate keeps the run alive; felled allies return at half health between waves. Healing/upgrade rewards affect the team, and a shard choice also gives each AI ally a compatible evolution when possible. A full team wipe ends the run. Friendly fire remains on.
+- **Solo Waves:** start with an origin, clear escalating waves, then choose a compatible shard, full healing, or +25% damage / +15% speed for the next wave. Waves increase in number, health and elemental tier. Reaching tier III unlocks the final Invincible boss on the following wave. Beat the boss to win; dying ends the run. Rewards pause combat and the clock.
+- **Team Waves:** two to four allies, currently one human and adaptive AI teammates. The same survival progression applies. Any surviving teammate keeps the run alive; felled allies return at half health between waves. Healing/upgrade rewards affect the team, and a shard choice also gives each AI ally a compatible evolution when possible. A full team wipe ends the run. Friendly fire remains on.
 - **Elemental Roulette:** 2–8 independent fighters, random transformations every 25 seconds. The HUD reveals your next form five seconds before the change. Current HP, maximum HP, cooldowns and incoming status effects carry over; old forms, passives, charges, shields and dashes are replaced. No fusion. Respawns take 10 seconds, using the latest rolled form, and transformations also update waiting fighters without reviving them early. A single standing real fighter wins immediately; otherwise most kills at three minutes wins, with ties drawing.
 
 Settings independently control SFX and the procedural ambient soundtrack. Volumes, orientation and charging preferences persist on the device. The chosen orientation applies across the entire app, rotating the layout and input coordinates when necessary. This is a mobile web/PWA layout, not a packaged App Store binary.
@@ -50,7 +60,7 @@ Open the site in Safari. Choose Play or Practice, select a mode and elemental, t
 - **Bottom right:** Strike. The nearest opponent is automatically targeted when within melee range.
 - **Bottom middle:** active skills. Hold the main skill to charge, then release. Earth’s Rock shield stays up while its button is held, until it breaks.
 - **Across the top:** available ability sets. A Mirror can choose Earth, Light or Mirror; switching skills does not change its fused identity, passives or cooldowns.
-- **Top right:** pause, fullscreen and return to setup. After a match, the prominent Leave button returns to Home.
+- **Top right:** pause, fullscreen and return to setup. The prominent Leave button always returns to the current battle’s setup.
 
 The fullscreen button requests browser fullscreen where supported. On iOS versions that do not support element fullscreen, the game fills the available browser viewport. Safari’s **Share → Add to Home Screen** provides a standalone view without normal browser bars. A manifest and Apple standalone metadata are included; offline play is not implemented.
 

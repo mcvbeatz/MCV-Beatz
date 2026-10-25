@@ -29,7 +29,11 @@ async function fight(page, mode, element) {
 }
 async function fits(page, selector) {
   for (const el of await page.locator(selector).all()) {
-    if (!(await el.isVisible())) continue;
+    if (
+      !(await el.isVisible()) ||
+      (await el.evaluate((e) => !!e.closest(".mode-scroll,.element-library")))
+    )
+      continue;
     const r = await el.boundingBox(),
       v = page.viewportSize();
     expect(r.x, selector).toBeGreaterThanOrEqual(-1);
@@ -41,6 +45,7 @@ async function fits(page, selector) {
 test("both orientation preferences apply to every screen and screenshot guide in both phone positions", async ({
   browser,
 }) => {
+  test.setTimeout(60000);
   const c = await browser.newContext({
     viewport: { width: 390, height: 844 },
     isMobile: true,
@@ -180,7 +185,7 @@ test("tap charging persists through release and casts on the next tap; shield an
   ).toBeGreaterThan(0);
   await expect(page.locator("#utility-name")).toHaveText("Tailwind");
 });
-test("winners pose for four real seconds before results and Leave immediately returns Home", async ({
+test("winners pose for four real seconds before results and Leave returns to battle setup", async ({
   page,
 }) => {
   await ready(page);
@@ -197,7 +202,7 @@ test("winners pose for four real seconds before results and Leave immediately re
   await expect(page.locator("#game-overlay")).toBeVisible({ timeout: 1800 });
   await expect(page.locator("#overlay-text")).toContainText("Victory timing");
   await page.locator("#leave-btn").click();
-  expect(await page.evaluate(() => __app.screen)).toBe("home");
+  expect(await page.evaluate(() => __app.screen)).toBe("setup");
 });
 test("all twenty victory poses are populated and distinct, and every guide loads a real screenshot", async ({
   page,

@@ -63,7 +63,7 @@ export const MODES = {
     ],
   },
   gauntlet: {
-    name: "Elemental Gauntlet Solo",
+    name: "Solo Waves",
     tag: "Solo survival",
     slides: [
       [
@@ -84,7 +84,7 @@ export const MODES = {
     ],
   },
   "gauntlet-team": {
-    name: "Elemental Gauntlet Teams",
+    name: "Team Waves",
     tag: "2–4 allies · survival",
     slides: [
       [
@@ -290,54 +290,71 @@ export const MODES = {
     ],
   },
 };
-export const PLAY_MODES = [
-  "boss",
-  "ctf",
-  "domination",
-  "gauntlet",
-  "gauntlet-team",
-  "roulette",
-  "ffa",
+export const TEAM_MODES = [
   "tdm",
+  "gauntlet-team",
+  "domination",
+  "ctf",
   "rush",
-  "corruption",
+  "boss",
 ];
+export const SOLO_MODES = ["ffa", "roulette", "gauntlet", "corruption"];
+export const PLAY_MODES = [...TEAM_MODES, ...SOLO_MODES];
 export const PRACTICE_LIST = ["duel", "fused", "fused3", "team"];
 export const CONTROL_SLIDES = [
   [
     "Move freely",
     "Drag the bottom-left stick in any direction. Farther from its center means faster movement. Keyboard: WASD or arrows.",
     "⊕",
+    "guides/control-move.png",
   ],
   [
     "Strike and lock",
     "Tap or hold Strike at bottom-right. Target lock automatically faces the nearest enemy within melee range. Keyboard: J.",
     "⚔",
+    "guides/control-strike.png",
   ],
   [
     "Use your skills",
     "Hold and release to charge, or choose tap-to-charge/tap-to-release in Settings. Utilities are taps; Rock shield always requires holding. Keyboard: K and L.",
     "✦",
+    "guides/control-skills.png",
   ],
   [
     "Switch ability sets",
     "Fused fighters have origin and fused tabs across the top. Changing tabs changes usable skills, while inherited passives stay active. Keyboard: Tab.",
     "Ⅰ Ⅱ Ⅲ",
+    "guides/control-switch.png",
   ],
   [
     "Fuse automatically",
     "Touch a compatible token or neutral Rush shard. Fusion unlocks a new form. Tokens from the opposing team are hidden except in Free For All.",
     "◇",
+    "guides/control-fusion.png",
   ],
   [
-    "Tap and swipe",
-    "Portals: activate, then tap two clear places. Teleport: tap a destination. Telekinesis: swipe an enemy, or tap its button to push away.",
+    "Tap and swipe · Portals",
+    "Activate Portals, then tap two clear arena positions. Tap your portals to close them. Screen taps are mapped to the zoomed camera view too.",
     "↗",
+    "guides/control-portals.png",
+  ],
+  [
+    "Tap and swipe · Teleport",
+    "As Multi-Dimensional, tap the arena to prepare a teleport. Jumps reach up to 180 units, with a visible destination and a vulnerable 0.2-second preparation.",
+    "↗",
+    "guides/control-teleport.png",
+  ],
+  [
+    "Tap and swipe · Telekinesis",
+    "As Gravity, swipe an enemy in the direction you want to move them. Or tap Telekinesis to push the nearest opponent away.",
+    "↗",
+    "guides/control-telekinesis.png",
   ],
   [
     "Play your way",
-    "Settings has independent music and SFX volumes and landscape/portrait layouts. Pause or return to setup from the arena toolbar.",
+    "Settings controls music, SFX, orientation and hold/release or tap/tap charging. Portrait follows your fighter, with movement and Strike above the skills. Leave returns to battle setup; unfinished matches can be resumed.",
     "⚙",
+    "guides/control-settings.png",
   ],
 ];
 export const SKILL_HELP = {
