@@ -58,7 +58,7 @@ test("every elemental uses distinct directional sidestep and damaged frames with
       }
     return { errors, count, ready: await charactersReady };
   });
-  expect(result).toEqual({ errors: [], count: 80, ready: true });
+  expect(result).toEqual({ errors: [], count: 92, ready: true });
 });
 
 test("Death button places a floor sigil, stays spent, and demotion updates ability tabs", async ({

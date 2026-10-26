@@ -86,6 +86,9 @@ export const COMBOS = {
   "dark+earth+light": "multi-dimensional",
   "air+light+water": "lightning",
   "earth+fire+light": "invincible",
+  "air+fire+light": "phoenix",
+  "air+dark+earth": "terraformer",
+  "earth+light+water": "sanctuary",
 };
 export const FUSED = {
   mud: ["Quicksand", null],
@@ -102,9 +105,18 @@ export const FUSED = {
   "multi-dimensional": [null, null],
   lightning: ["Lightning strikes", "Tailwind"],
   invincible: [null, null],
+  phoenix: [null, null],
+  terraformer: ["Chasm", "Stone Prison"],
+  sanctuary: ["Life spring", null],
 };
 // Extra buttons for the selected ability set, including direct fused shortcuts.
 export const EXTRA_SKILLS = {
+  phoenix: [
+    { name: "Laser beam", form: "sun", kind: "ability" },
+    { name: "Speed burst", form: "blaze", kind: "utility" },
+  ],
+  terraformer: [{ name: "Rock shield", form: "earth", kind: "utility" }],
+  sanctuary: [{ name: "Rock shield", form: "earth", kind: "utility" }],
   dark: [{ name: "Blindness", form: "blindness", kind: "ability" }],
   mud: [
     { name: "Hydro pump", form: "water", kind: "ability" },
@@ -144,6 +156,10 @@ export const canUseSkill = (a, form, kind) =>
   ((form === "blindness" && a.parts.includes("dark")) ||
     a.forms.includes(form) ||
     extraSkillsFor(a.element).some((s) => s.form === form && s.kind === kind));
+export const VOG_RADIUS = (500 / Math.sqrt(3)) * 0.6;
+export const BURST_HIT_RANGE = 28 * 1.3;
+export const CHASM_RADIUS = 56;
+export const CHASM_RANGE = 400;
 export const TELEKINESIS_RANGE = 400;
 export const TELEKINESIS_PUSH = 520;
 export const canReactToHit = (a) =>
@@ -265,6 +281,8 @@ export function makeFighter(id, element, team, x, y) {
     blind: 0,
     whiteout: 0,
     sabotaged: false,
+    prisonHp: 0,
+    chasmReady: false,
     shield: 0,
     shieldHp: 65,
     shieldTime: 0,
@@ -310,6 +328,8 @@ export class Combat {
     this.mode = mode;
     this.scores = [0, 0];
     this.deathUsed = new Set();
+    this.rebirthUsed = new Set();
+    this.springUsed = new Set();
     this.friendlyFire = !["corruption", "boss", "domination"].includes(mode);
     this.fusionEnabled = !["ctf", "corruption", "boss", "roulette"].includes(
       mode,
@@ -487,10 +507,24 @@ export class Combat {
         ? "Go!"
         : "";
   }
+  auroraProtected(a) {
+    return (
+      a.alive &&
+      this.fighters.some(
+        (b) =>
+          b.alive &&
+          !b.echo &&
+          inWorld(b) &&
+          b.team === a.team &&
+          hasPassive(b, "sanctuary"),
+      )
+    );
+  }
   canSee(a, b) {
     return (
       visibility(b) > 0 &&
       (a.parts.includes("dark") ||
+        this.auroraProtected(a) ||
         !this.hazards.some(
           (h) =>
             h.kind === "vog" &&
@@ -501,6 +535,7 @@ export class Combat {
     );
   }
   cancelSabotaged(a) {
+    if (this.auroraProtected(a)) a.sabotaged = false;
     if (!a.sabotaged) return false;
     a.sabotaged = false;
     a.charging = false;
@@ -556,7 +591,7 @@ export class Combat {
   move(a, dx, dy, dt) {
     if (this.countingDown || (!a.alive && !a.ghost) || !inWorld(a)) return;
     if (a.blink && Math.hypot(a.knockX, a.knockY) > 1) a.blink = null;
-    if (a.blink || this.isShocked(a)) {
+    if (a.prisonHp > 0 || a.blink || this.isShocked(a)) {
       a.vx = a.vy = a.knockX = a.knockY = a.burst = a.movingTime = 0;
       return;
     }
@@ -608,6 +643,19 @@ export class Combat {
     if (this.intermission || this.countingDown) return false;
     if (!a.alive || !inWorld(a) || a.attackCd > 0 || a.shield || a.stagger > 0)
       return false;
+    if (a.prisonHp > 0) {
+      a.attackCd = 0.43;
+      a.swing = 0.22;
+      a.reveal = 0.45;
+      a.prisonHp = Math.max(
+        0,
+        a.prisonHp -
+          14 *
+            (hasPassive(a, "invincible") ? 2 : a.element === "light" ? 0.9 : 1),
+      );
+      this.cue("shatter", a, "#c4af79");
+      return true;
+    }
     if (!this.aiGesture(a, "strike")) return false;
     this.autoLock(a);
     a.attackCd = 0.43;
@@ -633,10 +681,17 @@ export class Combat {
       !skillsFor(form)[0]
     )
       return false;
+    if (form === "sanctuary" && this.springUsed.has(a.id)) return false;
     if (this.cancelSabotaged(a)) return false;
+    if (form === "terraformer") {
+      a.chasmReady = true;
+      return true;
+    }
     if (form !== "gravity" && !this.aiGesture(a, `ability:${form}`))
       return false;
-    if (["lightning", "gravity", "blindness", "smoke"].includes(form)) {
+    if (
+      ["lightning", "gravity", "blindness", "smoke", "sanctuary"].includes(form)
+    ) {
       if (this.cast(a, 1, form) === false) return false;
       a.abilityCd = form === "lightning" ? 3 : form === "smoke" ? 7 : 4.5;
       return true;
@@ -687,6 +742,63 @@ export class Combat {
           this.cue("portal", flag, flag.team === 0 ? "#82d7eb" : "#ed947d");
         }
     }
+    if (
+      wasAlive &&
+      !a.echo &&
+      hasPassive(a, "phoenix") &&
+      !this.rebirthUsed.has(a.id)
+    ) {
+      this.rebirthUsed.add(a.id);
+      Object.assign(a, {
+        hp: a.maxHp * 0.5,
+        alive: true,
+        ghost: false,
+        lost: false,
+        dimension: null,
+        transit: null,
+        charging: false,
+        charge: 0,
+        chargeForm: null,
+        shield: 0,
+        prisonHp: 0,
+        burst: 0,
+        blink: null,
+        blind: 0,
+        whiteout: 0,
+        venom: 0,
+        burn: 0,
+        slow: 0,
+        sabotaged: false,
+        stagger: 0,
+        vx: 0,
+        vy: 0,
+        knockX: 0,
+        knockY: 0,
+        swing: 0,
+        clash: 0,
+        hitReact: 0,
+        lock: null,
+        spawnFlash: 1,
+        portalCooldown: 1,
+      });
+      delete a.respawnAt;
+      a.x = clamp(a.x, 135, 889);
+      a.y = clamp(a.y, 175, 560);
+      this.pending = this.pending.filter((p) => p.who !== a);
+      this.tokens = this.tokens.filter((t) => t.owner !== a.id);
+      this.effects.push({
+        kind: "rebirth",
+        x: a.x,
+        y: a.y,
+        color: "#ffe4a3",
+        r: 85,
+        life: 1,
+        max: 1,
+      });
+      return;
+    }
+    a.prisonHp = 0;
+    a.chasmReady = false;
     a.hp = 0;
     a.clash = a.reflect = a.hitReact = 0;
     a.blink = null;
@@ -1008,6 +1120,26 @@ export class Combat {
   castSkill(a, p) {
     const e = skillForm(a);
     if (!skillsFor(e)[0]) return false;
+    if (e === "sanctuary") {
+      if (this.springUsed.has(a.id)) return false;
+      this.springUsed.add(a.id);
+      this.hazards.push({
+        kind: "spring",
+        owner: a,
+        element: e,
+        x: a.x,
+        y: a.y,
+        r: 85,
+        power: 1,
+        life: Infinity,
+        tick: 0,
+      });
+      return true;
+    }
+    if (e === "terraformer") {
+      a.chasmReady = true;
+      return false;
+    }
     if (e === "gravity") {
       const target = this.enemies(a).sort(
         (b, c) => distance(a, b) - distance(a, c),
@@ -1082,12 +1214,12 @@ export class Combat {
         .sort((b, c) => distance(a, b) - distance(a, c))[0];
       if (!t) return false;
       if (e === "blindness") {
-        if (!hasPassive(t, "divine")) {
+        if (!hasPassive(t, "divine") && !this.auroraProtected(t)) {
           t.blind = 3;
           t.lock = null;
         }
         this.cue("interrupt", t, "#675475");
-      } else {
+      } else if (!this.auroraProtected(t)) {
         const charging = t.charging || !!t.blink;
         t.charging = false;
         t.charge = 0;
@@ -1097,7 +1229,7 @@ export class Combat {
         this.cue("interrupt", t, "#c1a1df");
       }
     } else if (e === "mud") this.area(a, p, "quicksand", 85, 5 * p);
-    else if (e === "smoke") this.area(a, 1, "vog", 500 / Math.sqrt(3), 8);
+    else if (e === "smoke") this.area(a, 1, "vog", VOG_RADIUS, 8);
     else if (e === "apparition" || e === "demonic") {
       const limit = e === "demonic" ? 3 : 1,
         existing = this.fighters.filter(
@@ -1226,6 +1358,7 @@ export class Combat {
     if (!a.alive || !inWorld(a) || !skillsFor(e)[1]) return false;
     if (
       a.sabotaged &&
+      !this.auroraProtected(a) &&
       !(a.shield && e === "earth") &&
       !(a.burst > 0 && e === "blaze") &&
       ((e === "spirit" && this.portals.owned(a).length < 2) ||
@@ -1239,7 +1372,7 @@ export class Combat {
       return false;
     }
     if (e === "blaze") {
-      if (this.isShocked(a)) return false;
+      if (a.prisonHp > 0 || this.isShocked(a)) return false;
       // An active dash finishes before the next one begins; there is no recharge.
       if (a.burst > 0) return true;
       if (!this.aiGesture(a, "utility:blaze")) return false;
@@ -1270,7 +1403,28 @@ export class Combat {
     if (!this.aiGesture(a, `utility:${e}`)) return false;
     a.reveal = 0.45;
     a.utilityCd = 7;
-    if (e === "fire") this.area(a, 1, "magma", 66, Infinity);
+    if (e === "terraformer") {
+      const target = this.enemies(a)
+        .filter((b) => distance(a, b) <= 245)
+        .sort((b, c) => distance(a, b) - distance(a, c))[0];
+      if (!target) {
+        a.utilityCd = 0;
+        return false;
+      }
+      Object.assign(target, {
+        prisonHp: 65,
+        shield: 0,
+        charging: false,
+        charge: 0,
+        blink: null,
+        burst: 0,
+        vx: 0,
+        vy: 0,
+        knockX: 0,
+        knockY: 0,
+      });
+      this.cue("shatter", target, "#b6ac85");
+    } else if (e === "fire") this.area(a, 1, "magma", 66, Infinity);
     else if (e === "light") {
       for (const b of this.fighters)
         if (
@@ -1279,7 +1433,8 @@ export class Combat {
           inWorld(b) &&
           (this.friendlyFire || a.team !== b.team) &&
           distance(a, b) < 260 &&
-          !hasPassive(b, "divine")
+          !hasPassive(b, "divine") &&
+          !this.auroraProtected(b)
         ) {
           b.whiteout = 3;
           b.lock = null;
@@ -1323,8 +1478,51 @@ export class Combat {
     }
     return true;
   }
+  placeChasm(a, x, y) {
+    if (
+      this.countingDown ||
+      this.intermission ||
+      !a.alive ||
+      !inWorld(a) ||
+      !canUseSkill(a, "terraformer", "ability") ||
+      a.abilityCd > 0 ||
+      a.shield ||
+      a.charging ||
+      a.stagger > 0 ||
+      !Number.isFinite(x) ||
+      !Number.isFinite(y) ||
+      x < 135 ||
+      x > 889 ||
+      y < 175 ||
+      y > 560 ||
+      distance(a, { x, y }) > CHASM_RANGE
+    )
+      return false;
+    if (this.cancelSabotaged(a)) {
+      a.chasmReady = false;
+      return false;
+    }
+    if (!this.aiGesture(a, "chasm")) return false;
+    a.chasmReady = false;
+    a.reveal = 0.45;
+    a.abilityCd = 8;
+    this.hazards.push({
+      kind: "chasm",
+      owner: a,
+      element: "terraformer",
+      x,
+      y,
+      r: CHASM_RADIUS,
+      opensAt: this.time + 1,
+      life: 9,
+      power: 1,
+      tick: 0,
+    });
+    return true;
+  }
   demote(a) {
-    if (!a.alive || a.echo || a.parts.length < 2) return false;
+    if (!a.alive || a.echo || a.parts.length < 2 || this.auroraProtected(a))
+      return false;
     const form =
       a.parts.length >= 3
         ? Object.entries(COMBOS)
@@ -1453,13 +1651,14 @@ export class Combat {
         : a.forms.indexOf(form);
     if (index < 0) return false;
     a.charging = false;
+    a.chasmReady = false;
     this.utility(a, false);
     a.form = index;
 
     return true;
   }
   teleport(a, x, y) {
-    if (this.countingDown) return false;
+    if (a.prisonHp > 0 || this.countingDown) return false;
     if (
       !a.alive ||
       !inWorld(a) ||
@@ -1684,13 +1883,15 @@ export class Combat {
         .filter(
           (h) =>
             inWorld(h) &&
-            (h.kind === "death"
-              ? a.parts.length > 1
-              : h.kind === "quicksand"
-                ? !this.flying(a) && !hasPassive(a, "mud")
-                : h.kind === "gravity"
-                  ? h.owner.team !== a.team && !hasPassive(a, "apparition")
-                  : ["magma", "heatwave"].includes(h.kind) && !burnImmune(a)),
+            (h.kind === "chasm"
+              ? !this.flying(a)
+              : h.kind === "death"
+                ? a.parts.length > 1 && !this.auroraProtected(a)
+                : h.kind === "quicksand"
+                  ? !this.flying(a) && !hasPassive(a, "mud")
+                  : h.kind === "gravity"
+                    ? h.owner.team !== a.team && !hasPassive(a, "apparition")
+                    : ["magma", "heatwave"].includes(h.kind) && !burnImmune(a)),
         )
         .reduce(
           (sum, h) => sum + Math.max(0, h.r + 12 - distance(point, h)),
@@ -1730,7 +1931,9 @@ export class Combat {
       return false;
     return !this.hazards.some((h) => {
       if (!inWorld(h) || distance(h, point) > h.r + 12) return false;
-      if (h.kind === "death") return a.parts.length > 1;
+      if (h.kind === "chasm") return !this.flying(a);
+      if (h.kind === "death")
+        return a.parts.length > 1 && !this.auroraProtected(a);
       if (h.kind === "quicksand")
         return !this.flying(a) && !hasPassive(a, "mud");
       if (h.kind === "gravity")
@@ -1740,7 +1943,7 @@ export class Combat {
     });
   }
   aiMobility(a, target, patient) {
-    if (a.echo || !a.alive || !inWorld(a)) return null;
+    if (a.echo || !a.alive || !inWorld(a) || a.prisonHp > 0) return null;
     const owned = this.portals.owned(a);
     if (a.portalRoute) {
       const route = a.portalRoute;
@@ -1860,6 +2063,11 @@ export class Combat {
     return pair[0];
   }
   ai(a, dt) {
+    if (a.prisonHp > 0) {
+      a.aiControlled = true;
+      this.strike(a);
+      return;
+    }
     if (this.mode === "corruption") return this.aiCorruption(a, dt);
     if (
       (this.mode === "boss" || (isGauntlet(this) && this.finalWave)) &&
@@ -1899,6 +2107,22 @@ export class Combat {
       (allies.some((c) => c.hp < 60 && distance(c, b) < 110) ? 90 : 0);
     const target = enemies.sort((b, c) => score(b) - score(c))[0];
     const patient = this.healingTarget(a);
+    if (
+      a.element === "sanctuary" &&
+      !this.springUsed.has(a.id) &&
+      a.abilityCd <= 0 &&
+      patient?.hp < 100
+    )
+      this.startCharge(a, "sanctuary");
+    if (a.element === "terraformer" && target) {
+      if (
+        !this.flying(target) &&
+        this.safeAttack(a, target, "ability", "terraformer")
+      )
+        this.placeChasm(a, target.x, target.y);
+      if (target.prisonHp <= 0 && distance(a, target) <= 245)
+        this.utility(a, true, "terraformer");
+    }
     const tactical = this.aiTactic(a, target);
     const route = tactical || this.aiMobility(a, target, patient);
     if (route) {
@@ -1979,13 +2203,15 @@ export class Combat {
     // Step out of hostile floor effects and incoming attack lanes.
     for (const h of this.hazards.filter(inWorld)) {
       const harmful =
-        h.kind === "death"
-          ? a.parts.length > 1
-          : h.kind === "gravity"
-            ? h.owner.team !== a.team && !hasPassive(a, "apparition")
-            : h.kind === "quicksand"
-              ? !this.flying(a) && !hasPassive(a, "mud")
-              : ["magma", "heatwave"].includes(h.kind) && !burnImmune(a);
+        h.kind === "chasm"
+          ? !this.flying(a)
+          : h.kind === "death"
+            ? a.parts.length > 1 && !this.auroraProtected(a)
+            : h.kind === "gravity"
+              ? h.owner.team !== a.team && !hasPassive(a, "apparition")
+              : h.kind === "quicksand"
+                ? !this.flying(a) && !hasPassive(a, "mud")
+                : ["magma", "heatwave"].includes(h.kind) && !burnImmune(a);
       const gap = distance(a, h);
       if (harmful && gap < h.r + 25) {
         dx += ((a.x - h.x) / (gap || 1)) * 2;
@@ -2090,7 +2316,7 @@ export class Combat {
     if (a.echo) return;
     // Support waits for a healing opportunity instead of wasting its main skill.
     if (light) return;
-    let attackForm = a.element;
+    let attackForm = a.element === "phoenix" ? "sun" : a.element;
     if (a.aiLastGesture === `ability:${attackForm}` && a.aiRepeat >= 3)
       attackForm = a.forms.find(
         (f) =>
@@ -2110,7 +2336,7 @@ export class Combat {
     ) {
       this.switchForm(a, attackForm);
       if (attackForm === "gravity") this.telekinesis(a, target, a.fx, a.fy);
-      else this.startCharge(a);
+      else if (attackForm !== "terraformer") this.startCharge(a, attackForm);
     }
     const form = activeForm(a);
     if (
@@ -2141,7 +2367,7 @@ export class Combat {
         !inWorld(b) ||
         b.id === a.id ||
         a.burstHits.has(b.id) ||
-        segmentDistance(b, old, a) > 28
+        segmentDistance(b, old, a) > BURST_HIT_RANGE
       )
         continue;
       a.burstHits.add(b.id);
@@ -2246,6 +2472,27 @@ export class Combat {
       if (h.removed || this.portals.tick(h, dt) || this.portals.enter(h, h))
         continue;
       h.life -= dt;
+      if (h.life <= 0) continue;
+      if (h.kind === "spring") {
+        for (const b of this.fighters)
+          if (b.alive && inWorld(b) && distance(h, b) <= h.r)
+            b.hp = Math.min(b.maxHp, b.hp + 8 * dt);
+        continue;
+      }
+      if (h.kind === "chasm") {
+        if (this.time >= h.opensAt)
+          for (const b of this.fighters) {
+            if (
+              b.alive &&
+              inWorld(b) &&
+              !this.flying(b) &&
+              (this.friendlyFire || b.team !== h.owner.team) &&
+              distance(h, b) <= h.r
+            )
+              this.fell(b, { killer: h.owner });
+          }
+        continue;
+      }
       if (h.kind === "death") {
         const touching = this.fighters.filter(
           (b) =>
@@ -2269,6 +2516,11 @@ export class Combat {
           !inWorld(b) ||
           distance(h, b) > h.r ||
           (!this.friendlyFire && b.team === h.owner.team)
+        )
+          continue;
+        if (
+          this.auroraProtected(b) &&
+          ["flood", "gravity", "heatwave", "vog"].includes(h.kind)
         )
           continue;
         const flying = this.flying(b),
@@ -2380,7 +2632,19 @@ export class Combat {
       if (a.charging && a.stagger <= 0) a.charge = Math.min(1.8, a.charge + dt);
       if (a.shield) a.shieldTime += dt;
       else a.shieldHp = Math.min(65, a.shieldHp + dt * 5);
-      if (hasPassive(a, "divine")) a.venom = a.burn = a.blind = a.whiteout = 0;
+      if (hasPassive(a, "divine") || this.auroraProtected(a))
+        a.venom = a.burn = a.blind = a.whiteout = 0;
+      if (this.auroraProtected(a)) {
+        a.sabotaged = false;
+        if (
+          a.slow > 0 &&
+          !this.hazards.some(
+            (h) =>
+              h.kind === "quicksand" && inWorld(h) && distance(h, a) <= h.r,
+          )
+        )
+          a.slow = 0;
+      }
       if (a.venom > 0)
         this.damage(a.venomSource || a, a, dt * 3, true, false, "mud", false);
       if (!a.alive && !a.ghost) continue;
@@ -2422,13 +2686,18 @@ export class Combat {
           a.parts.includes("fire") &&
           !b.parts.includes("fire") &&
           !b.parts.includes("water") &&
-          !hasPassive(b, "divine")
+          !hasPassive(b, "divine") &&
+          !this.auroraProtected(b)
         ) {
           const hp = b.hp;
           this.damage(a, b, dt * 5, true, false, "fire", false);
           if (b.hp < hp) b.burn = 1;
         }
-        if (hasPassive(a, "mud") && !hasPassive(b, "divine")) {
+        if (
+          hasPassive(a, "mud") &&
+          !hasPassive(b, "divine") &&
+          !this.auroraProtected(b)
+        ) {
           b.venom = 5;
           b.venomSource = a;
         }

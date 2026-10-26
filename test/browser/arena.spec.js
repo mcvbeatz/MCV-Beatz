@@ -392,7 +392,7 @@ test("level III selector starts each fusion and Divine retains an owner-only sil
   await page.goto("/?mode=duel");
   await page.waitForFunction(() => window.__app?.screen === "setup");
   await page.evaluate(() => __app.chooseMode("fused3"));
-  await expect(page.locator("[data-element]")).toHaveCount(5);
+  await expect(page.locator("[data-element]")).toHaveCount(8);
   await expect(page.locator(".tier")).toHaveText("III");
   for (const element of [
     "demonic",
@@ -400,6 +400,9 @@ test("level III selector starts each fusion and Divine retains an owner-only sil
     "multi-dimensional",
     "lightning",
     "invincible",
+    "phoenix",
+    "terraformer",
+    "sanctuary",
   ])
     await expect(page.locator(`[data-element="${element}"]`)).toBeVisible();
   await page.locator('[data-element="divine"]').click();

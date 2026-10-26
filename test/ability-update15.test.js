@@ -88,14 +88,14 @@ test("Blindness is separately selectable, removes lock but not vision or health,
   g.autoLock(b);
   assert.equal(b.lock, a.id);
 });
-test("Vog is tap activated, one-third Flood area, harmless, and conceals from all non-Dark skill sets", () => {
+test("Vog is tap activated, reduced smoke radius, harmless, and conceals from all non-Dark skill sets", () => {
   const g = arena("smoke", "mirror"),
     [a, b] = g.fighters;
   assert.ok(g.startCharge(a));
   assert.equal(a.charging, false);
   assert.equal(a.abilityCd, 7);
   const h = g.hazards[0];
-  near(h.r * h.r, (500 * 500) / 3);
+  near(h.r * h.r, ((500 * 500) / 3) * 0.6 ** 2);
   assert.equal(h.life, 8);
   assert.equal(g.canSee(b, a), false);
   assert.equal(g.canSee(a, b), true);

@@ -5,7 +5,10 @@ const TAU = Math.PI * 2;
 export function immersionFor(game, a) {
   if (a.ghost || game.flying(a)) return 0;
   const hazards = game.hazards.filter(inWorld);
-  if (hazards.some((h) => h.kind === "flood" && distance(h, a) <= h.r))
+  if (
+    !game.auroraProtected(a) &&
+    hazards.some((h) => h.kind === "flood" && distance(h, a) <= h.r)
+  )
     return 32;
   if (
     !hasPassive(a, "mud") &&
@@ -20,6 +23,77 @@ export function drawTerrain(c, game, time) {
   const hazards = game.hazards.filter(inWorld);
   const flooded = hazards.some((h) => h.kind === "flood");
   for (const h of hazards) {
+    if (h.kind === "spring") {
+      c.save();
+      c.translate(h.x, h.y);
+      const glow = c.createRadialGradient(0, 0, 0, 0, 0, h.r);
+      glow.addColorStop(0, "#d5fff6bb");
+      glow.addColorStop(0.7, "#55e3b899");
+      glow.addColorStop(1, "#56cce022");
+      c.fillStyle = glow;
+      c.beginPath();
+      c.arc(0, 0, h.r, 0, TAU);
+      c.fill();
+      for (let i = 0; i < 5; i++) {
+        const r = (time * 22 + i * 18) % h.r;
+        c.strokeStyle = `rgba(224,255,231,${(1 - r / h.r) * 0.8})`;
+        c.lineWidth = 2;
+        c.beginPath();
+        c.ellipse(0, 0, r, r * 0.7, 0, 0, TAU);
+        c.stroke();
+      }
+      c.restore();
+      continue;
+    }
+    if (h.kind === "chasm") {
+      const opening = Math.max(0, Math.min(1, 1 - (h.opensAt - game.time)));
+      c.save();
+      c.translate(h.x, h.y);
+      c.strokeStyle = "#ead8a2";
+      c.lineWidth = 2;
+      c.setLineDash([3, 8]);
+      if (opening < 1) {
+        c.beginPath();
+        c.arc(0, 0, h.r, 0, TAU);
+        c.stroke();
+      }
+      c.setLineDash([]);
+      c.fillStyle = "#100f19";
+      c.strokeStyle = "#a49474";
+      c.lineWidth = 4;
+      c.beginPath();
+      for (let i = 0; i < 20; i++) {
+        const angle = (i * TAU) / 20,
+          r = h.r * (i % 2 ? 0.85 : 1);
+        const x = Math.cos(angle) * r,
+          y = Math.sin(angle) * r * opening * 0.75;
+        if (!i) c.moveTo(x, y);
+        else c.lineTo(x, y);
+      }
+      c.closePath();
+      c.fill();
+      c.stroke();
+      c.strokeStyle = "#45334f";
+      c.lineWidth = 2;
+      c.beginPath();
+      c.moveTo(-h.r * 0.8, 0);
+      c.lineTo(-12, -5 * opening);
+      c.lineTo(6, 9 * opening);
+      c.lineTo(h.r * 0.8, 0);
+      c.stroke();
+      for (let i = 0; i < 8; i++) {
+        const angle = (i * TAU) / 8;
+        c.fillStyle = "#b5a17b";
+        c.fillRect(
+          Math.cos(angle) * (h.r + 6),
+          Math.sin(angle) * (h.r + 6) * 0.75,
+          4,
+          3,
+        );
+      }
+      c.restore();
+      continue;
+    }
     if (
       h.kind === "vog" ||
       h.kind === "gravity" ||
@@ -593,7 +667,10 @@ export function drawSmoke(c, game, time) {
     (h) => h.kind === "vog" && inWorld(h) && h.life > 0,
   )) {
     c.save();
-    c.globalAlpha = game.player.parts.includes("dark") ? 0.28 : 1;
+    c.globalAlpha =
+      game.player.parts.includes("dark") || game.auroraProtected(game.player)
+        ? 0.28
+        : 1;
     // Soft drifting billows surround the fully concealed core.
     for (let i = 0; i < 36; i++) {
       const angle = (i * TAU) / 36 + Math.sin(time * 0.3 + i) * 0.025;
@@ -610,7 +687,10 @@ export function drawSmoke(c, game, time) {
     c.beginPath();
     c.arc(h.x, h.y, h.r, 0, TAU);
     c.clip();
-    c.globalAlpha = game.player.parts.includes("dark") ? 0.28 : 1;
+    c.globalAlpha =
+      game.player.parts.includes("dark") || game.auroraProtected(game.player)
+        ? 0.28
+        : 1;
     c.fillStyle = "#292b30";
     c.fillRect(h.x - h.r, h.y - h.r, h.r * 2, h.r * 2);
     for (let i = 0; i < 48; i++) {
@@ -663,4 +743,25 @@ export function drawTornado(c, p, time) {
     c.fillStyle = i % 2 ? "#b8c9a6" : "#897d5b";
     c.fillRect(Math.cos(a) * r, (-(i * 7) % 80) + Math.sin(a) * 5, 3, 3);
   }
+}
+
+export function drawAurora(c, a, time) {
+  c.save();
+  c.translate(a.x, a.y - 28);
+  c.strokeStyle = "#a9ffc5";
+  c.lineWidth = 1.5;
+  for (let i = 0; i < 3; i++) {
+    const phase = time * 1.7 + i * 2.1,
+      x = Math.sin(phase) * 27,
+      y = Math.cos(phase) * 27;
+    const r = 2 + Math.max(0, Math.sin(phase * 2)) * 3;
+    c.globalAlpha *= 0.85;
+    c.beginPath();
+    c.moveTo(x - r, y);
+    c.lineTo(x + r, y);
+    c.moveTo(x, y - r);
+    c.lineTo(x, y + r);
+    c.stroke();
+  }
+  c.restore();
 }

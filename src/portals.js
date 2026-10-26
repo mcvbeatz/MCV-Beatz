@@ -198,6 +198,7 @@ export class PortalSystem {
     return true;
   }
   enter(e, previous) {
+    if (e.prisonHp > 0) return false;
     if (!inWorld(e) || e.portalCooldown > 0) return false;
     const p = this.portals.find(
       (p) => this.active(p) && segmentDistance(p, previous, e) <= p.r,

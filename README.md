@@ -1,4 +1,13 @@
-# Elemental — The Colosseum · v0.15
+# Elemental — The Colosseum · v0.16
+
+## v0.16 new fusions and battlefield control
+
+- Vog radius is **40% smaller**: about 173.2 world units (60% of the previous radius). Blaze/Speed burst's collision reach is **30% wider**, 36.4 units instead of 28. Damage, speed and cooldown are unchanged.
+- Divine's controller sees an outline only while it is fully concealed. Whenever other fighters get an action, movement or damage glimpse, the controller sees the full character at normal opacity; enemy visibility is unchanged.
+- **Phoenix = Fire + Air + Light.** Laser beam and Speed burst have direct shortcuts. Passive **Rebirth** instantly restores 50% health on the first fall of the match, including a portal loss. The elimination is credited, carried flags drop, fusion stays intact, and no token or normal respawn is created for this first fall. The once-per-match charge is preserved across respawns, demotion and Roulette changes.
+- **Terraformer = Earth + Air + Dark.** Tap the arena (or use Chasm's placement reminder first) within 400 units for **Chasm**: a radius-56 tear warns/animates for one second, then kills grounded entrants for eight seconds, with an eight-second cooldown. It follows each mode's friendly-fire rules and ignores flyers. **Stone Prison** instantly cages the nearest visible enemy within 245 units in 65 HP of stone on a seven-second cooldown. Strike damages the prison instead of enemies; escape takes normal melee strength into account. It blocks movement, knockback, dashes, teleport and portal entry until broken. **Rock shield** is a direct shortcut.
+- **Sanctuary = Earth + Water + Light.** The character is primarily green. **Life spring** is a tap-only permanent radius-85 spring, healing any living fighter (including opponents) for 8 HP/sec. One placement per fighter per match, even across respawns; it survives its creator's death. **Rock shield** is a direct shortcut. Passive **Aurora** grants the living Sanctuary and its teammates an aesthetic shine and immunity to venom, contact burn, Heatwave, Vog, Flash, Sabotage, Blindness, Gravity x2, Flood and Death demotion. Protection works across skill tabs and anywhere in the arena while at least one living Sanctuary teammate is present. It does not block direct strikes/abilities, conductive Lightning, Magma, Quicksand, Chasm or Stone Prison.
+- All three forms are available through fusion, Fused III practice, adaptive AI, Roulette, Waves rewards and the elemental chapter picker. Each has front/side/back artwork plus movement, attack, recoil and victory poses. The roster now has 23 forms and eight tier-III fusions.
 
 ## v0.15 ability rules and visibility
 
@@ -18,12 +27,12 @@
 - **Solo Waves / Team Waves** are the new display names for the Gauntlet modes. Existing URLs and saved mode IDs remain compatible.
 - **Portrait battles** use a dedicated arena window above the movement/Strike row, with all active skills in a full-width row underneath. Fighters stay at least as large as the equivalent landscape view. The camera follows the player and clamps at map edges; screen gestures use the same camera transform. The victory sequence fits the arena so every survivor’s pose can be seen. Landscape keeps its whole-arena view.
 - **Elemental selection cards** retain their 90×75 proportions in both orientations. The Home row uses the same six SVG symbols as the battle HUD.
-- **Elements & Fusions** opens a 20-character chapter picker. Selecting one shows only that elemental’s swipeable chapter.
+- **Elements & Fusions** opens a 23-character chapter picker. Selecting one shows only that elemental’s swipeable chapter.
 - **Controls** has nine illustrated lessons: movement direction, automatic lock and a connected strike, an active Sonic boom, origin/fused skill switching, before/after token absorption, portal placement, teleport preparation, enemy-swiping telekinesis, and current Settings/Leave behavior. The three tap/swipe techniques have separate screenshots for clarity. `node scripts/capture-controls.mjs` reproduces these real engine/input demonstrations with temporary teaching annotations.
 
 ## v0.13 mobile and battle update
 
-- A prominent **Leave** button is available throughout the battle and returns to battle setup. All surviving winners display their own victory pose for four real seconds before results; all 20 elementals have a pose.
+- A prominent **Leave** button is available throughout the battle and returns to battle setup. All surviving winners display their own victory pose for four real seconds before results; all 23 elementals have a pose.
 - The chosen **Landscape / Portrait** orientation applies to Home, setup, guides, account/settings and battles. The entire app rotates when needed, with matching touch coordinates. The viewport disables gesture zoom and form fields use a 16px minimum font to prevent iOS focus zoom. Fullscreen is optional; the web fallback keeps the same layout.
 - **Gauntlet enemies have half their previous health**, including solo and team final bosses: first-wave enemies have 60 HP, wave two 69 HP; the solo final boss has 180 HP.
 - **Divine owners see an outline** even at rest. Enemy visibility and AI targeting still use the existing concealment/reveal rules.
@@ -153,7 +162,7 @@ Earth's Rock burst is removed; Rock shield remains. Doppelgängers pursue and st
 ## Combat rules
 
 - Duel, **Fused II**, **Fused III**, and 2v2 / 3v3 / 4v4 team brawls against AI. Rivals draw a random element from the selected tier each battle.
-- Fused II offers the nine level-II elements. Fused III offers **Demonic, Divine, Multi-Dimensional, Lightning and Invincible**, each with all of its origin ability tabs.
+- Fused II offers the nine level-II elements. Fused III offers **Demonic, Divine, Multi-Dimensional, Lightning, Invincible, Phoenix, Terraformer and Sanctuary**, each with all of its origin ability tabs.
 - Automatic lock faces the nearest rival within **69 world units** while allowing independent movement. Blindness disrupts locking.
 - Melee has a **110ms windup**, **430ms cooldown**, and **14 base damage**. Facing attacks contested within **100ms** deal quarter damage to both fighters. Friendly fire remains on.
 - Low health reduces speed. Air passively flies faster with slower direction changes. Stick magnitude controls movement speed.

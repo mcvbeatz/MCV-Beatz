@@ -20,6 +20,8 @@ test("Spirit healing and Divine portal placement work directly from their fused 
   await page.evaluate(() => {
     const g = __arena.game;
     g.update = () => {};
+    g.portals.portals = [];
+    g.portals.placing = null;
     g.player.hp = 40;
     g.fighters[1].x = 820;
     g.fighters[1].y = 440;

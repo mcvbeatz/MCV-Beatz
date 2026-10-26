@@ -1,6 +1,6 @@
 # Elemental character atlases
 
-All twenty characters derive from the user's six original concepts: Water's
+The original twenty characters derive from the user's six original concepts: Water's
 wave-haired knight, Dark's masked ninja, Fire's living flame, Air's silver crown,
 Earth's reptilian brawler, and Light's white hood and spear.
 
@@ -76,3 +76,13 @@ frames accompany the existing recoil transform. Attack, clash, charge, shield,
 dash and teleport priority remains governed by combat state. All effects still
 respect Divine concealment. Generated PNG sources remain in the workspace;
 only encoded WebP assets and frame metadata ship with the game.
+
+## v0.16 fusion figures
+
+Phoenix, Terraformer and Sanctuary are drawn by `src/new-fusion-art.js` as
+articulated pixel figures. Phoenix combines flame hair, Air wings and Light's
+gold/white spear; Terraformer combines stone armor with a dark mask and hovering
+stance; Sanctuary combines green earth armor, a water crest and a white mantle.
+They share the combat pose system for front/side/back views, attacks, sidesteps,
+damage reactions and victory poses. Sanctuary has alternating running strides;
+Phoenix and Terraformer hover. The renderer adds tier-III glow and Aurora shine.

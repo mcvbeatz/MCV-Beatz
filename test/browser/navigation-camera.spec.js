@@ -251,7 +251,7 @@ test("element library opens only the chosen chapter; Controls uses distinct acti
   expect(symbols.map((s) => s.shape)).toEqual(expected);
   await page.evaluate(() => __app.show("tutorial"));
   await page.locator("#tutorial-elements").click();
-  await expect(page.locator("[data-chapter]")).toHaveCount(20);
+  await expect(page.locator("[data-chapter]")).toHaveCount(23);
   await page.locator('[data-chapter="lightning"]').click();
   await expect(page.locator("#slide-title")).toHaveText("Lightning");
   while (await page.locator("#slide-next").isEnabled()) {

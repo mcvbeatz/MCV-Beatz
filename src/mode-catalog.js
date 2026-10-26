@@ -253,7 +253,7 @@ export const MODES = {
     slides: [
       [
         "Master the third tier",
-        "Choose Demonic, Divine, Multi-Dimensional, Lightning or Invincible.",
+        "Choose any level-III fusion, including Phoenix, Terraformer and Sanctuary.",
         "Ⅲ",
       ],
       [
@@ -358,6 +358,12 @@ export const CONTROL_SLIDES = [
   ],
 ];
 export const SKILL_HELP = {
+  Chasm:
+    "Tap an arena spot within 400 units. A visible crack opens for one second, then becomes a lethal 56-radius tear for eight seconds. Flyers are safe. Eight-second cooldown; no charge.",
+  "Stone Prison":
+    "Tap to cage the closest visible enemy within 245 units in 65 HP of rock. They cannot move, dash, teleport or enter portals. Strike to break free. Seven-second cooldown.",
+  "Life spring":
+    "Tap once per match to place a permanent bright spring at your feet. Any living fighter inside its 85-radius circle regenerates 8 HP per second. It remains after you fall.",
   Healing:
     "Charge and release to heal the living ally with the lowest health, including yourself. In Corruption, Healing restores only you.",
   Flash:
@@ -395,7 +401,7 @@ export const SKILL_HELP = {
     "Charge and release a moving wind funnel. Flying fighters take 15% more damage.",
   Flood:
     "Tap to fill a large area with water. Grounds effects are suppressed, grounded fighters slow, and Lightning strikes grow stronger.",
-  Vog: "Tap to create eight seconds of smoke over one-third of Flood’s area. Dark-bearing fighters see through it; others see only their own outline inside. Seven-second cooldown; no damage.",
+  Vog: "Tap to create eight seconds of smoke with a 40% smaller radius than its original field. Dark-bearing fighters see through it; others see only their own outline inside. Seven-second cooldown; no damage.",
   Telekinesis:
     "Swipe a visible enemy within 400 units to push in that direction, or tap to push the nearest rival away.",
   "Gravity x2": "Tap to slow nearby opponents in a fuzzy purple field.",

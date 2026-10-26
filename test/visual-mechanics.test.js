@@ -123,8 +123,8 @@ test("contested strikes enter a paired weapon clash and suppress normal swings",
   assert.equal(a.clash, 0);
   assert.ok(characterPose(a).frame < 3);
 });
-test("all twelve grounded designs run; flight, resting, walls and clashes suppress running", () => {
-  assert.equal(CHARACTERS.length, 20);
+test("all thirteen grounded designs run; flight, resting, walls and clashes suppress running", () => {
+  assert.equal(CHARACTERS.length, 23);
   let grounded = 0;
   for (const e of [
     ...Object.keys(COMBOS).map((k) => COMBOS[k]),
@@ -163,7 +163,7 @@ test("all twelve grounded designs run; flight, resting, walls and clashes suppre
     a.movingTime = 0;
     assert.equal(isRunning(a), false);
   }
-  assert.equal(grounded, 12);
+  assert.equal(grounded, 13);
 });
 test("flood covers half of grounded bodies; sand covers feet, with flight and flood override respected", () => {
   const g = arena("earth", "air"),

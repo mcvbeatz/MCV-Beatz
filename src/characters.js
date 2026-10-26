@@ -1,3 +1,4 @@
+import { NEW_FUSIONS, NEW_PARTS, drawFusionArt } from "./new-fusion-art.js";
 import victoryFrames from "./assets/victory.json" with { type: "json" };
 import combatMud from "./assets/combat-mud.json" with { type: "json" };
 import tuned from "./assets/tuned-identities.json" with { type: "json" };
@@ -23,8 +24,11 @@ import revisedRuns from "./assets/revised-running.json" with { type: "json" };
 
 export const ORIGINS = ["water", "dark", "fire", "air", "earth", "light"];
 const frames = { ...origins, ...grounded, ...airborne, ...revised, ...tuned };
-export const CHARACTERS = Object.keys(frames);
+export const CHARACTERS = [...Object.keys(frames), ...NEW_FUSIONS];
 export const ATTACK_NAMES = {
+  phoenix: "Solar talon",
+  terraformer: "Rift gauntlet",
+  sanctuary: "Spring lance",
   water: "Tidal palm",
   dark: "Twin dagger slash",
   fire: "Flame fist",
@@ -311,6 +315,8 @@ function paintFrame(
 
 // All coordinates are visual only: facing and hit timing come from Combat.
 export function drawCharacter(c, a, time) {
+  if (NEW_FUSIONS.includes(a.element))
+    return drawFusionArt(c, a, time, characterPose(a));
   if (a.victory && victory.loaded) {
     const f = victoryFrames[a.element],
       scale = 76 / f.h;
@@ -388,6 +394,26 @@ export function paintPortraits(root = document) {
   for (const canvas of root.querySelectorAll("canvas[data-character]")) {
     const c = canvas.getContext("2d");
     const element = canvas.dataset.character;
+    if (NEW_FUSIONS.includes(element)) {
+      const view = Number(canvas.dataset.view || 0);
+      const a = {
+        element,
+        parts: NEW_PARTS[element],
+        alive: true,
+        fx: view === 1 ? 1 : 0,
+        fy: view === 2 ? -1 : view === 1 ? 0 : 1,
+        swing: 0,
+        movingTime: 0,
+      };
+      c.clearRect(0, 0, canvas.width, canvas.height);
+      c.save();
+      c.translate(canvas.width / 2, canvas.height - 7);
+      const scale = (canvas.height - 12) / 80;
+      c.scale(scale, scale);
+      drawFusionArt(c, a, 0, characterPose(a));
+      c.restore();
+      continue;
+    }
     if (!byElement[element]?.loaded) continue;
     const frame = Number(canvas.dataset.view || 0);
     const spec = frames[element];
@@ -522,6 +548,9 @@ export function weaponStyle(element) {
       "multi-dimensional": "dark",
       lightning: "light",
       invincible: "earth",
+      phoenix: "light",
+      terraformer: "earth",
+      sanctuary: "light",
     }[element] || element
   );
 }

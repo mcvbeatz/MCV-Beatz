@@ -36,6 +36,9 @@ test("level III mode accepts every third-tier fusion and randomizes within its o
       "multi-dimensional",
       "lightning",
       "invincible",
+      "phoenix",
+      "terraformer",
+      "sanctuary",
     ]),
   );
   for (const element of LEVEL_THREE)

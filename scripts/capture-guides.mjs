@@ -103,6 +103,9 @@ const thirds = [
   "multi-dimensional",
   "lightning",
   "invincible",
+  "phoenix",
+  "terraformer",
+  "sanctuary",
 ];
 for (const element of [...origins, ...fusions, ...thirds]) {
   await start(
@@ -116,6 +119,12 @@ for (const element of [...origins, ...fusions, ...thirds]) {
   await page.evaluate((element) => {
     const g = __arena.game,
       a = g.player;
+    if (element === "sanctuary") g.startCharge(a, "sanctuary");
+    if (element === "terraformer") {
+      g.placeChasm(a, 510, 350);
+      g.time = 0.65;
+      g.utility(a, true, "terraformer");
+    }
     if (element === "earth" || element === "mirror")
       g.utility(a, true, "earth");
     if (["cloud", "mud", "gravity"].includes(element))
@@ -144,4 +153,4 @@ await start("duel", "water");
 await capture("controls");
 await browser.close();
 if (errors.length) throw new Error(errors.join("\n"));
-console.log(`Captured ${modes.length + 21} real game guide images.`);
+console.log(`Captured ${modes.length + 24} real game guide images.`);

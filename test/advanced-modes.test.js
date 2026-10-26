@@ -196,6 +196,8 @@ test("Roulette warns five seconds early, transforms everyone independently, pres
   g.player.shield = 1;
   g.player.charging = true;
   g.player.burst = 1;
+  g.player.burstX = 0;
+  g.player.burstY = 0;
   g.time = 19.98;
   g.update(0.01, { x: 0, y: 0 }, false);
   assert.equal(g.nextForms, null);
@@ -203,6 +205,10 @@ test("Roulette warns five seconds early, transforms everyone independently, pres
   assert.equal(Object.keys(g.nextForms).length, 8);
   const next = g.nextForms[g.player.id];
   assert.notEqual(next, "fire");
+  g.fighters.forEach((a, i) => {
+    a.x = 180 + i * 90;
+    a.y = 350;
+  }); // Keep the transformation check out of contact-burn range.
   g.time = 24.99;
   g.update(0.02, { x: 0, y: 0 }, false);
   assert.equal(g.player.element, next);

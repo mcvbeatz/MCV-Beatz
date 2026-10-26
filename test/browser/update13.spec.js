@@ -204,7 +204,7 @@ test("winners pose for four real seconds before results and Leave returns to bat
   await page.locator("#leave-btn").click();
   expect(await page.evaluate(() => __app.screen)).toBe("setup");
 });
-test("all twenty victory poses are populated and distinct, and every guide loads a real screenshot", async ({
+test("all twenty-three victory poses are populated and distinct, and every guide loads a real screenshot", async ({
   page,
 }) => {
   await ready(page);
@@ -229,8 +229,8 @@ test("all twenty victory poses are populated and distinct, and every guide loads
       };
     });
   });
-  expect(art).toHaveLength(20);
-  expect(new Set(art.map((a) => a.data)).size).toBe(20);
+  expect(art).toHaveLength(23);
+  expect(new Set(art.map((a) => a.data)).size).toBe(23);
   expect(art.every((a) => a.pixels > 300)).toBe(true);
   const guides = await page.evaluate(async () =>
     Object.keys((await import("/src/mode-catalog.js")).MODES),
@@ -267,6 +267,9 @@ test("all twenty victory poses are populated and distinct, and every guide loads
     "multi-dimensional",
     "lightning",
     "invincible",
+    "phoenix",
+    "terraformer",
+    "sanctuary",
   ]) {
     await page.evaluate((e) => __app.elementSlides(e), element);
     await expect

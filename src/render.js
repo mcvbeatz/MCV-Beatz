@@ -16,6 +16,7 @@ import {
   drawPortal,
   drawSmoke,
   drawTornado,
+  drawAurora,
 } from "./battle-effects.js";
 const PALETTE = {
   light: "#f5edcf",
@@ -26,6 +27,12 @@ const PALETTE = {
   fire: "#ca493a",
 };
 export function fighterColor(a) {
+  if (["earth", "water", "light"].every((p) => a.parts.includes(p)))
+    return "#66c989";
+  if (["fire", "air", "light"].every((p) => a.parts.includes(p)))
+    return "#ffbe69";
+  if (["earth", "air", "dark"].every((p) => a.parts.includes(p)))
+    return "#8d84ab";
   if (
     a.parts.length === 2 &&
     a.parts.includes("dark") &&
@@ -401,8 +408,8 @@ export class Renderer {
     c.save();
     c.translate(a.x, a.y);
     drawReflectShield(c, a, time, true);
-    if (a.shield) {
-      const rise = Math.min(1, a.shieldTime / 0.16);
+    if (a.shield || a.prisonHp > 0) {
+      const rise = a.prisonHp > 0 ? 1 : Math.min(1, a.shieldTime / 0.16);
       c.save();
       c.translate(0, 9);
       c.scale(1, rise);
@@ -451,7 +458,12 @@ export class Renderer {
       c.fillStyle = "#24382b";
       c.fillRect(-29, 15, 58, 5);
       c.fillStyle = "#d4be8a";
-      c.fillRect(-29, 15, (58 * a.shieldHp) / 65, 5);
+      c.fillRect(
+        -29,
+        15,
+        (58 * (a.prisonHp > 0 ? a.prisonHp : a.shieldHp)) / 65,
+        5,
+      );
     }
     if (a.dodge > 0) {
       c.strokeStyle = "#c3a3ed88";
@@ -728,12 +740,18 @@ export class Renderer {
       c.save();
       c.globalAlpha = a.ghost ? 0.38 : viewerVisibility(a, game.player);
       const immersion = a.victory ? 0 : immersionFor(game, a);
-      if (a.id === game.player.id && a.element === "divine" && !a.victory)
+      if (
+        a.id === game.player.id &&
+        a.element === "divine" &&
+        !a.victory &&
+        visibility(a) === 0
+      )
         this.outline(c, a, t);
       else {
         this.avatar(c, a, t, immersion);
       }
       drawWaterline(c, a, immersion, t);
+      if (game.auroraProtected(a)) drawAurora(c, a, t);
       c.restore();
       if (a.ghost) {
         c.save();
@@ -893,6 +911,19 @@ export class Renderer {
         continue;
       }
       c.strokeStyle = e.color;
+      if (e.kind === "rebirth") {
+        c.save();
+        c.translate(e.x, e.y - 20);
+        c.strokeStyle = "#ffb155";
+        c.lineWidth = 4;
+        for (let i = -3; i <= 3; i++) {
+          c.beginPath();
+          c.moveTo(i * 5, 0);
+          c.quadraticCurveTo(i * 20, -30, i * 18, -70 * (1 - e.life));
+          c.stroke();
+        }
+        c.restore();
+      }
       c.lineWidth = e.kind === "fusion" ? 9 : 4;
       c.beginPath();
       c.arc(e.x, e.y, e.r * (1 - e.life / e.max) + 10, 0, Math.PI * 2);
@@ -920,6 +951,7 @@ export class Renderer {
       inWorld(game.player) &&
       (game.player.alive || game.player.ghost) &&
       !game.player.parts.includes("dark") &&
+      !game.auroraProtected(game.player) &&
       game.hazards.some(
         (h) =>
           h.kind === "vog" &&

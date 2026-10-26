@@ -44,8 +44,8 @@ test("all grounded atlases animate opposing strides while flyers retain their ho
     }
     return { grounded, flying };
   });
-  expect(result.grounded).toBe(36);
-  expect(result.flying).toBe(24);
+  expect(result.grounded).toBe(39);
+  expect(result.flying).toBe(30);
 });
 
 test("an unavailable sprite atlas leaves combat playable with the procedural avatar", async ({
@@ -146,7 +146,7 @@ test("every elemental draws four directions and distinct attack frames without m
     return { distinct: new Set(images).size, errors };
   });
   expect(result.errors).toEqual([]);
-  expect(result.distinct).toBe(160);
+  expect(result.distinct).toBe(184);
 });
 
 test("attack poses enter contact when melee hits and recover on the existing timer", async ({

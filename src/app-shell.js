@@ -114,7 +114,7 @@ export function createApp(api) {
     setScreen(next);
     const c = $("shell-content");
     if (next === "home")
-      c.innerHTML = `<section class="home-hero"><span class="eyebrow">THE COLOSSEUM · v0.15</span><h1>Power is elemental.</h1><p>Choose your arena. Find your next form.</p><div class="home-elements" aria-label="Light, Dark, Water, Air, Earth and Fire">${Object.keys(
+      c.innerHTML = `<section class="home-hero"><span class="eyebrow">THE COLOSSEUM · v0.16</span><h1>Power is elemental.</h1><p>Choose your arena. Find your next form.</p><div class="home-elements" aria-label="Light, Dark, Water, Air, Earth and Fire">${Object.keys(
         ELEMENTS,
       )
         .map(
@@ -279,6 +279,20 @@ export function createApp(api) {
             "Use the matching skill button in battle. Inherited skills are also available in the top tabs.",
           "✦",
           `guides/${id}.png`,
+        ]);
+      if (id === "phoenix")
+        items.push([
+          "Phoenix · Rebirth",
+          "Passive: once per match, being felled instantly restores 50% health. Your fusion stays intact and no token drops on this first fall. Further deaths use the normal mode rules.",
+          "✦",
+          "guides/phoenix.png",
+        ]);
+      if (id === "sanctuary")
+        items.push([
+          "Sanctuary · Aurora",
+          "While a living Sanctuary is in the arena, its entire team shines and gains immunity to venom, contact burn, Heatwave, Vog, Flash, Sabotage, Blindness, Gravity x2, Flood and Death demotion. Direct attacks, Lightning, Magma, Chasm and Stone Prison are not blocked.",
+          "✦",
+          "guides/sanctuary.png",
         ]);
       if (id === "multi-dimensional")
         items.push([

@@ -187,7 +187,7 @@ test("FFA exposes enemy tokens, fuses only compatible ones, and finishes on last
   assert.equal(g.touchTokens(g.player), true);
   assert.equal(g.player.element, "mirror");
   const c = g.fighters[2];
-  Object.assign(c, makeFighter(c.id, "water", c.team, c.x, c.y));
+  Object.assign(c, makeFighter(c.id, "smoke", c.team, c.x, c.y));
   g.fell(c);
   at(g.player, c);
   assert.equal(g.touchTokens(g.player), false);
