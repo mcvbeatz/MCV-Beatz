@@ -20,7 +20,12 @@ export function drawTerrain(c, game, time) {
   const hazards = game.hazards.filter(inWorld);
   const flooded = hazards.some((h) => h.kind === "flood");
   for (const h of hazards) {
-    if (h.kind === "gravity" || (flooded && h.kind === "quicksand")) continue;
+    if (
+      h.kind === "vog" ||
+      h.kind === "gravity" ||
+      (flooded && h.kind === "quicksand")
+    )
+      continue;
     if (h.kind === "death") {
       c.save();
       c.translate(h.x, h.y);
@@ -579,4 +584,83 @@ export function drawPortal(
     c.fill();
   }
   c.restore();
+}
+
+// Opaque billowing smoke conceals everything within its world-space footprint.
+// Dark-bearing viewers can see through it, regardless of their selected skill tab.
+export function drawSmoke(c, game, time) {
+  for (const h of game.hazards.filter(
+    (h) => h.kind === "vog" && inWorld(h) && h.life > 0,
+  )) {
+    c.save();
+    c.globalAlpha = game.player.parts.includes("dark") ? 0.28 : 1;
+    // Soft drifting billows surround the fully concealed core.
+    for (let i = 0; i < 36; i++) {
+      const angle = (i * TAU) / 36 + Math.sin(time * 0.3 + i) * 0.025;
+      const x = h.x + Math.cos(angle) * (h.r - 10);
+      const y = h.y + Math.sin(angle) * (h.r - 10);
+      const size = 30 + Math.sin(time * 0.7 + i * 2) * 9;
+      const puff = c.createRadialGradient(x, y, 0, x, y, size);
+      puff.addColorStop(0, "#292b30ff");
+      puff.addColorStop(0.45, "#292b30dd");
+      puff.addColorStop(1, "#292b3000");
+      c.fillStyle = puff;
+      c.fillRect(x - size, y - size, size * 2, size * 2);
+    }
+    c.beginPath();
+    c.arc(h.x, h.y, h.r, 0, TAU);
+    c.clip();
+    c.globalAlpha = game.player.parts.includes("dark") ? 0.28 : 1;
+    c.fillStyle = "#292b30";
+    c.fillRect(h.x - h.r, h.y - h.r, h.r * 2, h.r * 2);
+    for (let i = 0; i < 48; i++) {
+      const angle = i * 2.39996 + time * 0.09;
+      const radius = Math.sqrt((i + 0.5) / 48) * h.r;
+      const x = h.x + Math.cos(angle) * radius,
+        y = h.y + Math.sin(angle) * radius;
+      const size = 42 + 18 * Math.sin(i * 3 + time);
+      const gradient = c.createRadialGradient(x, y, 0, x, y, size);
+      gradient.addColorStop(0, i % 2 ? "#68707899" : "#a6adb577");
+      gradient.addColorStop(1, "#45484a00");
+      c.fillStyle = gradient;
+      c.fillRect(x - size, y - size, size * 2, size * 2);
+    }
+    c.restore();
+  }
+}
+export function drawTornado(c, p, time) {
+  // Stacked elliptical wind bands form a twisting funnel, with orbiting debris.
+  c.fillStyle = "#344c4d44";
+  c.beginPath();
+  c.ellipse(0, 12, p.r, 12, 0, 0, TAU);
+  c.fill();
+  const body = c.createLinearGradient(0, -80, 0, 8);
+  body.addColorStop(0, "#b5cbcdbb");
+  body.addColorStop(0.6, "#9daea8aa");
+  body.addColorStop(1, "#8c856477");
+  c.fillStyle = body;
+  c.beginPath();
+  c.moveTo(-4, 8);
+  c.bezierCurveTo(-9, -32, -28, -50, -42, -72);
+  c.quadraticCurveTo(0, -88, 42, -72);
+  c.bezierCurveTo(26, -50, 8, -24, 4, 8);
+  c.closePath();
+  c.fill();
+  for (let i = 0; i < 13; i++) {
+    const y = -i * 6,
+      r = 7 + i * 2.8;
+    const sway = Math.sin(time * 12 + i * 0.5) * i * 0.6;
+    c.strokeStyle = i % 3 ? "#d5efeaaf" : "#f2ffefed";
+    c.lineWidth = 1.5 + i / 10;
+    c.beginPath();
+    const turn = time * 13 - i * 0.9;
+    c.ellipse(sway, y, r, 4 + i * 0.35, 0, turn, turn + Math.PI * 1.65);
+    c.stroke();
+  }
+  for (let i = 0; i < 14; i++) {
+    const a = time * 9 + i * 2.4,
+      r = 15 + (i % 5) * 7;
+    c.fillStyle = i % 2 ? "#b8c9a6" : "#897d5b";
+    c.fillRect(Math.cos(a) * r, (-(i * 7) % 80) + Math.sin(a) * 5, 3, 3);
+  }
 }

@@ -210,7 +210,7 @@ test("Fire closes to contact-burn distance while equal-health Light creates spac
   const gap = distance(l, light.player);
   light.ai(l, 0.05);
   assert.ok(distance(l, light.player) > gap);
-  assert.ok(light.player.blind > 0);
+  assert.ok(light.player.whiteout > 0);
 });
 test("Light prioritizes healing its wounded teammate and attacks when it has a health advantage", () => {
   const g = arena("fire", "light"),

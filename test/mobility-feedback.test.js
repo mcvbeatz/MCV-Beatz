@@ -71,9 +71,9 @@ test("quicksand, gravity, flood, heatwave and magma never trigger Reflect or red
     b = g.fighters[1];
   g.hazards = [hazard(g, "vog", b)];
   g.updateHazards(0.01);
-  assert.ok(a.hp < 120);
-  assert.ok(b.reflect > 0);
-  b.reflect = 0;
+  assert.equal(a.hp, 120);
+  assert.equal(b.hp, 120);
+  assert.equal(b.reflect, 0);
   g.damage(a, b, 20, true, false, "air");
   assert.ok(b.reflect > 0);
 });

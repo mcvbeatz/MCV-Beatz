@@ -103,8 +103,13 @@ export const FUSED = {
   lightning: ["Lightning strikes", "Tailwind"],
   invincible: [null, null],
 };
-// Direct access on the fused tab; the origin tabs remain available too.
+// Extra buttons for the selected ability set, including direct fused shortcuts.
 export const EXTRA_SKILLS = {
+  dark: [{ name: "Blindness", form: "blindness", kind: "ability" }],
+  mud: [
+    { name: "Hydro pump", form: "water", kind: "ability" },
+    { name: "Rock shield", form: "earth", kind: "utility" },
+  ],
   spirit: [{ name: "Healing", form: "light", kind: "ability" }],
   divine: [
     { name: "Revival", form: "spirit", kind: "ability" },
@@ -136,7 +141,8 @@ const skillForm = (a) => a.executingForm || activeForm(a);
 export const canUseSkill = (a, form, kind) =>
   !a.skillsDisabled &&
   !(a.selfHealOnly && form === "light" && kind === "utility") &&
-  (a.forms.includes(form) ||
+  ((form === "blindness" && a.parts.includes("dark")) ||
+    a.forms.includes(form) ||
     extraSkillsFor(a.element).some((s) => s.form === form && s.kind === kind));
 export const TELEKINESIS_RANGE = 400;
 export const TELEKINESIS_PUSH = 520;
@@ -195,9 +201,11 @@ export const LEVEL_THREE = Object.values(COMBOS).filter(
 );
 export const activeForm = (a) => a.forms[a.form] || a.element;
 export const skillsFor = (e) =>
-  ELEMENTS[e]
-    ? [ELEMENTS[e].ability, ELEMENTS[e].utility]
-    : FUSED[e] || [null, null];
+  e === "blindness"
+    ? ["Blindness", null]
+    : ELEMENTS[e]
+      ? [ELEMENTS[e].ability, ELEMENTS[e].utility]
+      : FUSED[e] || [null, null];
 export const hasPassive = (a, form) =>
   a.parts.includes(form) || recipe(form).every((e) => a.parts.includes(e));
 export const burnImmune = (a) =>
@@ -255,6 +263,8 @@ export function makeFighter(id, element, team, x, y) {
     stagger: 0,
     lock: null,
     blind: 0,
+    whiteout: 0,
+    sabotaged: false,
     shield: 0,
     shieldHp: 65,
     shieldTime: 0,
@@ -291,9 +301,12 @@ export class Combat {
     size = 2,
     players = 4,
     random = Math.random,
+    countdown = false,
   } = {}) {
     this.random = random;
     this.time = 0;
+    this.countdown =
+      countdown && !["duel", "fused", "fused3", "team"].includes(mode) ? 4 : 0;
     this.mode = mode;
     this.scores = [0, 0];
     this.deathUsed = new Set();
@@ -464,9 +477,42 @@ export class Combat {
   flying(a) {
     return a.parts.includes("air");
   }
+  get countingDown() {
+    return this.countdown > 1;
+  }
+  get countdownLabel() {
+    return this.countdown > 1
+      ? String(Math.ceil(this.countdown - 1))
+      : this.countdown > 0
+        ? "Go!"
+        : "";
+  }
+  canSee(a, b) {
+    return (
+      visibility(b) > 0 &&
+      (a.parts.includes("dark") ||
+        !this.hazards.some(
+          (h) =>
+            h.kind === "vog" &&
+            inWorld(h) &&
+            h.life > 0 &&
+            distance(h, b) <= h.r,
+        ))
+    );
+  }
+  cancelSabotaged(a) {
+    if (!a.sabotaged) return false;
+    a.sabotaged = false;
+    a.charging = false;
+    a.charge = 0;
+    a.chargeForm = null;
+    a.blink = null;
+    this.cue("interrupt", a, "#c1a1df");
+    return true;
+  }
   target(a) {
     return this.fighters.find(
-      (b) => b.id === a.lock && b.alive && inWorld(b) && visibility(b) > 0,
+      (b) => b.id === a.lock && b.alive && inWorld(b) && this.canSee(a, b),
     );
   }
   autoLock(a) {
@@ -477,7 +523,7 @@ export class Combat {
         (b) =>
           b.alive &&
           inWorld(b) &&
-          visibility(b) > 0 &&
+          this.canSee(a, b) &&
           b.team !== a.team &&
           distance(a, b) <= STRIKE_RANGE,
       )
@@ -508,7 +554,7 @@ export class Combat {
     );
   }
   move(a, dx, dy, dt) {
-    if ((!a.alive && !a.ghost) || !inWorld(a)) return;
+    if (this.countingDown || (!a.alive && !a.ghost) || !inWorld(a)) return;
     if (a.blink && Math.hypot(a.knockX, a.knockY) > 1) a.blink = null;
     if (a.blink || this.isShocked(a)) {
       a.vx = a.vy = a.knockX = a.knockY = a.burst = a.movingTime = 0;
@@ -559,7 +605,7 @@ export class Combat {
     this.autoLock(a);
   }
   strike(a, aim = null) {
-    if (this.intermission) return false;
+    if (this.intermission || this.countingDown) return false;
     if (!a.alive || !inWorld(a) || a.attackCd > 0 || a.shield || a.stagger > 0)
       return false;
     if (!this.aiGesture(a, "strike")) return false;
@@ -576,7 +622,7 @@ export class Combat {
     return true;
   }
   startCharge(a, form = activeForm(a)) {
-    if (this.intermission) return false;
+    if (this.intermission || this.countingDown) return false;
     if (!canUseSkill(a, form, "ability") || a.charging) return false;
     if (
       !a.alive ||
@@ -587,11 +633,12 @@ export class Combat {
       !skillsFor(form)[0]
     )
       return false;
+    if (this.cancelSabotaged(a)) return false;
     if (form !== "gravity" && !this.aiGesture(a, `ability:${form}`))
       return false;
-    if (["lightning", "gravity"].includes(form)) {
+    if (["lightning", "gravity", "blindness", "smoke"].includes(form)) {
       if (this.cast(a, 1, form) === false) return false;
-      a.abilityCd = form === "lightning" ? 3 : 4.5;
+      a.abilityCd = form === "lightning" ? 3 : form === "smoke" ? 7 : 4.5;
       return true;
     }
     if (form === "spirit" && !this.revivalTarget(a)) {
@@ -687,8 +734,13 @@ export class Combat {
     reflected = false,
     sourceElement = ability ? skillForm(a) : a.element,
     reflectable = true,
+    ignoreFriendlyFire = false,
   ) {
-    if (!b.alive || !inWorld(b) || (!this.friendlyFire && a.team === b.team))
+    if (
+      !b.alive ||
+      !inWorld(b) ||
+      (!ignoreFriendlyFire && !this.friendlyFire && a.team === b.team)
+    )
       return 0;
     if (b.dodge > 0 && !a.parts.includes("light")) {
       b.dodge = 0;
@@ -703,6 +755,14 @@ export class Combat {
         : amount *
           (!ability && hasPassive(a, "invincible") ? 2 : 1) *
           (reflected ? 1 : multiplier(sourceElement, b.element, ability));
+    if (!ability && a.element === "light" && this.mode !== "corruption")
+      hit *= 0.9;
+    const lightningWeakness =
+      ability && sourceElement === "lightning" && b.element === "invincible";
+    if (lightningWeakness) {
+      hit *= 1.25;
+      reflectable = false;
+    }
     if (!reflected) hit *= a.waveDamage || 1;
     if (
       ability &&
@@ -712,10 +772,19 @@ export class Combat {
       a.id !== b.id
     ) {
       b.reflect = 0.65;
-      this.damage(b, a, hit * 0.4, true, true, sourceElement);
+      this.damage(
+        b,
+        a,
+        hit * 0.4,
+        true,
+        true,
+        sourceElement,
+        true,
+        ignoreFriendlyFire,
+      );
       hit *= 0.6;
     }
-    hit *= b.parts.includes("earth") ? 0.75 : 1;
+    hit *= b.parts.includes("earth") && !lightningWeakness ? 0.75 : 1;
     if (ability && sourceElement === "water" && b.parts.includes("fire"))
       hit *= 0.7;
     if (b.shield) {
@@ -933,7 +1002,7 @@ export class Combat {
     }
   }
   cast(a, p, form = activeForm(a)) {
-    if (!canUseSkill(a, form, "ability")) return false;
+    if (this.countingDown || !canUseSkill(a, form, "ability")) return false;
     return this.executeSkill(a, form, () => this.castSkill(a, p));
   }
   castSkill(a, p) {
@@ -952,27 +1021,40 @@ export class Combat {
     }
     a.reveal = 0.45;
     if (e === "lightning") {
-      const target =
-        this.target(a) ||
-        this.enemies(a)
-          .filter((b) => distance(a, b) <= 300)
-          .sort((b, c) => distance(a, b) - distance(a, c))[0];
-      if (!target) {
-        if (a.id === "player") this.cue("unavailable", a, "#dca282");
+      const flooded = this.hazards.some(
+        (h) => inWorld(h) && h.kind === "flood" && h.life > 0,
+      );
+      const target = this.enemies(a)
+        .filter((b) => distance(a, b) <= 450)
+        .sort((b, c) => distance(a, b) - distance(a, c))[0];
+      const targets = flooded
+        ? this.fighters.filter((b) => b.alive && inWorld(b))
+        : [target].filter(Boolean);
+      if (!targets.length) {
+        this.cue("unavailable", a, "#dca282");
         return false;
       }
-      const flooded = this.hazards.some(
-        (h) => inWorld(h) && h.kind === "flood" && distance(h, target) <= h.r,
-      );
-      this.effects.push({
-        kind: "lightning",
-        x: target.x,
-        y: target.y,
-        color: "#e7faff",
-        life: 0.25,
-        max: 0.25,
-      });
-      this.damage(a, target, 26 * (flooded ? 2 : 1), true, false, "lightning");
+      // Conductive Flood is arena-wide and strikes everyone, including its caster.
+      for (const b of targets) {
+        this.effects.push({
+          kind: "lightning",
+          x: b.x,
+          y: b.y,
+          color: "#e7faff",
+          life: 0.25,
+          max: 0.25,
+        });
+        this.damage(
+          a,
+          b,
+          26 * (flooded ? 2 : 1),
+          true,
+          false,
+          "lightning",
+          true,
+          flooded,
+        );
+      }
     } else if (e === "light" || e === "divine") {
       const recipients =
         e === "divine"
@@ -994,32 +1076,28 @@ export class Combat {
         });
         this.cue("heal", recipient, "#c9ebbc");
       }
-    } else if (e === "dark") {
-      const t =
-        this.target(a) ||
-        this.fighters
-          .filter(
-            (b) =>
-              b.team !== a.team &&
-              b.alive &&
-              inWorld(b) &&
-              visibility(b) > 0 &&
-              distance(a, b) < 245,
-          )
-          .sort((b, c) => distance(a, b) - distance(a, c))[0];
-      if (t) {
-        t.charging = false;
-        t.charge = 0;
-        t.abilityCd = Math.max(t.abilityCd, 2);
+    } else if (e === "dark" || e === "blindness") {
+      const t = this.enemies(a)
+        .filter((b) => distance(a, b) < 245)
+        .sort((b, c) => distance(a, b) - distance(a, c))[0];
+      if (!t) return false;
+      if (e === "blindness") {
         if (!hasPassive(t, "divine")) {
-          t.blind = 2 * p;
+          t.blind = 3;
           t.lock = null;
         }
-        this.damage(a, t, 12 * p, true);
+        this.cue("interrupt", t, "#675475");
+      } else {
+        const charging = t.charging || !!t.blink;
+        t.charging = false;
+        t.charge = 0;
+        t.chargeForm = null;
+        t.blink = null;
+        t.sabotaged = !charging;
         this.cue("interrupt", t, "#c1a1df");
       }
-    } else if (e === "mud" || e === "smoke")
-      this.area(a, p, e === "mud" ? "quicksand" : "vog", 85, 5 * p);
+    } else if (e === "mud") this.area(a, p, "quicksand", 85, 5 * p);
+    else if (e === "smoke") this.area(a, 1, "vog", 500 / Math.sqrt(3), 8);
     else if (e === "apparition" || e === "demonic") {
       const limit = e === "demonic" ? 3 : 1,
         existing = this.fighters.filter(
@@ -1033,7 +1111,7 @@ export class Combat {
           a.x + 30 + i * 12,
           a.y + 30,
         );
-        minion.hp = minion.maxHp = e === "demonic" ? 8 : 1;
+        minion.hp = minion.maxHp = (e === "demonic" ? 8 : 1) + 20 * (p - 1);
         minion.life = 9;
         minion.echo = true;
         minion.summoner = a.id;
@@ -1092,6 +1170,7 @@ export class Combat {
   telekinesis(a, target, dx, dy) {
     const length = Math.hypot(dx, dy);
     if (
+      this.countingDown ||
       !a.alive ||
       !inWorld(a) ||
       skillForm(a) !== "gravity" ||
@@ -1101,18 +1180,19 @@ export class Combat {
       !target?.alive ||
       !inWorld(target) ||
       target.team === a.team ||
-      visibility(target) <= 0 ||
+      !this.canSee(a, target) ||
       distance(a, target) > TELEKINESIS_RANGE ||
       !Number.isFinite(length) ||
       length <= 0
     )
       return false;
+    if (this.cancelSabotaged(a)) return false;
     if (!this.aiGesture(a, "ability:gravity")) return false;
     a.charging = false;
     a.charge = 0;
     a.abilityCd = 4.5;
     a.reveal = 0.45;
-    this.damage(a, target, 18, true, false, "gravity");
+    this.damage(a, target, 18, true, false, "gravity", false);
     if (target.alive) {
       target.knockX += (dx / length) * TELEKINESIS_PUSH;
       target.knockY += (dy / length) * TELEKINESIS_PUSH;
@@ -1130,7 +1210,7 @@ export class Combat {
     return true;
   }
   utility(a, hold = true, form = activeForm(a)) {
-    if (hold && this.intermission) return false;
+    if (hold && (this.intermission || this.countingDown)) return false;
     if (hold && !canUseSkill(a, form, "utility")) return false;
     return this.executeSkill(a, form, () => this.utilitySkill(a, hold));
   }
@@ -1144,6 +1224,20 @@ export class Combat {
       return;
     }
     if (!a.alive || !inWorld(a) || !skillsFor(e)[1]) return false;
+    if (
+      a.sabotaged &&
+      !(a.shield && e === "earth") &&
+      !(a.burst > 0 && e === "blaze") &&
+      ((e === "spirit" && this.portals.owned(a).length < 2) ||
+        (e === "blaze" && !this.isShocked(a)) ||
+        (e === "earth" && a.utilityCd <= 0 && a.shieldHp > 0) ||
+        (!["earth", "blaze", "spirit"].includes(e) &&
+          a.utilityCd <= 0 &&
+          !(e === "demonic" && this.deathUsed.has(a.id))))
+    ) {
+      this.cancelSabotaged(a);
+      return false;
+    }
     if (e === "blaze") {
       if (this.isShocked(a)) return false;
       // An active dash finishes before the next one begins; there is no recharge.
@@ -1187,7 +1281,7 @@ export class Combat {
           distance(a, b) < 260 &&
           !hasPassive(b, "divine")
         ) {
-          b.blind = 3;
+          b.whiteout = 3;
           b.lock = null;
         }
       this.effects.push({
@@ -1365,6 +1459,7 @@ export class Combat {
     return true;
   }
   teleport(a, x, y) {
+    if (this.countingDown) return false;
     if (
       !a.alive ||
       !inWorld(a) ||
@@ -1379,6 +1474,7 @@ export class Combat {
       return false;
     const d = Math.hypot(x - a.x, y - a.y);
     if (d < 1 || !this.aiGesture(a, "teleport")) return false;
+    if (this.cancelSabotaged(a)) return false;
     const scale = Math.min(1, TELEPORT_RANGE / d);
     a.blink = {
       x: a.x + (x - a.x) * scale,
@@ -1429,12 +1525,7 @@ export class Combat {
   }
   enemies(a) {
     return this.fighters.filter(
-      (b) =>
-        b.alive &&
-        inWorld(b) &&
-        b.team !== a.team &&
-        visibility(b) > 0 &&
-        (a.blind <= 0 || distance(a, b) < 45),
+      (b) => b.alive && inWorld(b) && b.team !== a.team && this.canSee(a, b),
     );
   }
   // Restraint is an AI decision, not friendly-fire immunity. Players can still
@@ -1599,8 +1690,7 @@ export class Combat {
                 ? !this.flying(a) && !hasPassive(a, "mud")
                 : h.kind === "gravity"
                   ? h.owner.team !== a.team && !hasPassive(a, "apparition")
-                  : ["magma", "heatwave", "vog"].includes(h.kind) &&
-                    !burnImmune(a)),
+                  : ["magma", "heatwave"].includes(h.kind) && !burnImmune(a)),
         )
         .reduce(
           (sum, h) => sum + Math.max(0, h.r + 12 - distance(point, h)),
@@ -1646,7 +1736,7 @@ export class Combat {
       if (h.kind === "gravity")
         return h.owner.team !== a.team && !hasPassive(a, "apparition");
       if (h.kind === "flood") return !this.flying(a);
-      return ["magma", "heatwave", "vog"].includes(h.kind) && !burnImmune(a);
+      return ["magma", "heatwave"].includes(h.kind) && !burnImmune(a);
     });
   }
   aiMobility(a, target, patient) {
@@ -1895,7 +1985,7 @@ export class Combat {
             ? h.owner.team !== a.team && !hasPassive(a, "apparition")
             : h.kind === "quicksand"
               ? !this.flying(a) && !hasPassive(a, "mud")
-              : ["magma", "heatwave", "vog"].includes(h.kind) && !burnImmune(a);
+              : ["magma", "heatwave"].includes(h.kind) && !burnImmune(a);
       const gap = distance(a, h);
       if (harmful && gap < h.r + 25) {
         dx += ((a.x - h.x) / (gap || 1)) * 2;
@@ -1981,7 +2071,7 @@ export class Combat {
       !a.echo &&
       light &&
       d < 160 &&
-      target.blind <= 0 &&
+      target.whiteout <= 0 &&
       a.utilityCd <= 0 &&
       this.safeAttack(a, target, "utility", "light")
     )
@@ -2015,7 +2105,7 @@ export class Combat {
     if (
       attackForm &&
       a.abilityCd <= 0 &&
-      d < 300 &&
+      d < (attackForm === "lightning" ? 450 : 300) &&
       this.safeAttack(a, target, "ability", attackForm)
     ) {
       this.switchForm(a, attackForm);
@@ -2055,7 +2145,7 @@ export class Combat {
       )
         continue;
       a.burstHits.add(b.id);
-      this.damage(a, b, 22, true, false, "blaze");
+      this.damage(a, b, 22, true, false, "blaze", false);
       if (!a.alive) break;
     }
     a.burst = Math.max(0, a.burst - dt);
@@ -2082,6 +2172,7 @@ export class Combat {
         p.hit.add(b.id);
         let amount = p.damage;
         if (p.kind === "water" && b.parts.includes("fire")) amount *= 2;
+        if (p.kind === "tornado" && this.flying(b)) amount *= 1.15;
         this.damage(p.owner, b, amount, true, false, p.element);
         if (p.kind === "water") {
           b.knockX += p.dx * 0.7;
@@ -2208,17 +2299,6 @@ export class Combat {
         ) {
           b.slow = 0.5;
           this.damage(h.owner, b, 2 * h.power, true, false, h.element, false);
-        } else if (h.kind === "vog") {
-          if (!immune) {
-            b.blind = 1;
-            b.lock = null;
-          }
-          if (
-            !immune &&
-            !b.parts.includes("fire") &&
-            !b.parts.includes("water")
-          )
-            this.damage(h.owner, b, 3 * h.power, true, false, h.element);
         } else if (
           h.kind === "heatwave" ||
           (h.kind === "magma" && !flying && !flooded)
@@ -2239,6 +2319,11 @@ export class Combat {
   update(dt, input = { x: 0, y: 0 }, runAI = true) {
     if (this.finished || this.intermission) return;
     dt = Math.min(dt, 0.05);
+    if (this.countdown > 0) {
+      const wasLocked = this.countingDown;
+      this.countdown = Math.max(0, this.countdown - dt);
+      if (wasLocked) return;
+    }
     if (["tdm", "roulette"].includes(this.mode) && this.checkMatchEnd()) return;
     this.time += dt;
     updateAdvanced(this);
@@ -2273,6 +2358,7 @@ export class Combat {
         "utilityCd",
         "stagger",
         "blind",
+        "whiteout",
         "dodge",
         "boost",
         "venom",
@@ -2294,9 +2380,9 @@ export class Combat {
       if (a.charging && a.stagger <= 0) a.charge = Math.min(1.8, a.charge + dt);
       if (a.shield) a.shieldTime += dt;
       else a.shieldHp = Math.min(65, a.shieldHp + dt * 5);
-      if (hasPassive(a, "divine")) a.venom = a.burn = a.blind = 0;
+      if (hasPassive(a, "divine")) a.venom = a.burn = a.blind = a.whiteout = 0;
       if (a.venom > 0)
-        this.damage(a.venomSource || a, a, dt * 3, true, false, "mud");
+        this.damage(a.venomSource || a, a, dt * 3, true, false, "mud", false);
       if (!a.alive && !a.ghost) continue;
       const old = { x: a.x, y: a.y };
       if (a.id === "player") this.move(a, input.x, input.y, dt);
@@ -2339,7 +2425,7 @@ export class Combat {
           !hasPassive(b, "divine")
         ) {
           const hp = b.hp;
-          this.damage(a, b, dt * 5, true, false, "fire");
+          this.damage(a, b, dt * 5, true, false, "fire", false);
           if (b.hp < hp) b.burn = 1;
         }
         if (hasPassive(a, "mud") && !hasPassive(b, "divine")) {
@@ -2736,7 +2822,5 @@ export class Combat {
 
 export function viewerVisibility(a, viewer) {
   if (a.victory) return 1;
-  return a.id === viewer?.id && a.element === "divine"
-    ? Math.max(0.25, visibility(a))
-    : visibility(a);
+  return a.id === viewer?.id && a.element === "divine" ? 1 : visibility(a);
 }

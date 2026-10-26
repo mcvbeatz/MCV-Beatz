@@ -112,10 +112,10 @@ test("Divine is visible only to its owner while concealed; enemy targeting remai
   const a = makeFighter("player", "divine", 0, 300, 300),
     b = makeFighter("enemy", "fire", 1, 340, 300);
   assert.equal(visibility(a), 0);
-  assert.equal(viewerVisibility(a, a), 0.25);
+  assert.equal(viewerVisibility(a, a), 1);
   assert.equal(viewerVisibility(a, b), 0);
   a.hurtReveal = 0.1;
-  assert.equal(viewerVisibility(a, a), 0.25);
+  assert.equal(viewerVisibility(a, a), 1);
   assert.equal(viewerVisibility(a, b), 0.1);
 });
 test("Tailwind boosts living teammates from the Lightning or inherited Air tab", () => {

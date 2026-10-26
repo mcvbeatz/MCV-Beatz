@@ -14,6 +14,8 @@ import {
   distortGravity,
   drawCue,
   drawPortal,
+  drawSmoke,
+  drawTornado,
 } from "./battle-effects.js";
 const PALETTE = {
   light: "#f5edcf",
@@ -63,6 +65,14 @@ export class Renderer {
     this.ctx = canvas.getContext("2d");
     this.background = document.createElement("canvas");
     this.distortion = document.createElement("canvas");
+    this.bodySprite = document.createElement("canvas");
+    this.bodySprite.width = this.bodySprite.height = 160;
+    this.outlineSprite = document.createElement("canvas");
+    this.outlineEdge = document.createElement("canvas");
+    for (const c of [this.outlineSprite, this.outlineEdge]) {
+      c.width = 160;
+      c.height = 160;
+    }
     this.background.width = 1024;
     this.background.height = 680;
     this.makeBackground();
@@ -239,6 +249,66 @@ export class Renderer {
     c.fillRect(0, 0, 1024, 66);
     c.fillRect(0, 636, 1024, 44);
   }
+  characterBody(c, a, time) {
+    if (!(a.blind > 0)) return drawCharacter(c, a, time);
+    // Canvas compositing works in iOS WebViews without Canvas.filter support.
+    const sprite = this.bodySprite,
+      sc = sprite.getContext("2d");
+    sc.clearRect(0, 0, 160, 160);
+    sc.save();
+    sc.translate(80, 130);
+    const drawn = drawCharacter(sc, a, time);
+    sc.restore();
+    sc.globalCompositeOperation = "source-atop";
+    sc.fillStyle = "rgba(0,0,0,0.65)";
+    sc.fillRect(0, 0, 160, 160);
+    sc.globalCompositeOperation = "source-over";
+    c.drawImage(sprite, -80, -130);
+    return drawn;
+  }
+  outline(c, a, time) {
+    const sprite = this.outlineSprite,
+      edge = this.outlineEdge;
+    const sc = sprite.getContext("2d", { willReadFrequently: true }),
+      ec = edge.getContext("2d");
+    sc.clearRect(0, 0, 160, 160);
+    sc.save();
+    sc.translate(80, 130);
+    if (a.parts.includes("air")) sc.translate(0, Math.sin(time * 3) * 2 - 8);
+    if (!drawCharacter(sc, a, time)) {
+      sc.fillStyle = "white";
+      sc.beginPath();
+      sc.moveTo(-12, -55);
+      sc.lineTo(12, -55);
+      sc.lineTo(21, 0);
+      sc.lineTo(-21, 0);
+      sc.closePath();
+      sc.fill();
+    }
+    sc.restore();
+    // Asset alpha can be 254 even inside a solid body. Build a binary silhouette
+    // so subtracting it leaves only a contour, with no translucent interior.
+    const mask = sc.getImageData(0, 0, 160, 160);
+    for (let i = 3; i < mask.data.length; i += 4)
+      mask.data[i] = mask.data[i] > 32 ? 255 : 0;
+    sc.putImageData(mask, 0, 0);
+    ec.clearRect(0, 0, 160, 160);
+    ec.globalCompositeOperation = "source-over";
+    for (const [x, y] of [
+      [-2, 0],
+      [2, 0],
+      [0, -2],
+      [0, 2],
+    ])
+      ec.drawImage(sprite, x, y);
+    ec.globalCompositeOperation = "destination-out";
+    ec.drawImage(sprite, 0, 0);
+    ec.globalCompositeOperation = "source-in";
+    ec.fillStyle = "#e7f2ed";
+    ec.fillRect(0, 0, 160, 160);
+    ec.globalCompositeOperation = "source-over";
+    c.drawImage(edge, a.x - 80, a.y - 130);
+  }
   avatar(c, a, time, immersion = 0) {
     const scale = 2.35;
     const flying = a.parts.includes("air");
@@ -246,7 +316,7 @@ export class Renderer {
     const walking = pose.running;
     const step = walking ? Math.sin(time * 12) * 2 : 0;
     const bob = flying ? Math.sin(time * 3) * 2 - 8 : walking ? -pose.bob : 0;
-    const color = fighterColor(a);
+    const color = a.blind > 0 ? shade(fighterColor(a), 0.35) : fighterColor(a);
     c.save();
     c.translate(Math.round(a.x), Math.round(a.y));
     c.fillStyle = "#162b2466";
@@ -277,7 +347,7 @@ export class Renderer {
       c.rect(-110, -160, 220, 160 - immersion - bob);
       c.clip();
     }
-    if (!drawCharacter(c, a, time)) {
+    if (!this.characterBody(c, a, time)) {
       c.scale(scale, scale);
       const px = (x, y, w, h, fill) => {
         c.fillStyle = fill;
@@ -658,7 +728,11 @@ export class Renderer {
       c.save();
       c.globalAlpha = a.ghost ? 0.38 : viewerVisibility(a, game.player);
       const immersion = a.victory ? 0 : immersionFor(game, a);
-      this.avatar(c, a, t, immersion);
+      if (a.id === game.player.id && a.element === "divine" && !a.victory)
+        this.outline(c, a, t);
+      else {
+        this.avatar(c, a, t, immersion);
+      }
       drawWaterline(c, a, immersion, t);
       c.restore();
       if (a.ghost) {
@@ -681,6 +755,11 @@ export class Renderer {
     for (const p of game.projectiles.filter(inWorld)) {
       c.save();
       c.translate(p.x, p.y - 12);
+      if (p.kind === "tornado") {
+        drawTornado(c, p, t);
+        c.restore();
+        continue;
+      }
       c.rotate(Math.atan2(p.dy, p.dx));
       if (p.kind === "laser") {
         for (const [width, color] of [
@@ -836,18 +915,22 @@ export class Renderer {
       c.fillRect(x + Math.sin(t * 2) * 4, y - 20 - ((t * 9) % 15), 2, 2);
     }
     distortGravity(c, this.canvas, this.distortion, game, this.view, t);
-    c.restore();
-    if (game.player.blind > 0 && inWorld(game.player)) {
-      c.fillStyle = game.fighters.some(
-        (a) => a.element === "light" && a.team !== 0,
+    drawSmoke(c, game, t);
+    if (
+      inWorld(game.player) &&
+      (game.player.alive || game.player.ghost) &&
+      !game.player.parts.includes("dark") &&
+      game.hazards.some(
+        (h) =>
+          h.kind === "vog" &&
+          inWorld(h) &&
+          h.life > 0 &&
+          Math.hypot(h.x - game.player.x, h.y - game.player.y) <= h.r,
       )
-        ? "#fff8dcaa"
-        : "#070c15d9";
-      c.fillRect(0, 0, w, h);
-      c.font = "16px monospace";
-      c.textAlign = "center";
-      c.fillStyle = "#dacfae";
+    ) {
+      this.outline(c, game.player, t);
     }
+    c.restore();
     if (game.player.dimension) {
       c.fillStyle = "#11102a70";
       c.fillRect(0, 0, w, h);

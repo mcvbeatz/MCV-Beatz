@@ -360,9 +360,12 @@ export const CONTROL_SLIDES = [
 export const SKILL_HELP = {
   Healing:
     "Charge and release to heal the living ally with the lowest health, including yourself. In Corruption, Healing restores only you.",
-  Flash: "Tap to blind nearby fighters. Light creates room to recover.",
+  Flash:
+    "Tap to white out nearby fighters’ screens for one second, then fade back to normal over two seconds.",
   Sabotage:
-    "Charge and release to interrupt and cancel a nearby enemy ability.",
+    "Cancel the closest visible enemy’s current charge, or nullify their next ability attempt. No damage or blindness.",
+  Blindness:
+    "Tap to disable the nearest enemy’s target lock for three seconds. Their body darkens; their screen stays clear.",
   "Shadow step":
     "Tap to dodge the next enemy attack; Light ignores this dodge.",
   "Hydro pump":
@@ -388,20 +391,22 @@ export const SKILL_HELP = {
   Heatwave: "Tap to create an area that hurts susceptible fighters over time.",
   "Speed burst":
     "Tap to dash with a flame trail. Collisions deal damage. No cooldown once the dash ends.",
-  Tornado: "Charge and release a broad moving attack.",
+  Tornado:
+    "Charge and release a moving wind funnel. Flying fighters take 15% more damage.",
   Flood:
     "Tap to fill a large area with water. Grounds effects are suppressed, grounded fighters slow, and Lightning strikes grow stronger.",
-  Vog: "Charge and release a field of blindness and burning damage.",
+  Vog: "Tap to create eight seconds of smoke over one-third of Flood’s area. Dark-bearing fighters see through it; others see only their own outline inside. Seven-second cooldown; no damage.",
   Telekinesis:
     "Swipe a visible enemy within 400 units to push in that direction, or tap to push the nearest rival away.",
   "Gravity x2": "Tap to slow nearby opponents in a fuzzy purple field.",
   Doppelgänger:
-    "Charge and release to summon a fragile copy that pursues enemies.",
+    "Charge and release a pursuing copy. Longer charges raise its health from 1 to 33 HP.",
   Phase: "Tap to dodge an attack.",
-  Minions: "Charge and release to summon up to three fiery copies.",
+  Minions:
+    "Charge and release up to three fiery copies. Longer charges raise their health from 8 to 40 HP each.",
   Death:
     "Tap once per match to place a permanent demotion floor. Each entry removes one fusion tier, even from flyers.",
   Radiance: "Charge and release to heal all living allies, including yourself.",
   "Lightning strikes":
-    "Tap for an instant strike at the nearest visible enemy in range. Three-second cooldown.",
+    "Instantly strike the nearest visible enemy within 450 units. Invincible takes 25% extra damage without Reflect or hard-skin reduction. While any Flood is active, doubled lightning hits everyone, including you and allies. Three-second cooldown.",
 };

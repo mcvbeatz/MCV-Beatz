@@ -59,7 +59,7 @@ test("Lightning strikes hit immediately without charging and respect range and c
   assert.equal(g.startCharge(a), false);
   assert.equal(a.abilityCd, 0);
 });
-test("Lightning chooses the nearest visible rival, cannot target concealed Divine, and doubles in flood", () => {
+test("Lightning chooses the nearest visible rival, cannot normally target concealed Divine, and discharges through everyone in flood", () => {
   const g = arena("lightning", "divine"),
     a = g.player,
     b = g.fighters[1];
@@ -70,7 +70,7 @@ test("Lightning chooses the nearest visible rival, cannot target concealed Divin
   g.hazards.push({ kind: "flood", x: 500, y: 300, r: 80, life: 5, owner: a });
   assert.ok(g.startCharge(a));
   assert.equal(other.hp, 81); // 52 × hard skin .75.
-  assert.equal(b.hp, 120);
+  assert.equal(b.hp, 96.6); // Flood reaches Divine; Reflect and hard skin still apply.
 });
 test("Shock stops walking, inertia, knockback and dashes only during contact; attacks still work", () => {
   const g = arena("blaze", "lightning"),

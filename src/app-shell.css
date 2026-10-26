@@ -1620,3 +1620,37 @@ body[data-screen="solo-battles"] #shell-content {
 #slides-dialog #slide-card {
   touch-action: none;
 }
+
+/* Ready abilities retain a quiet bright rim while cooldowns remain subdued. */
+.ability:not(:disabled):not([hidden]) {
+  border-color: #d9cb8ecc;
+  box-shadow:
+    inset 0 0 12px #ead79c16,
+    0 0 6px #ead79c24;
+}
+.ability:not(:disabled) .ability-icon {
+  color: #fff1bf;
+}
+#battle-countdown {
+  position: absolute;
+  inset: 40% 0 auto;
+  text-align: center;
+  pointer-events: none;
+  z-index: 40;
+  font: 700 clamp(56px, 12cqh, 100px)/1 "Barlow Condensed";
+  color: #fff0bf;
+  text-shadow:
+    0 3px 0 #26332c,
+    0 0 25px #0c1b17;
+}
+#flash-whiteout {
+  position: absolute;
+  inset: 0;
+  background: white;
+  pointer-events: none;
+  z-index: 100;
+}
+#battle-countdown[hidden],
+#flash-whiteout[hidden] {
+  display: none;
+}

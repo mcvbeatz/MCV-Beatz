@@ -55,7 +55,7 @@ test("melee is directional and short range", () => {
   b.x = 450;
   g.strike(a);
   advance(g, 0.15);
-  assert.equal(b.hp, 106);
+  assert.equal(b.hp, 107.4);
 });
 test("automatic lock picks the nearest opponent only inside strike range", () => {
   const g = duel(),
@@ -86,7 +86,7 @@ test("contested facing strikes deal quarter damage", () => {
   g.strike(b);
   advance(g, 0.15);
   assert.equal(a.hp, 116.5);
-  assert.equal(b.hp, 116.5);
+  assert.equal(b.hp, 116.85);
 });
 test("strikes outside the clash window deal full damage", () => {
   const g = duel(),
@@ -96,7 +96,7 @@ test("strikes outside the clash window deal full damage", () => {
   g.strike(b);
   advance(g, 0.15);
   assert.equal(a.hp, 106);
-  assert.equal(b.hp, 106);
+  assert.equal(b.hp, 107.4);
 });
 test("friendly fire damages a teammate in the strike arc", () => {
   const g = duel(),
@@ -104,7 +104,7 @@ test("friendly fire damages a teammate in the strike arc", () => {
   g.fighters.push(ally);
   g.strike(g.player);
   advance(g, 0.15);
-  assert.equal(ally.hp, 106);
+  assert.equal(ally.hp, 107.4);
 });
 test("movement has analog speed, low-health slowdown, and flight inertia", () => {
   const g = duel();

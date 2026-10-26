@@ -16,4 +16,4 @@ const shapes = {
     '<path d="m12 2 3 7 7 3-7 3-3 7-3-7-7-3 7-3Z"/><path d="m18 2 1 2 2 1-2 1-1 2-1-2-2-1 2-1Z"/>',
 };
 export const icon = (name) =>
-  `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${shapes[name] || shapes.fusion}</svg>`;
+  `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${shapes[name === "blindness" ? "dark" : name] || shapes.fusion}</svg>`;

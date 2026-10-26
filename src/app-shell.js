@@ -114,7 +114,7 @@ export function createApp(api) {
     setScreen(next);
     const c = $("shell-content");
     if (next === "home")
-      c.innerHTML = `<section class="home-hero"><span class="eyebrow">THE COLOSSEUM · v0.14</span><h1>Power is elemental.</h1><p>Choose your arena. Find your next form.</p><div class="home-elements" aria-label="Light, Dark, Water, Air, Earth and Fire">${Object.keys(
+      c.innerHTML = `<section class="home-hero"><span class="eyebrow">THE COLOSSEUM · v0.15</span><h1>Power is elemental.</h1><p>Choose your arena. Find your next form.</p><div class="home-elements" aria-label="Light, Dark, Water, Air, Earth and Fire">${Object.keys(
         ELEMENTS,
       )
         .map(

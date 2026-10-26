@@ -40,6 +40,7 @@ async function start(mode, element) {
   if (element) await page.locator(`[data-element="${element}"]`).click();
   await page.locator("#begin-btn").click();
   await page.evaluate(() => {
+    __arena.game.countdown = 0; // Capture the mode in progress, after its countdown.
     __arena.game.ai = () => {};
     __arena.game.update = () => {};
   });

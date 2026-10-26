@@ -144,6 +144,7 @@ test("Roulette shows the five-second preview then changes form without healing",
   await page.evaluate(() => {
     const g = __arena.game;
     g.ai = () => {};
+    g.countdown = 0; // This fixture jumps directly to the round’s 20-second preview.
     g.player.hp = 57;
     g.time = 19.99;
     g.update(0.02, { x: 0, y: 0 }, false);
