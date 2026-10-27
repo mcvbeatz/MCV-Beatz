@@ -81,7 +81,9 @@ test("eight-player free for all exposes enemy tokens and counts every rival", as
     __arena.game.update = () => {};
   });
   await expect(page.locator("#enemy-count")).toHaveText("07");
-  await expect(page.locator("#objective-score")).toHaveText("8 STANDING");
+  await expect(page.locator("#objective-score")).toHaveText(
+    "8 STANDING · 0 KILLS",
+  );
   const state = await page.evaluate(() => {
     const g = __arena.game;
     g.fell(g.fighters[1]);
@@ -92,7 +94,9 @@ test("eight-player free for all exposes enemy tokens and counts every rival", as
     };
   });
   expect(state).toEqual({ teams: 8, tokens: 1, finished: false });
-  await expect(page.locator("#objective-score")).toHaveText("7 STANDING");
+  await expect(page.locator("#objective-score")).toHaveText(
+    "7 STANDING · 0 KILLS",
+  );
 });
 
 test("phone landscape keeps mode score and touch controls within the screen", async ({

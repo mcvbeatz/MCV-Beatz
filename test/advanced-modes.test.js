@@ -127,11 +127,13 @@ test("Gauntlet progresses through choices and unlocks the final boss on tier III
   assert.ok(g.rewardChoices().some((c) => c.id === "shard:air"));
   assert.equal(g.chooseReward("invalid"), false);
   assert.ok(g.chooseReward("shard:air"));
+  g.update(g.rewardRemaining, { x: 0, y: 0 }, false);
   assert.equal(g.player.element, "spirit");
   assert.equal(g.wave, 2);
   assert.equal(g.intermission, false);
   clearWave(g);
   g.chooseReward("shard:earth");
+  g.update(g.rewardRemaining, { x: 0, y: 0 }, false);
   assert.equal(g.player.element, "divine");
   assert.equal(g.finalWave, true);
   assert.equal(g.fighters.filter((a) => a.team === 1).length, 1);
@@ -146,9 +148,11 @@ test("Gauntlet healing and next-wave upgrades work; losing ends the run", () => 
   g.player.hp = 25;
   clearWave(g);
   g.chooseReward("heal");
+  g.update(g.rewardRemaining, { x: 0, y: 0 }, false);
   assert.equal(g.player.hp, 120);
   clearWave(g);
   g.chooseReward("upgrade");
+  g.update(g.rewardRemaining, { x: 0, y: 0 }, false);
   assert.equal(g.player.waveDamage, 1.25);
   assert.equal(g.player.waveSpeed, 1.15);
   const enemy = g.fighters[1];
@@ -160,6 +164,7 @@ test("Gauntlet healing and next-wave upgrades work; losing ends the run", () => 
   assert.equal(g.player.waveDamage, 1);
   assert.equal(g.player.waveSpeed, 1);
   g.chooseReward("heal");
+  g.update(g.rewardRemaining, { x: 0, y: 0 }, false);
   g.fell(g.player);
   g.checkMatchEnd();
   assert.equal(g.result, "defeat");
@@ -173,6 +178,7 @@ test("Team Gauntlet survives one ally death, restores them between waves, and lo
   assert.equal(g.player.alive, true);
   assert.equal(g.player.hp, 60);
   g.chooseReward("heal");
+  g.update(g.rewardRemaining, { x: 0, y: 0 }, false);
   assert.ok(
     g.fighters.filter((a) => a.team === 0).every((a) => a.hp === a.maxHp),
   );
@@ -221,6 +227,9 @@ test("Roulette warns five seconds early, transforms everyone independently, pres
   assert.equal(g.nextForms, null);
   assert.equal(g.nextShuffleAt, 50);
   for (const a of g.fighters.slice(1)) g.fell(a);
+  g.checkMatchEnd();
+  assert.equal(g.finished, false);
+  g.time = 180;
   g.checkMatchEnd();
   assert.equal(g.result, "victory");
 });

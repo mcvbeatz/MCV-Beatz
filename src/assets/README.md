@@ -77,12 +77,22 @@ dash and teleport priority remains governed by combat state. All effects still
 respect Divine concealment. Generated PNG sources remain in the workspace;
 only encoded WebP assets and frame metadata ship with the game.
 
-## v0.16 fusion figures
+## v0.17 fusion replacements
 
-Phoenix, Terraformer and Sanctuary are drawn by `src/new-fusion-art.js` as
-articulated pixel figures. Phoenix combines flame hair, Air wings and Light's
-gold/white spear; Terraformer combines stone armor with a dark mask and hovering
-stance; Sanctuary combines green earth armor, a water crest and a white mantle.
-They share the combat pose system for front/side/back views, attacks, sidesteps,
-damage reactions and victory poses. Sanctuary has alternating running strides;
-Phoenix and Terraformer hover. The renderer adds tier-III glow and Aurora shine.
+`new-fusions.webp` replaces the temporary procedural Phoenix, Terraformer and
+Sanctuary figures with detailed sprite art matching the existing character
+atlases. The six columns are front/right/back idle and front/right/back strikes.
+Phoenix has flame feather wings and talon gauntlets, Terraformer has a stone
+reptilian silhouette with violet scarf and claws, and Sanctuary has emerald
+scaled armor, a white hood and a crystal water spear.
+
+`new-fusions-motion.webp` contains paired motion rows for each character, with
+front/right/back columns. JSON remaps them to the six-frame movement format.
+All three use guarded sidesteps; Sanctuary also uses these alternating grounded
+strides, while Phoenix and Terraformer hover during ordinary movement.
+
+`new-fusions-reactions.webp` provides directional hurt frames and victory poses.
+These PNG-generated originals were encoded as lossless WebP without modifying
+the artwork. Frame bounds and anatomical anchors are metadata only. Runtime
+loading, fallback, flashing, facing, attack timing and hit reactions use the
+same renderer as the rest of the roster. The procedural block figures were removed.

@@ -68,6 +68,7 @@ test("Death hits flyers, allies and invisible Divine once per entry without refl
   const b = makeFighter("victim", "divine", a.team, h.x, h.y);
   g.fighters.push(b);
   const hp = a.hp;
+  g.time = h.opensAt;
   g.updateHazards(0.01);
   assert.equal(b.element, "mirror");
   assert.equal(a.hp, hp);

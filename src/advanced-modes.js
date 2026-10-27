@@ -190,7 +190,32 @@ export function rewardChoices(g) {
   ];
 }
 export function chooseReward(g, id) {
-  if (!rewardChoices(g).some((r) => r.id === id)) return false;
+  if (
+    g.finished ||
+    g.rewardRemaining <= 0 ||
+    !rewardChoices(g).some((r) => r.id === id)
+  )
+    return false;
+  g.rewardSelection = id;
+  return true;
+}
+export function advanceReward(g, dt) {
+  if (
+    g.finished ||
+    !isGauntlet(g) ||
+    !g.intermission ||
+    !Number.isFinite(dt) ||
+    dt <= 0
+  )
+    return;
+  g.rewardRemaining = Math.max(0, g.rewardRemaining - dt);
+  if (g.rewardRemaining > 1e-9) return;
+  const choices = rewardChoices(g);
+  const id =
+    choices.find((r) => r.id === g.rewardSelection)?.id || choices[0]?.id;
+  if (id) applyReward(g, id);
+}
+function applyReward(g, id) {
   const team = g.fighters.filter((a) => a.team === 0 && !a.echo);
   if (id.startsWith("shard:")) {
     const part = id.slice(6);
@@ -216,6 +241,8 @@ export function chooseReward(g, id) {
 }
 export function nextWave(g) {
   g.intermission = false;
+  g.rewardRemaining = 0;
+  g.rewardSelection = null;
   g.wave++;
   const team = g.fighters.filter((a) => a.team === 0 && !a.echo);
   g.finalWave = team.some((a) => a.parts.length >= 3);
@@ -268,10 +295,7 @@ export function nextWave(g) {
 }
 export function advancedEnd(g) {
   if (g.mode === "roulette") {
-    const players = g.fighters.filter((a) => !a.echo),
-      standing = players.filter((a) => a.alive);
-    if (standing.length === 1)
-      return g.finish(standing[0].team, "Last fighter standing");
+    const players = g.fighters.filter((a) => !a.echo);
     if (g.time < 180) return false;
     const high = Math.max(...players.map((a) => a.kills || 0));
     const leaders = players.filter((a) => (a.kills || 0) === high);
@@ -299,6 +323,8 @@ export function advancedEnd(g) {
   if (g.finalWave)
     return g.finish(0, `Final boss defeated · ${g.wave} waves cleared`);
   g.intermission = true;
+  g.rewardRemaining = 7;
+  g.rewardSelection = null;
   for (const a of team) {
     if (!a.alive) {
       a.alive = true;

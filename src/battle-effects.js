@@ -103,11 +103,15 @@ export function drawTerrain(c, game, time) {
     if (h.kind === "death") {
       c.save();
       c.translate(h.x, h.y);
-      c.scale(1, 0.7);
-      c.fillStyle = "#1b1229dd";
-      c.strokeStyle = "#f3e4ca";
+      const opening = Math.max(
+        0,
+        Math.min(1, 1 - ((h.opensAt || 0) - game.time) / 0.5),
+      );
+      c.scale(Math.max(0.06, opening), Math.max(0.03, opening) * 0.7);
+      c.fillStyle = "#0d0618ee";
+      c.strokeStyle = "#9667bc";
       c.lineWidth = 2;
-      c.shadowColor = "#fff2db";
+      c.shadowColor = "#4c1c75";
       c.shadowBlur = 12;
       c.beginPath();
       c.arc(0, 0, h.r, 0, TAU);
@@ -128,7 +132,7 @@ export function drawTerrain(c, game, time) {
       c.beginPath();
       c.arc(0, 0, h.r * 0.42, 0, TAU);
       c.stroke();
-      c.fillStyle = "#fff6e9";
+      c.fillStyle = "#bd83e2";
       c.fillRect(-3, -14, 6, 28);
       c.fillRect(-12, -3, 24, 6);
       c.restore();

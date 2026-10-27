@@ -56,7 +56,9 @@ test("automatic locking, keyboard movement, charging and pause", async ({
     .toBe("enemy-0");
   const x = await page.evaluate(() => __arena.game.player.x);
   await page.keyboard.down("a");
-  await page.waitForTimeout(300);
+  await expect
+    .poll(() => page.evaluate(() => __arena.game.player.x))
+    .toBeLessThan(x - 25);
   await page.keyboard.up("a");
   expect(await page.evaluate(() => __arena.game.player.x)).toBeLessThan(x);
   await expect

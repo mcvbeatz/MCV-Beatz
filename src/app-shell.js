@@ -64,7 +64,7 @@ export function createApp(api) {
   reward.hidden = true;
   reward.className = "wave-reward";
   reward.innerHTML =
-    '<span class="eyebrow">WAVE CLEARED</span><h2>Choose your next advantage.</h2><p id="wave-reward-caption"></p><div id="reward-options"></div>';
+    '<span class="eyebrow">WAVE CLEARED</span><h2>Choose your next advantage.</h2><p id="wave-reward-caption"></p><p id="wave-reward-timer" role="status" aria-live="polite"></p><div id="reward-options"></div>';
   $("game-wrap").append(reward);
   const save = document.createElement("p");
   save.id = "save-status";
@@ -114,7 +114,7 @@ export function createApp(api) {
     setScreen(next);
     const c = $("shell-content");
     if (next === "home")
-      c.innerHTML = `<section class="home-hero"><span class="eyebrow">THE COLOSSEUM · v0.16</span><h1>Power is elemental.</h1><p>Choose your arena. Find your next form.</p><div class="home-elements" aria-label="Light, Dark, Water, Air, Earth and Fire">${Object.keys(
+      c.innerHTML = `<section class="home-hero"><span class="eyebrow">THE COLOSSEUM · v0.17</span><h1>Power is elemental.</h1><p>Choose your arena. Find your next form.</p><div class="home-elements" aria-label="Light, Dark, Water, Air, Earth and Fire">${Object.keys(
         ELEMENTS,
       )
         .map(
@@ -566,15 +566,24 @@ export function createApp(api) {
             title.textContent = choice.title;
             detail.textContent = choice.description;
             b.append(title, detail);
-            b.onclick = () => {
-              g.chooseReward(choice.id);
-              reward.hidden = true;
-              lastReward = null;
-            };
+            b.dataset.reward = choice.id;
+            b.setAttribute("aria-pressed", "false");
+            b.onclick = () => g.chooseReward(choice.id);
             return b;
           }),
         );
       }
+      const selected = g
+        .rewardChoices()
+        .find((r) => r.id === g.rewardSelection);
+      const message = `${Math.ceil(g.rewardRemaining)}s · ${selected ? `${selected.title} selected — you can change it` : "Choose an advantage; the first option is automatic if you wait"}`;
+      if ($("wave-reward-timer").textContent !== message)
+        $("wave-reward-timer").textContent = message;
+      for (const b of $("reward-options").children)
+        b.setAttribute(
+          "aria-pressed",
+          String(b.dataset.reward === g.rewardSelection),
+        );
     } else {
       reward.hidden = true;
       if (!g.intermission) lastReward = null;

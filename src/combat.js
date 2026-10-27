@@ -1,3 +1,4 @@
+import { createCorruptionMap } from "./corruption-map.js";
 import {
   initializeAdvanced,
   updateAdvanced,
@@ -5,6 +6,7 @@ import {
   fusionScore,
   rewardChoices,
   chooseReward,
+  advanceReward,
   isGauntlet,
 } from "./advanced-modes.js";
 import { PortalSystem, inWorld, segmentDistance } from "./portals.js";
@@ -156,7 +158,7 @@ export const canUseSkill = (a, form, kind) =>
   ((form === "blindness" && a.parts.includes("dark")) ||
     a.forms.includes(form) ||
     extraSkillsFor(a.element).some((s) => s.form === form && s.kind === kind));
-export const VOG_RADIUS = (500 / Math.sqrt(3)) * 0.6;
+export const VOG_RADIUS = (500 / Math.sqrt(3)) * 0.6 * 0.8;
 export const BURST_HIT_RANGE = 28 * 1.3;
 export const CHASM_RADIUS = 56;
 export const CHASM_RANGE = 400;
@@ -299,6 +301,7 @@ export function makeFighter(id, element, team, x, y) {
     movingTime: 0,
     burn: 0,
     venom: 0,
+    venomTint: 0,
     slow: 0,
     flash: 0,
     swing: 0,
@@ -326,6 +329,7 @@ export class Combat {
     this.countdown =
       countdown && !["duel", "fused", "fused3", "team"].includes(mode) ? 4 : 0;
     this.mode = mode;
+    this.map = mode === "corruption" ? createCorruptionMap() : null;
     this.scores = [0, 0];
     this.deathUsed = new Set();
     this.rebirthUsed = new Set();
@@ -337,7 +341,7 @@ export class Combat {
     this.timeLimit =
       mode === "corruption"
         ? 120
-        : ["tdm", "domination", "rush", "roulette"].includes(mode)
+        : ["tdm", "domination", "rush", "roulette", "ffa"].includes(mode)
           ? 180
           : null;
     this.respawnDelay = [
@@ -347,6 +351,7 @@ export class Combat {
       "domination",
       "rush",
       "roulette",
+      "ffa",
     ].includes(mode)
       ? 10
       : null;
@@ -458,6 +463,12 @@ export class Combat {
         return a;
       });
     }
+    if (this.map) {
+      this.fighters.forEach((a, i) =>
+        Object.assign(a, this.map.spawn(i, this.fighters.length)),
+      );
+      this.portals.portals = this.map.portals.map((p) => ({ ...p }));
+    }
     for (const a of this.fighters) {
       a.infections = 0;
       if (mode === "corruption") {
@@ -523,6 +534,7 @@ export class Combat {
   canSee(a, b) {
     return (
       visibility(b) > 0 &&
+      (!this.map || this.map.lineClear(a, b)) &&
       (a.parts.includes("dark") ||
         this.auroraProtected(a) ||
         !this.hazards.some(
@@ -625,8 +637,16 @@ export class Combat {
       a.vx = a.burstX * 650;
       a.vy = a.burstY * 650;
     }
-    a.x = clamp(a.x + (a.vx + a.knockX) * dt, 135, 889);
-    a.y = clamp(a.y + (a.vy + a.knockY) * dt, 175, 560);
+    if (this.map)
+      this.map.move(
+        a,
+        a.x + (a.vx + a.knockX) * dt,
+        a.y + (a.vy + a.knockY) * dt,
+      );
+    else {
+      a.x = clamp(a.x + (a.vx + a.knockX) * dt, 135, 889);
+      a.y = clamp(a.y + (a.vy + a.knockY) * dt, 175, 560);
+    }
     a.knockX *= Math.exp(-7 * dt);
     a.knockY *= Math.exp(-7 * dt);
     a.movingTime =
@@ -985,7 +1005,8 @@ export class Combat {
           Math.abs(q.at - p.at) <= 0.1 &&
           (this.friendlyFire || a.team !== q.who.team) &&
           canHit(a, q.who) &&
-          canHit(q.who, a),
+          canHit(q.who, a) &&
+          (!this.map || this.map.lineClear(a, q.who)),
       );
       if (clash) {
         if (this.mode === "corruption") {
@@ -1014,7 +1035,8 @@ export class Combat {
         }
       } else
         for (const b of this.fighters)
-          if (canHit(a, b)) this.meleeDamage(a, b, 14);
+          if (canHit(a, b) && (!this.map || this.map.lineClear(a, b)))
+            this.meleeDamage(a, b, 14);
       remove.add(p.id);
     }
     this.pending = this.pending.filter((p) => !remove.has(p.id));
@@ -1475,6 +1497,7 @@ export class Combat {
     else if (e === "demonic") {
       this.deathUsed.add(a.id);
       this.area(a, 1, "death", 66, Infinity);
+      this.hazards.at(-1).opensAt = this.time + 0.5;
     }
     return true;
   }
@@ -2062,12 +2085,75 @@ export class Combat {
     };
     return pair[0];
   }
+  aiEscapeVog(a, dt) {
+    if (
+      !a.alive ||
+      a.ghost ||
+      !inWorld(a) ||
+      a.parts.includes("dark") ||
+      this.auroraProtected(a)
+    )
+      return false;
+    const smoke = this.hazards.filter(
+      (h) => h.kind === "vog" && h.life > 0 && inWorld(h),
+    );
+    const inside = smoke.filter((h) => distance(a, h) <= h.r);
+    if (!inside.length) return false;
+    a.aiControlled = true;
+    // Sample reachable exits, including lanes along arena walls. Overlapping
+    // fields and lethal terrain cost more than the distance to a safe edge.
+    const exits = inside.flatMap((h) =>
+      Array.from({ length: 24 }, (_, i) => {
+        const angle = (i * Math.PI) / 12;
+        const point = {
+          x: clamp(h.x + Math.cos(angle) * (h.r + 25), 137, 887),
+          y: clamp(h.y + Math.sin(angle) * (h.r + 25), 177, 558),
+        };
+        const concealed = smoke.reduce(
+          (n, fog) => n + Math.max(0, fog.r + 16 - distance(point, fog)),
+          0,
+        );
+        return {
+          ...point,
+          cost:
+            distance(a, point) +
+            concealed * 30 +
+            (this.mobilitySafe(a, point) ? 0 : 800),
+        };
+      }),
+    );
+    const exit = exits.sort((b, c) => b.cost - c.cost)[0];
+    if (a.shield) this.utility(a, false);
+    if (a.charging) this.releaseCharge(a);
+    this.move(a, exit.x - a.x, exit.y - a.y, dt);
+    const target = this.enemies(a)
+      .filter((b) => distance(a, b) <= STRIKE_RANGE)
+      .sort((b, c) => distance(a, b) - distance(a, c))[0];
+    if (target && this.safeAttack(a, target)) this.strike(a);
+    else if (!target) {
+      // Sweep blindly along the escape direction without tracking hidden rivals.
+      // Retain friendly-fire restraint when a teammate is in that strike lane.
+      const clear =
+        !this.friendlyFire ||
+        !this.fighters.some(
+          (b) =>
+            b !== a &&
+            b.alive &&
+            b.team === a.team &&
+            inWorld(b) &&
+            canHit(a, b),
+        );
+      if (clear) this.strike(a);
+    }
+    return true;
+  }
   ai(a, dt) {
     if (a.prisonHp > 0) {
       a.aiControlled = true;
       this.strike(a);
       return;
     }
+    if (this.aiEscapeVog(a, dt)) return;
     if (this.mode === "corruption") return this.aiCorruption(a, dt);
     if (
       (this.mode === "boss" || (isGauntlet(this) && this.finalWave)) &&
@@ -2494,6 +2580,7 @@ export class Combat {
         continue;
       }
       if (h.kind === "death") {
+        if (this.time + 1e-9 < (h.opensAt || 0)) continue;
         const touching = this.fighters.filter(
           (b) =>
             b.alive &&
@@ -2569,14 +2656,16 @@ export class Combat {
     );
   }
   update(dt, input = { x: 0, y: 0 }, runAI = true) {
-    if (this.finished || this.intermission) return;
+    if (this.finished) return;
+    if (this.intermission) return advanceReward(this, dt);
     dt = Math.min(dt, 0.05);
     if (this.countdown > 0) {
       const wasLocked = this.countingDown;
       this.countdown = Math.max(0, this.countdown - dt);
       if (wasLocked) return;
     }
-    if (["tdm", "roulette"].includes(this.mode) && this.checkMatchEnd()) return;
+    if (["tdm", "roulette", "ffa"].includes(this.mode) && this.checkMatchEnd())
+      return;
     this.time += dt;
     updateAdvanced(this);
     if (
@@ -2614,6 +2703,7 @@ export class Combat {
         "dodge",
         "boost",
         "venom",
+        "venomTint",
         "slow",
         "flash",
         "swing",
@@ -2633,7 +2723,7 @@ export class Combat {
       if (a.shield) a.shieldTime += dt;
       else a.shieldHp = Math.min(65, a.shieldHp + dt * 5);
       if (hasPassive(a, "divine") || this.auroraProtected(a))
-        a.venom = a.burn = a.blind = a.whiteout = 0;
+        a.venom = a.venomTint = a.burn = a.blind = a.whiteout = 0;
       if (this.auroraProtected(a)) {
         a.sabotaged = false;
         if (
@@ -2645,8 +2735,11 @@ export class Combat {
         )
           a.slow = 0;
       }
-      if (a.venom > 0)
+      if (a.venom > 0) {
+        const health = a.hp;
         this.damage(a.venomSource || a, a, dt * 3, true, false, "mud", false);
+        if (a.alive && a.hp < health) a.venomTint = 0.16;
+      }
       if (!a.alive && !a.ghost) continue;
       const old = { x: a.x, y: a.y };
       if (a.id === "player") this.move(a, input.x, input.y, dt);
@@ -2800,7 +2893,63 @@ export class Combat {
       if (target && gap < 100) this.utility(a, true, "fire");
     }
   }
+  aiMazeCorruption(a, dt) {
+    a.aiControlled = true;
+    if (a.element === "dark") {
+      a.aiPlan = null;
+      a.aiNeedChange = false;
+    }
+    const map = this.map;
+    if (!a.mazeActionOrigin || distance(a, a.mazeActionOrigin) > 35) {
+      // Escaping to another position is a tactic change: Light can defend or
+      // heal again after its three-action limit instead of becoming disarmed.
+      if (a.aiNeedChange) {
+        a.aiLastGesture = "reposition";
+        a.aiRepeat = 1;
+        a.aiNeedChange = false;
+      }
+      a.mazeActionOrigin = { x: a.x, y: a.y };
+    }
+    // Navigation knows the maze layout; actual strikes and locks still require a clear corridor.
+    const rivals = this.fighters.filter(
+      (b) => b.alive && !b.echo && inWorld(b) && b.team !== a.team,
+    );
+    const target = rivals.sort(
+      (b, c) =>
+        map.path(a, b).length - map.path(a, c).length ||
+        distance(a, b) - distance(a, c),
+    )[0];
+    if (a.element === "light" && a.hp < a.maxHp) {
+      if (a.charging && a.charge >= 0.25) this.releaseCharge(a);
+      else if (!a.charging && !a.abilityCd) this.startCharge(a, "light");
+    }
+    if (!target) {
+      this.move(a, 0, 0, dt);
+      return;
+    }
+    let goal = target;
+    if (a.element === "light") {
+      if (
+        !a.mazeGoal ||
+        this.time >= (a.mazeGoalUntil || 0) ||
+        distance(a, a.mazeGoal) < 22
+      ) {
+        const candidates = map.cells.map((p, id) => ({
+          ...p,
+          id,
+          score: map.path(target, p).length - map.path(a, p).length * 0.3,
+        }));
+        a.mazeGoal = candidates.sort((b, c) => c.score - b.score)[0];
+        a.mazeGoalUntil = this.time + 2;
+      }
+      goal = a.mazeGoal;
+    }
+    const route = map.route(a, goal);
+    this.move(a, route.x - a.x, route.y - a.y, dt);
+    if (canHit(a, target) && map.lineClear(a, target)) this.strike(a, target);
+  }
   aiCorruption(a, dt) {
+    if (this.map) return this.aiMazeCorruption(a, dt);
     if (a.element === "dark") return this.aiPursuit(a, dt);
     a.aiControlled = true;
     this.aiProgress(a);
@@ -3063,9 +3212,19 @@ export class Combat {
       const winner = this.scores.findIndex((score) => score >= 3);
       return winner >= 0 ? this.finish(winner, "Three flags captured") : false;
     }
+    if (this.mode === "ffa" && this.time >= this.timeLimit) {
+      const players = this.fighters.filter((a) => !a.echo);
+      const high = Math.max(...players.map((a) => a.kills || 0));
+      const leaders = players.filter((a) => (a.kills || 0) === high);
+      return this.finish(
+        leaders.length === 1 ? leaders[0].team : null,
+        `Most eliminations · ${high} kills`,
+      );
+    }
     const teams = new Set(
       this.fighters.filter((a) => a.alive && !a.echo).map((a) => a.team),
     );
+    if (this.mode === "ffa" && teams.size === 0) return false;
     if (teams.size < 2)
       return this.finish(
         teams.size ? [...teams][0] : null,

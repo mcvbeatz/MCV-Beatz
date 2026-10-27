@@ -88,6 +88,7 @@ test("Death button places a floor sigil, stays spent, and demotion updates abili
       h = g.hazards.find((h) => h.kind === "death");
     g.player.x = h.x;
     g.player.y = h.y;
+    g.time = h.opensAt;
     g.updateHazards(0.01);
     return {
       element: g.player.element,

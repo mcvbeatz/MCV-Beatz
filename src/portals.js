@@ -140,6 +140,14 @@ export class PortalSystem {
     return true;
   }
   exit(e, p, dx, dy) {
+    if (p.environment && this.game.map) {
+      Object.assign(e, this.game.map.safeExit(p, dx, dy));
+      e.dimension = e.transit = null;
+      e.portalCooldown = 1.2;
+      e.lastX = e.x;
+      e.lastY = e.y;
+      return;
+    }
     const length = Math.hypot(dx, dy) || 1;
     dx /= length;
     dy /= length;

@@ -113,6 +113,7 @@ test("each Play mode has an accessible swipeable slideshow and Random opens a va
 test("Gauntlet reward selection advances waves and tier III starts the final boss", async ({
   page,
 }) => {
+  test.setTimeout(60000); // Two real seven-second selection windows plus initial asset loading.
   await page.goto("/?mode=gauntlet");
   await page.locator('[data-element="light"]').click();
   await page.locator("#begin-btn").click();
@@ -126,7 +127,9 @@ test("Gauntlet reward selection advances waves and tier III starts the final bos
   await expect(page.locator("#wave-reward")).toBeVisible();
   await expect(page.locator("#attack-btn")).toBeDisabled();
   await page.getByRole("button", { name: "Air shard", exact: false }).click();
-  await expect(page.locator("#objective-score")).toHaveText("WAVE 2");
+  await expect(page.locator("#objective-score")).toHaveText("WAVE 2", {
+    timeout: 8500,
+  });
   await page.evaluate(() => {
     const g = __arena.game;
     for (const a of [...g.fighters])
@@ -134,7 +137,9 @@ test("Gauntlet reward selection advances waves and tier III starts the final bos
     g.checkMatchEnd();
   });
   await page.getByRole("button", { name: "Earth shard", exact: false }).click();
-  await expect(page.locator("#objective-score")).toHaveText("FINAL BOSS");
+  await expect(page.locator("#objective-score")).toHaveText("FINAL BOSS", {
+    timeout: 8500,
+  });
 });
 test("Roulette shows the five-second preview then changes form without healing", async ({
   page,

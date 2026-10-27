@@ -89,14 +89,14 @@ test("Roulette respawns after ten seconds and transformations preserve pending r
   assert.equal(a.element, next);
   assert.equal(a.deaths, 1);
 });
-test("Roulette ends for a sole standing player, otherwise kills decide at three minutes", () => {
+test("Roulette continues with a sole standing player and kills decide at three minutes", () => {
   const g = new Combat({ mode: "roulette", players: 4 });
   g.fell(g.fighters[1]);
   assert.equal(g.checkMatchEnd(), false);
   g.fell(g.fighters[2]);
   g.fell(g.fighters[3]);
-  assert.equal(g.checkMatchEnd(), true);
-  assert.equal(g.result, "victory");
+  assert.equal(g.checkMatchEnd(), false);
+  assert.equal(g.finished, false);
   const timed = new Combat({ mode: "roulette", players: 4 });
   timed.player.kills = 4;
   timed.fighters[2].kills = 3;

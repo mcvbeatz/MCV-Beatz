@@ -43,17 +43,17 @@ test("conversion lowers every Dark health cap without healing wounds and respawn
 test("full-health corrupted fighters retain full movement speed with hit-count health", () => {
   const g = corruption(),
     dark = g.player;
-  Object.assign(dark, { x: 400, y: 300 });
+  Object.assign(dark, { x: 1024, y: 680 });
   g.move(dark, 1, 0, 0.05);
   assert.equal(dark.vx, 150);
-  assert.equal(dark.x, 407.5);
+  assert.equal(dark.x, 1031.5);
 });
 test("nonlethal simultaneous Light/Dark strikes convert Light and deduct exactly one hit", () => {
   const g = corruption(),
     dark = g.player,
     light = g.fighters[1];
-  Object.assign(dark, { x: 300, y: 300 });
-  Object.assign(light, { x: 340, y: 300, hp: 1 });
+  Object.assign(dark, { x: 1000, y: 680 });
+  Object.assign(light, { x: 1040, y: 680, hp: 1 });
   for (const other of g.fighters.slice(2))
     Object.assign(other, { x: 850, y: 550 });
   g.strike(dark);
@@ -71,15 +71,15 @@ test("corrupted AI immediately pursues nearest Light and keeps striking past thr
     dark = g.player,
     near = g.fighters[2];
   Object.assign(dark, {
-    x: 500,
-    y: 350,
+    x: 1050,
+    y: 680,
     aiLastGesture: "strike",
     aiRepeat: 3,
     aiNeedChange: true,
     aiPlan: { x: 800, y: 550, until: 100 },
   });
   for (const b of g.fighters.slice(1)) Object.assign(b, { x: 800, y: 500 });
-  Object.assign(near, { x: 300, y: 350 });
+  Object.assign(near, { x: 970, y: 680 });
   g.ai(dark, 0.02);
   assert.ok(dark.vx < 0);
   assert.equal(dark.vy, 0);

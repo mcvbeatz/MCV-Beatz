@@ -1,4 +1,6 @@
-import { NEW_FUSIONS, NEW_PARTS, drawFusionArt } from "./new-fusion-art.js";
+import newFusions from "./assets/new-fusions.json" with { type: "json" };
+import newMotion from "./assets/new-fusions-motion.json" with { type: "json" };
+import newReactions from "./assets/new-fusions-reactions.json" with { type: "json" };
 import victoryFrames from "./assets/victory.json" with { type: "json" };
 import combatMud from "./assets/combat-mud.json" with { type: "json" };
 import tuned from "./assets/tuned-identities.json" with { type: "json" };
@@ -23,8 +25,15 @@ import revised from "./assets/revised-characters.json" with { type: "json" };
 import revisedRuns from "./assets/revised-running.json" with { type: "json" };
 
 export const ORIGINS = ["water", "dark", "fire", "air", "earth", "light"];
-const frames = { ...origins, ...grounded, ...airborne, ...revised, ...tuned };
-export const CHARACTERS = [...Object.keys(frames), ...NEW_FUSIONS];
+const frames = {
+  ...origins,
+  ...grounded,
+  ...airborne,
+  ...revised,
+  ...tuned,
+  ...newFusions,
+};
+export const CHARACTERS = Object.keys(frames);
 export const ATTACK_NAMES = {
   phoenix: "Solar talon",
   terraformer: "Rift gauntlet",
@@ -75,7 +84,15 @@ const victory = loadAtlas(
   victoryFrames,
   new URL("./assets/victory.png", import.meta.url).href,
 );
+const fusionVictory = loadAtlas(
+  newReactions,
+  new URL("./assets/new-fusions-reactions.webp", import.meta.url).href,
+);
 const atlases = [
+  loadAtlas(
+    newFusions,
+    new URL("./assets/new-fusions.webp", import.meta.url).href,
+  ),
   loadAtlas(origins, new URL("./assets/origins.webp", import.meta.url).href),
   loadAtlas(
     grounded,
@@ -93,6 +110,10 @@ atlases.push(
   ),
 );
 const runs = [
+  loadAtlas(
+    { sanctuary: newMotion.sanctuary },
+    new URL("./assets/new-fusions-motion.webp", import.meta.url).href,
+  ),
   loadAtlas(
     originRuns,
     new URL("./assets/running-origins.webp", import.meta.url).href,
@@ -121,6 +142,10 @@ runs.push(
   ),
 );
 const actions = [
+  loadAtlas(
+    newMotion,
+    new URL("./assets/new-fusions-motion.webp", import.meta.url).href,
+  ),
   loadAtlas(
     combatOrigins,
     new URL("./assets/combat-origins.webp", import.meta.url).href,
@@ -153,6 +178,7 @@ actions.push(
   ),
 );
 const hurts = [
+  fusionVictory,
   loadAtlas(
     hurtOrigins,
     new URL("./assets/hurt-origins.webp", import.meta.url).href,
@@ -315,9 +341,27 @@ function paintFrame(
 
 // All coordinates are visual only: facing and hit timing come from Combat.
 export function drawCharacter(c, a, time) {
-  if (NEW_FUSIONS.includes(a.element))
-    return drawFusionArt(c, a, time, characterPose(a));
-  if (a.victory && victory.loaded) {
+  if (a.victory && newReactions[a.element] && fusionVictory.loaded) {
+    const spec = newReactions[a.element],
+      f = spec.frames[3];
+    const scale = 76 / spec.height;
+    c.save();
+    c.imageSmoothingEnabled = false;
+    c.drawImage(
+      fusionVictory.image,
+      f.x,
+      f.y,
+      f.w,
+      f.h,
+      -f.anchorX * scale,
+      8 - f.anchorY * scale,
+      f.w * scale,
+      f.h * scale,
+    );
+    c.restore();
+    return true;
+  }
+  if (a.victory && victoryFrames[a.element] && victory.loaded) {
     const f = victoryFrames[a.element],
       scale = 76 / f.h;
     c.drawImage(
@@ -394,26 +438,6 @@ export function paintPortraits(root = document) {
   for (const canvas of root.querySelectorAll("canvas[data-character]")) {
     const c = canvas.getContext("2d");
     const element = canvas.dataset.character;
-    if (NEW_FUSIONS.includes(element)) {
-      const view = Number(canvas.dataset.view || 0);
-      const a = {
-        element,
-        parts: NEW_PARTS[element],
-        alive: true,
-        fx: view === 1 ? 1 : 0,
-        fy: view === 2 ? -1 : view === 1 ? 0 : 1,
-        swing: 0,
-        movingTime: 0,
-      };
-      c.clearRect(0, 0, canvas.width, canvas.height);
-      c.save();
-      c.translate(canvas.width / 2, canvas.height - 7);
-      const scale = (canvas.height - 12) / 80;
-      c.scale(scale, scale);
-      drawFusionArt(c, a, 0, characterPose(a));
-      c.restore();
-      continue;
-    }
     if (!byElement[element]?.loaded) continue;
     const frame = Number(canvas.dataset.view || 0);
     const spec = frames[element];

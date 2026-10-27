@@ -37,7 +37,9 @@ test("Corruption locks selection to Light, supports eight fighters, hides Dark s
     g.time = 120;
     g.checkMatchEnd();
   });
-  await expect(page.locator("#overlay-text")).toContainText("Light survival:");
+  await expect(page.locator("#overlay-text")).toContainText("Light survival:", {
+    timeout: 8000,
+  });
   await expect(page.locator("#overlay-text")).toContainText("Dark infections:");
 });
 test("Boss setup selects an origin and randomly assigns one boss among eight fighters", async ({

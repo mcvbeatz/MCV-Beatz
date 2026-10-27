@@ -28,20 +28,27 @@ async function fight(page, mode, element) {
   });
 }
 async function fits(page, selector) {
-  for (const el of await page.locator(selector).all()) {
-    if (
-      !(await el.isVisible()) ||
-      (await el.evaluate((e) => !!e.closest(".mode-scroll,.element-library")))
-    )
-      continue;
-    const r = await el.boundingBox(),
-      v = page.viewportSize();
+  const rects = await page.locator(selector).evaluateAll((els) =>
+    els
+      .filter(
+        (el) =>
+          el.getClientRects().length &&
+          !el.closest(".mode-scroll,.element-library"),
+      )
+      .map((el) => {
+        const r = el.getBoundingClientRect();
+        return { x: r.x, y: r.y, width: r.width, height: r.height };
+      }),
+  );
+  const v = page.viewportSize();
+  for (const r of rects) {
     expect(r.x, selector).toBeGreaterThanOrEqual(-1);
     expect(r.y, selector).toBeGreaterThanOrEqual(-1);
     expect(r.x + r.width, selector).toBeLessThanOrEqual(v.width + 1);
     expect(r.y + r.height, selector).toBeLessThanOrEqual(v.height + 1);
   }
 }
+
 test("both orientation preferences apply to every screen and screenshot guide in both phone positions", async ({
   browser,
 }) => {

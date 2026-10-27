@@ -73,7 +73,7 @@ export const MODES = {
       ],
       [
         "Choose your reward",
-        "Between waves choose a compatible shard, full healing, or a damage and speed boost for the next wave.",
+        "You have seven seconds between waves to choose a compatible shard, full healing, or a damage and speed boost. Change your selection until time expires; no selection automatically takes the first option.",
         "◇ +",
       ],
       [
@@ -94,7 +94,7 @@ export const MODES = {
       ],
       [
         "Recover between waves",
-        "Felled allies return at half health between waves. Your reward heals, upgrades or evolves the team.",
+        "Felled allies return at half health. You have seven seconds to select or change the team advantage; at zero the selected reward applies, or the first option is automatic.",
         "✦",
       ],
       [
@@ -120,7 +120,7 @@ export const MODES = {
       ],
       [
         "Health carries over",
-        "Transforming does not heal you. Abilities and passives change, but cooldowns carry over. Respawns take 10 seconds. A lone standing fighter wins immediately; otherwise most kills at 3 minutes wins. Ties draw. No fusion.",
+        "Transforming does not heal you. Abilities and passives change, but cooldowns carry over. Respawns take 10 seconds. Respawns are unlimited and the match always lasts three minutes. Most kills when time expires wins. Ties draw. No fusion.",
         "♥",
       ],
     ],
@@ -141,7 +141,7 @@ export const MODES = {
       ],
       [
         "Last fighter standing",
-        "No respawns. Stay alive to win; if felled you can watch the remaining fight.",
+        "Everyone respawns after ten seconds. The last fighter standing wins early; otherwise most kills after three minutes wins. Ties draw.",
         "Ⅰ",
       ],
     ],
@@ -194,7 +194,7 @@ export const MODES = {
     slides: [
       [
         "The first infection",
-        "Everyone starts as Light. After five seconds a random fighter becomes Dark with no abilities.",
+        "Survive the Umbral Labyrinth, a circular maze four times the arena area. White portals on opposite sides transport you across the maze. Everyone starts as Light; after five seconds one fighter becomes Dark.",
         "✦ → ◐",
       ],
       [
@@ -401,7 +401,7 @@ export const SKILL_HELP = {
     "Charge and release a moving wind funnel. Flying fighters take 15% more damage.",
   Flood:
     "Tap to fill a large area with water. Grounds effects are suppressed, grounded fighters slow, and Lightning strikes grow stronger.",
-  Vog: "Tap to create eight seconds of smoke with a 40% smaller radius than its original field. Dark-bearing fighters see through it; others see only their own outline inside. Seven-second cooldown; no damage.",
+  Vog: "Tap to create eight seconds of smoke over a field 20% smaller in diameter than version 0.16. Dark-bearing and Aurora-protected fighters see through it; others see only their own outline inside. AI fighters who cannot see through smoke fight toward an exit. Seven-second cooldown; no damage.",
   Telekinesis:
     "Swipe a visible enemy within 400 units to push in that direction, or tap to push the nearest rival away.",
   "Gravity x2": "Tap to slow nearby opponents in a fuzzy purple field.",
@@ -411,7 +411,7 @@ export const SKILL_HELP = {
   Minions:
     "Charge and release up to three fiery copies. Longer charges raise their health from 8 to 40 HP each.",
   Death:
-    "Tap once per match to place a permanent demotion floor. Each entry removes one fusion tier, even from flyers.",
+    "Tap once per match to place a permanent demotion floor. Its dark sigil takes half a second to open; then each entry removes one fusion tier, even from flyers.",
   Radiance: "Charge and release to heal all living allies, including yourself.",
   "Lightning strikes":
     "Instantly strike the nearest visible enemy within 450 units. Invincible takes 25% extra damage without Reflect or hard-skin reduction. While any Flood is active, doubled lightning hits everyone, including you and allies. Three-second cooldown.",

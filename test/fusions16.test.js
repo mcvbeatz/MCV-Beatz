@@ -41,8 +41,8 @@ test("three new level-III recipes and all constituent fusion routes work", () =>
   }
   assert.equal(LEVEL_THREE.length, 8);
 });
-test("Vog radius shrinks 40 percent and dash hit width grows 30 percent without damage changes", () => {
-  near(VOG_RADIUS, (500 / Math.sqrt(3)) * 0.6);
+test("Vog retains cumulative reductions and dash hit width stays 30 percent wider", () => {
+  near(VOG_RADIUS, (500 / Math.sqrt(3)) * 0.6 * 0.8);
   near(BURST_HIT_RANGE, 36.4);
   const g = arena("blaze", "water");
   const a = g.player,

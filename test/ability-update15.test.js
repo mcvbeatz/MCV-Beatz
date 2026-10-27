@@ -95,7 +95,7 @@ test("Vog is tap activated, reduced smoke radius, harmless, and conceals from al
   assert.equal(a.charging, false);
   assert.equal(a.abilityCd, 7);
   const h = g.hazards[0];
-  near(h.r * h.r, ((500 * 500) / 3) * 0.6 ** 2);
+  near(h.r * h.r, ((500 * 500) / 3) * (0.6 * 0.8) ** 2);
   assert.equal(h.life, 8);
   assert.equal(g.canSee(b, a), false);
   assert.equal(g.canSee(a, b), true);

@@ -4,8 +4,38 @@ const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
 export function cameraView(
   width,
   height,
-  { portrait = false, screenWidth = width, screenHeight = height, focus } = {},
+  {
+    portrait = false,
+    screenWidth = width,
+    screenHeight = height,
+    focus,
+    map,
+    overview = false,
+  } = {},
 ) {
+  if (map) {
+    const b = map.bounds;
+    const scale = overview
+      ? Math.min(width / (b.width + 40), height / (b.height + 40))
+      : Math.max(
+          Math.min(
+            Math.max(screenWidth, screenHeight) / bounds.width,
+            Math.max(1, Math.min(screenWidth, screenHeight) - 40) /
+              bounds.height,
+          ),
+          width / b.width,
+          height / b.height,
+        );
+    const halfW = width / scale / 2,
+      halfH = height / scale / 2;
+    const x = overview
+      ? map.cx
+      : clamp(focus?.x ?? map.cx, b.left + halfW, b.left + b.width - halfW);
+    const y = overview
+      ? map.cy
+      : clamp(focus?.y ?? map.cy, b.top + halfH, b.top + b.height - halfH);
+    return { scale, tx: width / 2 - x * scale, ty: height / 2 - y * scale };
+  }
   if (!portrait) {
     const scale = Math.min(width / bounds.width, height / bounds.height);
     return {

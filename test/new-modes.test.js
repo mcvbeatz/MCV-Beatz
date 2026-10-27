@@ -248,8 +248,8 @@ test("simultaneous Corruption strikes convert Light and fell Dark regardless of 
     g.time = 5;
     g.corruptionStarted = true;
     g.corrupt(dark);
-    Object.assign(dark, { x: 300, y: 300, hp: 1 });
-    Object.assign(light, { x: 340, y: 300, hp: 1 });
+    Object.assign(dark, { x: 1000, y: 680, hp: 1 });
+    Object.assign(light, { x: 1040, y: 680, hp: 1 });
     g.strike(g.fighters[0]);
     g.strike(g.fighters[1]);
     g.time += 0.12;

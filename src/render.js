@@ -1,3 +1,4 @@
+import { paintCorruptionMap, drawMazeMap } from "./corruption-map-render.js";
 import { cameraView } from "./camera.js";
 import { inWorld, visibility, viewerVisibility } from "./combat.js";
 import {
@@ -257,7 +258,7 @@ export class Renderer {
     c.fillRect(0, 636, 1024, 44);
   }
   characterBody(c, a, time) {
-    if (!(a.blind > 0)) return drawCharacter(c, a, time);
+    if (!(a.blind > 0) && !(a.venomTint > 0)) return drawCharacter(c, a, time);
     // Canvas compositing works in iOS WebViews without Canvas.filter support.
     const sprite = this.bodySprite,
       sc = sprite.getContext("2d");
@@ -267,8 +268,14 @@ export class Renderer {
     const drawn = drawCharacter(sc, a, time);
     sc.restore();
     sc.globalCompositeOperation = "source-atop";
-    sc.fillStyle = "rgba(0,0,0,0.65)";
-    sc.fillRect(0, 0, 160, 160);
+    if (a.blind > 0) {
+      sc.fillStyle = "rgba(0,0,0,0.65)";
+      sc.fillRect(0, 0, 160, 160);
+    }
+    if (a.venomTint > 0) {
+      sc.fillStyle = `rgba(142,65,201,${0.48 + Math.sin(time * 16) * 0.08})`;
+      sc.fillRect(0, 0, 160, 160);
+    }
     sc.globalCompositeOperation = "source-over";
     c.drawImage(sprite, -80, -130);
     return drawn;
@@ -566,6 +573,8 @@ export class Renderer {
       screenWidth: root?.clientWidth || w,
       screenHeight: root?.clientHeight || h,
       focus: game.player,
+      map: game.map,
+      overview: game.finished,
     });
     const { scale, tx, ty } = view;
     this.view = view;
@@ -573,7 +582,16 @@ export class Renderer {
     c.translate(tx, ty);
     c.scale(scale, scale);
     c.imageSmoothingEnabled = false;
-    c.drawImage(this.background, 0, 0);
+    if (game.map) {
+      if (this.mazeSource !== game.map) {
+        this.mazeSource = game.map;
+        this.mazeBackground = document.createElement("canvas");
+        this.mazeBackground.width = game.map.width;
+        this.mazeBackground.height = game.map.height;
+        paintCorruptionMap(this.mazeBackground.getContext("2d"), game.map);
+      }
+      c.drawImage(this.mazeBackground, 0, 0);
+    } else c.drawImage(this.background, 0, 0);
     const t = idle ? performance.now() / 1000 : game.time;
     drawTerrain(c, game, t);
     for (const flag of game.flags) {
@@ -963,6 +981,8 @@ export class Renderer {
       this.outline(c, game.player, t);
     }
     c.restore();
+    if (game.map)
+      drawMazeMap(c, game, w, h, root?.dataset.orientation === "portrait");
     if (game.player.dimension) {
       c.fillStyle = "#11102a70";
       c.fillRect(0, 0, w, h);
