@@ -38,8 +38,8 @@ test("Mud ignores allied and hostile quicksand damage, slowing and foot immersio
     assert.equal(b.hp, 120);
     assert.equal(b.slow, 0);
     assert.equal(immersionFor(g, b), 0);
-    b.element = "earth";
-    b.parts = ["earth"];
+    b.element = "light";
+    b.parts = ["light"];
     g.hazards[0].tick = 0;
     g.updateHazards(0.01);
     assert.ok(b.hp < 120);
@@ -62,7 +62,7 @@ test("quicksand, gravity, flood, heatwave and magma never trigger Reflect or red
         : kind === "flood"
           ? 22.5
           : kind === "quicksand"
-            ? 1.5
+            ? 0
             : 2.25;
     assert.equal(b.hp, 120 - damage, kind);
   }
@@ -202,7 +202,7 @@ test("mobility AI avoids dangerous destinations and never targets an invisible D
   assert.equal(a.blink, null);
   const h = arena("earth", "multi-dimensional"),
     b = h.fighters[1];
-  h.hazards = [{ ...hazard(h, "quicksand", b), x: 570, y: 340, r: 100 }];
+  h.hazards = [{ ...hazard(h, "death", b), x: 570, y: 340, r: 100 }];
   h.ai(b, 0.04);
   if (b.blink) assert.ok(Math.hypot(b.blink.x - 570, b.blink.y - 340) > 112);
 });

@@ -1,4 +1,12 @@
-# Elemental — The Colosseum · v0.17
+# Elemental — The Colosseum · v0.18
+
+## v0.18 elemental interactions and Team Battles order
+
+- Water-bearing fighters gain **25% movement speed** while inside an active Flood and ignore Flood’s slow. This follows inherited Water through fusion and skill switching; overlapping Floods do not stack the bonus. Other movement penalties still apply.
+- A real, living Fire-bearing fighter **entering Vog halves its remaining lifetime**, once per fighter per field, with an amber particle cue. Standing inside or re-entering does not repeat the reduction. Casting Vog around Fire already inside does not trigger it (including Smoke’s caster). Smoke’s radius and seven-second cooldown are unchanged.
+- Earth and Earth-bearing fusions are immune to Quicksand damage, slowing and foot burial. AI no longer treats it as a dangerous destination for these fighters.
+- Flash’s gameplay radius and visible ring now both use **85% of Vog’s radius** (about 117.8 world units). It hits in every direction, including allies when friendly fire is enabled; the caster, Divine and Aurora-protected fighters retain their exemptions. The whiteout now renders above the battle screen (it was previously hidden behind it). The affected user sees full-screen white for one second followed by a two-second fade. The start countdown also renders above the arena. Corruption still disables Flash.
+- Team Battles order: **Team Death Match → Fusion Rush → Boss → Domination → Team Waves → Capture the Flag**. Quick Match retains all team and solo modes.
 
 ## v0.17 match rules, Corruption maze and fusion artwork
 

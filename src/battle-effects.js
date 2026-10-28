@@ -1,4 +1,4 @@
-import { inWorld, visibility, distance, hasPassive } from "./combat.js";
+import { inWorld, visibility, distance, quicksandImmune } from "./combat.js";
 import { weaponStyle } from "./characters.js";
 
 const TAU = Math.PI * 2;
@@ -11,7 +11,7 @@ export function immersionFor(game, a) {
   )
     return 32;
   if (
-    !hasPassive(a, "mud") &&
+    !quicksandImmune(a) &&
     !hazards.some((h) => h.kind === "flood") &&
     hazards.some((h) => h.kind === "quicksand" && distance(h, a) <= h.r)
   )

@@ -1636,7 +1636,7 @@ body[data-screen="solo-battles"] #shell-content {
   inset: 40% 0 auto;
   text-align: center;
   pointer-events: none;
-  z-index: 40;
+  z-index: 1100;
   font: 700 clamp(56px, 12cqh, 100px)/1 "Barlow Condensed";
   color: #fff0bf;
   text-shadow:
@@ -1648,7 +1648,7 @@ body[data-screen="solo-battles"] #shell-content {
   inset: 0;
   background: white;
   pointer-events: none;
-  z-index: 100;
+  z-index: 1200;
 }
 #battle-countdown[hidden],
 #flash-whiteout[hidden] {

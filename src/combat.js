@@ -38,7 +38,7 @@ export const ELEMENTS = {
     symbol: "◉",
     role: "Control & precision",
     desc: "A focused hydro pump pushes rivals back. Water cools dangerous magma.",
-    passive: "Burn immunity · cools magma",
+    passive: "Burn immunity · cools magma · faster in Flood",
     ability: "Hydro pump",
     utility: null,
   },
@@ -58,7 +58,7 @@ export const ELEMENTS = {
     symbol: "⬡",
     role: "Defense & endurance",
     desc: "Stand your ground and hold a rock shield against pressure.",
-    passive: "Hard skin · 25% defense",
+    passive: "Hard skin · 25% defense · quicksand immunity",
     ability: null,
     utility: "Rock shield",
   },
@@ -159,6 +159,9 @@ export const canUseSkill = (a, form, kind) =>
     a.forms.includes(form) ||
     extraSkillsFor(a.element).some((s) => s.form === form && s.kind === kind));
 export const VOG_RADIUS = (500 / Math.sqrt(3)) * 0.6 * 0.8;
+export const FLASH_RADIUS = VOG_RADIUS * 0.85;
+export const FLOOD_WATER_SPEED = 1.25;
+export const quicksandImmune = (a) => a.parts.includes("earth");
 export const BURST_HIT_RANGE = 28 * 1.3;
 export const CHASM_RADIUS = 56;
 export const CHASM_RANGE = 400;
@@ -616,8 +619,18 @@ export class Combat {
     }
     const movementHealth =
       this.mode === "corruption" ? (a.hp / a.maxHp) * 120 : a.hp;
+    const swimming =
+      a.parts.includes("water") &&
+      this.hazards.some(
+        (h) =>
+          h.kind === "flood" &&
+          h.life > 0 &&
+          inWorld(h) &&
+          distance(a, h) <= h.r,
+      );
     let speed =
       150 *
+      (swimming ? FLOOD_WATER_SPEED : 1) *
       (a.waveSpeed || 1) *
       (a.ghost
         ? 1.1
@@ -1073,6 +1086,24 @@ export class Combat {
       kind,
       life,
       tick: 0,
+      ...(kind === "vog"
+        ? {
+            fireInside: new Set(
+              this.fighters
+                .filter(
+                  (b) =>
+                    b.alive &&
+                    !b.echo &&
+                    inWorld(b) &&
+                    b.parts.includes("fire") &&
+                    distance(b, { x: a.x + a.fx * 70, y: a.y + a.fy * 70 }) <=
+                      r,
+                )
+                .map((b) => b.id),
+            ),
+            fireThinned: new Set(),
+          }
+        : {}),
     });
   }
   revivalTarget(a) {
@@ -1454,7 +1485,7 @@ export class Combat {
           b.alive &&
           inWorld(b) &&
           (this.friendlyFire || a.team !== b.team) &&
-          distance(a, b) < 260 &&
+          distance(a, b) <= FLASH_RADIUS + 1e-9 &&
           !hasPassive(b, "divine") &&
           !this.auroraProtected(b)
         ) {
@@ -1466,7 +1497,7 @@ export class Combat {
         x: a.x,
         y: a.y,
         color: "#fff",
-        r: 250,
+        r: FLASH_RADIUS,
         life: 0.5,
         max: 0.5,
       });
@@ -1772,7 +1803,7 @@ export class Combat {
       const bd = distance(a, b),
         along = (b.x - a.x) * dx + (b.y - a.y) * dy;
       if (kind === "melee") return canHit(a, b);
-      if (form === "light") return bd < 260;
+      if (form === "light") return bd <= FLASH_RADIUS;
       if (form === "gravity") return kind === "utility" ? false : bd < 200;
       if (form === "cloud" && kind === "utility") return true;
       if (form === "sun" && kind === "utility") return bd < 380;
@@ -1911,7 +1942,7 @@ export class Combat {
               : h.kind === "death"
                 ? a.parts.length > 1 && !this.auroraProtected(a)
                 : h.kind === "quicksand"
-                  ? !this.flying(a) && !hasPassive(a, "mud")
+                  ? !this.flying(a) && !quicksandImmune(a)
                   : h.kind === "gravity"
                     ? h.owner.team !== a.team && !hasPassive(a, "apparition")
                     : ["magma", "heatwave"].includes(h.kind) && !burnImmune(a)),
@@ -1957,11 +1988,11 @@ export class Combat {
       if (h.kind === "chasm") return !this.flying(a);
       if (h.kind === "death")
         return a.parts.length > 1 && !this.auroraProtected(a);
-      if (h.kind === "quicksand")
-        return !this.flying(a) && !hasPassive(a, "mud");
+      if (h.kind === "quicksand") return !this.flying(a) && !quicksandImmune(a);
       if (h.kind === "gravity")
         return h.owner.team !== a.team && !hasPassive(a, "apparition");
-      if (h.kind === "flood") return !this.flying(a);
+      if (h.kind === "flood")
+        return !this.flying(a) && !a.parts.includes("water");
       return ["magma", "heatwave"].includes(h.kind) && !burnImmune(a);
     });
   }
@@ -2296,7 +2327,7 @@ export class Combat {
             : h.kind === "gravity"
               ? h.owner.team !== a.team && !hasPassive(a, "apparition")
               : h.kind === "quicksand"
-                ? !this.flying(a) && !hasPassive(a, "mud")
+                ? !this.flying(a) && !quicksandImmune(a)
                 : ["magma", "heatwave"].includes(h.kind) && !burnImmune(a);
       const gap = distance(a, h);
       if (harmful && gap < h.r + 25) {
@@ -2382,7 +2413,7 @@ export class Combat {
     if (
       !a.echo &&
       light &&
-      d < 160 &&
+      d <= FLASH_RADIUS &&
       target.whiteout <= 0 &&
       a.utilityCd <= 0 &&
       this.safeAttack(a, target, "utility", "light")
@@ -2559,6 +2590,27 @@ export class Combat {
         continue;
       h.life -= dt;
       if (h.life <= 0) continue;
+      if (h.kind === "vog") {
+        const inside = this.fighters.filter(
+          (b) =>
+            b.alive &&
+            !b.echo &&
+            inWorld(b) &&
+            b.parts.includes("fire") &&
+            distance(b, h) <= h.r,
+        );
+        h.fireInside ??= new Set();
+        h.fireThinned ??= new Set();
+        for (const b of inside) {
+          if (!h.fireInside.has(b.id) && !h.fireThinned.has(b.id)) {
+            h.life *= 0.5;
+            h.fireThinned.add(b.id);
+            this.cue("shatter", b, "#ffb774");
+          }
+        }
+        h.fireInside = new Set(inside.map((b) => b.id));
+        continue;
+      }
       if (h.kind === "spring") {
         for (const b of this.fighters)
           if (b.alive && inWorld(b) && distance(h, b) <= h.r)
@@ -2613,7 +2665,7 @@ export class Combat {
         const flying = this.flying(b),
           immune = hasPassive(b, "divine");
         if (h.kind === "flood") {
-          if (!flying) b.slow = 0.4;
+          if (!flying && !b.parts.includes("water")) b.slow = 0.4;
           h.floodHits ??= new Set();
           if (b.parts.includes("fire") && !h.floodHits.has(b.id)) {
             h.floodHits.add(b.id);
@@ -2634,7 +2686,7 @@ export class Combat {
           h.kind === "quicksand" &&
           !flying &&
           !flooded &&
-          !hasPassive(b, "mud")
+          !quicksandImmune(b)
         ) {
           b.slow = 0.5;
           this.damage(h.owner, b, 2 * h.power, true, false, h.element, false);

@@ -292,11 +292,11 @@ export const MODES = {
 };
 export const TEAM_MODES = [
   "tdm",
-  "gauntlet-team",
-  "domination",
-  "ctf",
   "rush",
   "boss",
+  "domination",
+  "gauntlet-team",
+  "ctf",
 ];
 export const SOLO_MODES = ["ffa", "roulette", "gauntlet", "corruption"];
 export const PLAY_MODES = [...TEAM_MODES, ...SOLO_MODES];
@@ -367,7 +367,7 @@ export const SKILL_HELP = {
   Healing:
     "Charge and release to heal the living ally with the lowest health, including yourself. In Corruption, Healing restores only you.",
   Flash:
-    "Tap to white out nearby fighters’ screens for one second, then fade back to normal over two seconds.",
+    "Tap to white out fighters within a radius 15% smaller than Vog for one second, then fade back over two seconds. Includes allies when friendly fire is on; Divine and Aurora remain immune.",
   Sabotage:
     "Cancel the closest visible enemy’s current charge, or nullify their next ability attempt. No damage or blindness.",
   Blindness:
@@ -388,7 +388,7 @@ export const SKILL_HELP = {
   Magma:
     "Tap to place a permanent lava floor ahead of you. Flyers ignore it; Water clears it.",
   Quicksand:
-    "Charge and release a slowing, damaging floor. Flyers and Mud are immune.",
+    "Charge and release a slowing, damaging floor. Flyers and Earth-bearing fighters, including Mud, are immune.",
   Revival: "Charge and release to restore the nearest recoverable fallen ally.",
   Portals:
     "Tap the skill, then tap two clear arena positions. Tap your portal to close it. Closing during transit kills the traveller; a lone portal traps entrants until they reverse out.",
@@ -400,8 +400,8 @@ export const SKILL_HELP = {
   Tornado:
     "Charge and release a moving wind funnel. Flying fighters take 15% more damage.",
   Flood:
-    "Tap to fill a large area with water. Grounds effects are suppressed, grounded fighters slow, and Lightning strikes grow stronger.",
-  Vog: "Tap to create eight seconds of smoke over a field 20% smaller in diameter than version 0.16. Dark-bearing and Aurora-protected fighters see through it; others see only their own outline inside. AI fighters who cannot see through smoke fight toward an exit. Seven-second cooldown; no damage.",
+    "Tap to fill a large area with water. Ground effects are suppressed. Water-bearing fighters move 25% faster without Flood slowing; other grounded fighters slow. Lightning strikes grow stronger.",
+  Vog: "Tap for an eight-second smoke field. Dark-bearing and Aurora-protected fighters see through it; others see only their own outline inside. Fire-bearing fighters halve its remaining time on entry, once each per field. Casting around someone already inside does not trigger this. AI fights toward an exit. Seven-second cooldown; no damage.",
   Telekinesis:
     "Swipe a visible enemy within 400 units to push in that direction, or tap to push the nearest rival away.",
   "Gravity x2": "Tap to slow nearby opponents in a fuzzy purple field.",

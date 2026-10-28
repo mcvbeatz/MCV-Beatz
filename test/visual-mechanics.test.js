@@ -166,7 +166,7 @@ test("all thirteen grounded designs run; flight, resting, walls and clashes supp
   assert.equal(grounded, 13);
 });
 test("flood covers half of grounded bodies; sand covers feet, with flight and flood override respected", () => {
-  const g = arena("earth", "air"),
+  const g = arena("light", "air"),
     a = g.player,
     b = g.fighters[1];
   const sand = { kind: "quicksand", x: a.x, y: a.y, r: 150, owner: b };
