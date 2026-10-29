@@ -9,6 +9,7 @@ const page = await browser.newPage({ viewport: { width: 1024, height: 576 } });
 await page.addInitScript(() => {
   Math.random = () => 0.35;
 });
+const modesOnly = process.argv.includes("--modes-only");
 const errors = [];
 page.on("pageerror", (e) => errors.push(e.message));
 await mkdir("public/guides", { recursive: true });
@@ -56,7 +57,10 @@ async function capture(name) {
     .locator("#arena-panel")
     .screenshot({ path: `public/guides/${name}.png` });
 }
-for (const mode of modes) {
+for (const [i, mode] of modes.entries()) {
+  await page.evaluate((i) => {
+    Math.random = () => (i % 2 ? 0.85 : 0.35);
+  }, i);
   await start(mode, mode === "corruption" ? "light" : undefined);
   await page.evaluate(async (mode) => {
     const g = __arena.game;
@@ -85,72 +89,76 @@ for (const mode of modes) {
   }, mode);
   await capture(mode);
 }
-const origins = ["water", "dark", "fire", "air", "earth", "light"];
-const fusions = [
-  "mud",
-  "spirit",
-  "mirror",
-  "sun",
-  "blaze",
-  "cloud",
-  "smoke",
-  "gravity",
-  "apparition",
-];
-const thirds = [
-  "demonic",
-  "divine",
-  "multi-dimensional",
-  "lightning",
-  "invincible",
-  "phoenix",
-  "terraformer",
-  "sanctuary",
-];
-for (const element of [...origins, ...fusions, ...thirds]) {
-  await start(
-    origins.includes(element)
-      ? "duel"
-      : fusions.includes(element)
-        ? "fused"
-        : "fused3",
-    element,
-  );
-  await page.evaluate((element) => {
-    const g = __arena.game,
-      a = g.player;
-    if (element === "sanctuary") g.startCharge(a, "sanctuary");
-    if (element === "terraformer") {
-      g.placeChasm(a, 510, 350);
-      g.time = 0.65;
-      g.utility(a, true, "terraformer");
-    }
-    if (element === "earth" || element === "mirror")
-      g.utility(a, true, "earth");
-    if (["cloud", "mud", "gravity"].includes(element))
-      g.area(
-        a,
-        1,
-        element === "cloud"
-          ? "flood"
-          : element === "mud"
-            ? "quicksand"
-            : "gravity",
-        140,
-        8,
-      );
-    if (["spirit", "divine"].includes(element)) {
-      g.portals.begin(a);
-      g.portals.place(a, 450, 260);
-      g.portals.place(a, 660, 450);
-      g.time = 1;
-      g.portals.update();
-    }
-  }, element);
-  await capture(element);
+if (!modesOnly) {
+  const origins = ["water", "dark", "fire", "air", "earth", "light"];
+  const fusions = [
+    "mud",
+    "spirit",
+    "mirror",
+    "sun",
+    "blaze",
+    "cloud",
+    "smoke",
+    "gravity",
+    "apparition",
+  ];
+  const thirds = [
+    "demonic",
+    "divine",
+    "multi-dimensional",
+    "lightning",
+    "invincible",
+    "phoenix",
+    "terraformer",
+    "sanctuary",
+  ];
+  for (const element of [...origins, ...fusions, ...thirds]) {
+    await start(
+      origins.includes(element)
+        ? "duel"
+        : fusions.includes(element)
+          ? "fused"
+          : "fused3",
+      element,
+    );
+    await page.evaluate((element) => {
+      const g = __arena.game,
+        a = g.player;
+      if (element === "sanctuary") g.startCharge(a, "sanctuary");
+      if (element === "terraformer") {
+        g.placeChasm(a, 510, 350);
+        g.time = 0.65;
+        g.utility(a, true, "terraformer");
+      }
+      if (element === "earth" || element === "mirror")
+        g.utility(a, true, "earth");
+      if (["cloud", "mud", "gravity"].includes(element))
+        g.area(
+          a,
+          1,
+          element === "cloud"
+            ? "flood"
+            : element === "mud"
+              ? "quicksand"
+              : "gravity",
+          140,
+          8,
+        );
+      if (["spirit", "divine"].includes(element)) {
+        g.portals.begin(a);
+        g.portals.place(a, 450, 260);
+        g.portals.place(a, 660, 450);
+        g.time = 1;
+        g.portals.update();
+      }
+    }, element);
+    await capture(element);
+  }
+  await start("duel", "water");
+  await capture("controls");
 }
-await start("duel", "water");
-await capture("controls");
 await browser.close();
 if (errors.length) throw new Error(errors.join("\n"));
-console.log(`Captured ${modes.length + 24} real game guide images.`);
+console.log(
+  `Captured ${modes.length + (modesOnly ? 0 : 24)} real game guide images.`,
+);

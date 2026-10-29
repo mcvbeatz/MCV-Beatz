@@ -1,3 +1,8 @@
+import {
+  paintBattleMap,
+  drawBattleAmbience,
+  drawBattleMinimap,
+} from "./battle-maps-render.js";
 import { paintCorruptionMap, drawMazeMap } from "./corruption-map-render.js";
 import { cameraView } from "./camera.js";
 import { inWorld, visibility, viewerVisibility } from "./combat.js";
@@ -588,11 +593,18 @@ export class Renderer {
         this.mazeBackground = document.createElement("canvas");
         this.mazeBackground.width = game.map.width;
         this.mazeBackground.height = game.map.height;
-        paintCorruptionMap(this.mazeBackground.getContext("2d"), game.map);
+        (game.map.kind === "corruption" ? paintCorruptionMap : paintBattleMap)(
+          this.mazeBackground.getContext("2d"),
+          game.map,
+        );
       }
+      c.imageSmoothingEnabled = game.map.kind === "tower";
+      c.imageSmoothingQuality = "high";
       c.drawImage(this.mazeBackground, 0, 0);
+      c.imageSmoothingEnabled = false;
     } else c.drawImage(this.background, 0, 0);
     const t = idle ? performance.now() / 1000 : game.time;
+    if (game.map) drawBattleAmbience(c, game.map, t);
     drawTerrain(c, game, t);
     for (const flag of game.flags) {
       const color = flag.team === game.player.team ? "#75d8f3" : "#f18e76";
@@ -982,7 +994,13 @@ export class Renderer {
     }
     c.restore();
     if (game.map)
-      drawMazeMap(c, game, w, h, root?.dataset.orientation === "portrait");
+      (game.map.kind === "corruption" ? drawMazeMap : drawBattleMinimap)(
+        c,
+        game,
+        w,
+        h,
+        root?.dataset.orientation === "portrait",
+      );
     if (game.player.dimension) {
       c.fillStyle = "#11102a70";
       c.fillRect(0, 0, w, h);

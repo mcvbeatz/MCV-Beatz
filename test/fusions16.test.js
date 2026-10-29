@@ -10,7 +10,7 @@ import {
   BURST_HIT_RANGE,
   CHASM_RADIUS,
   extraSkillsFor,
-} from "../src/combat.js";
+} from "./combat-fixture.js";
 import { updateAdvanced } from "../src/advanced-modes.js";
 import { immersionFor } from "../src/battle-effects.js";
 function arena(element = "terraformer", enemy = "water", mode = "duel") {

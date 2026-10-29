@@ -7,7 +7,7 @@ import {
   LEVEL_THREE,
   visibility,
   distance,
-} from "../src/combat.js";
+} from "./combat-fixture.js";
 import { fighterColor } from "../src/render.js";
 const advance = (g, s, input = { x: 0, y: 0 }, ai = false) => {
   for (let t = 0; t < s - 1e-8; t += 0.01) g.update(0.01, input, ai);

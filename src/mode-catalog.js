@@ -189,12 +189,12 @@ export const MODES = {
     ],
   },
   corruption: {
-    name: "Corruption",
+    name: "Survive the Night",
     tag: "2–8 fighters · 2 minutes",
     slides: [
       [
         "The first infection",
-        "Survive the Umbral Labyrinth, a circular maze four times the arena area. White portals on opposite sides transport you across the maze. Everyone starts as Light; after five seconds one fighter becomes Dark.",
+        "Survive the Umbral Labyrinth, a vast circular maze. White portals on opposite sides transport you across the maze. Everyone starts as Light; after five seconds one fighter becomes Dark.",
         "✦ → ◐",
       ],
       [
@@ -365,7 +365,7 @@ export const SKILL_HELP = {
   "Life spring":
     "Tap once per match to place a permanent bright spring at your feet. Any living fighter inside its 85-radius circle regenerates 8 HP per second. It remains after you fall.",
   Healing:
-    "Charge and release to heal the living ally with the lowest health, including yourself. In Corruption, Healing restores only you.",
+    "Charge and release to heal the living ally with the lowest health, including yourself. In Survive the Night, Healing restores only you.",
   Flash:
     "Tap to white out fighters within a radius 15% smaller than Vog for one second, then fade back over two seconds. Includes allies when friendly fire is on; Divine and Aurora remain immune.",
   Sabotage:

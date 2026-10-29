@@ -9,7 +9,7 @@ import {
   skillsFor,
   visibility,
   distance,
-} from "../src/combat.js";
+} from "./combat-fixture.js";
 function arena(element = "light", rival = "earth") {
   const g = new Combat({ element, random: () => 0 });
   Object.assign(g.player, { x: 300, y: 300, fx: 1, fy: 0 });

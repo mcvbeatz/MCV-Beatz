@@ -37,7 +37,7 @@ export class PortalSystem {
       this.owned(owner).length >= 2
     )
       return false;
-    if (x < 135 || x > 889 || y < 175 || y > 560) {
+    if (!this.game.walkablePoint({ x, y }, 27)) {
       this.game.cue("unavailable", { x, y }, "#dc9c85");
       return false;
     }
@@ -140,12 +140,18 @@ export class PortalSystem {
     return true;
   }
   exit(e, p, dx, dy) {
-    if (p.environment && this.game.map) {
+    if (this.game.map) {
       Object.assign(e, this.game.map.safeExit(p, dx, dy));
       e.dimension = e.transit = null;
-      e.portalCooldown = 1.2;
+      e.portalCooldown = p.environment ? 1.2 : 0.55;
       e.lastX = e.x;
       e.lastY = e.y;
+      if (e.kind === "sonic") {
+        e.originX = e.x;
+        e.originY = e.y;
+        e.radius = e.previousRadius = 0;
+      }
+      if (e.kind === "laser") e.trail = 0;
       return;
     }
     const length = Math.hypot(dx, dy) || 1;

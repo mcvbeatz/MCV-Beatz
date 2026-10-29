@@ -7,7 +7,7 @@ import {
   FLASH_RADIUS,
   FLOOD_WATER_SPEED,
   quicksandImmune,
-} from "../src/combat.js";
+} from "./combat-fixture.js";
 import { immersionFor } from "../src/battle-effects.js";
 import { TEAM_MODES } from "../src/mode-catalog.js";
 const arena = (element = "water") => {

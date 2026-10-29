@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { Combat, makeFighter, hasPassive } from "../src/combat.js";
+import { Combat, makeFighter, hasPassive } from "./combat-fixture.js";
 const tick = (g, s, ai = false) => {
   for (let t = 0; t < s - 1e-8 && !g.finished; t += 0.02)
     g.update(0.02, { x: 0, y: 0 }, ai);

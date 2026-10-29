@@ -7,7 +7,7 @@ import {
   skillsFor,
   extraSkillsFor,
   TELEKINESIS_RANGE,
-} from "../src/combat.js";
+} from "./combat-fixture.js";
 import { characterPose } from "../src/characters.js";
 function arena(element) {
   const g = new Combat({ element, random: () => 0 });

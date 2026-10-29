@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { Combat, makeFighter } from "../src/combat.js";
+import { Combat, makeFighter } from "./combat-fixture.js";
 const corruption = () => {
   const g = new Combat({ mode: "corruption", players: 8, random: () => 0 });
   g.time = 5;

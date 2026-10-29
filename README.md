@@ -1,4 +1,14 @@
-# Elemental — The Colosseum · v0.18.3
+# Elemental — The Colosseum · v0.19.0
+
+## v0.19.0 Survive the Night and rotating battle maps
+
+- **Corruption is now Survive the Night** in menus, setup, guides and the battle HUD. Its `corruption` mode ID, existing links, maze, rules and soundtrack remain compatible.
+- Every new match in the other Play and Practice modes randomly selects **The Crosswater Garden** or **The Astral Tower** with equal probability. A resumed match and Waves rounds retain their map. The original rectangle is retained only as an explicit `mapId: "classic"` engine fixture for coordinate-based regression tests.
+- **Crosswater Garden:** a plus-shaped grassy floor with scattered flowers, surrounded by water and weathered stone pillars.
+- **Astral Tower:** a large marble circle connected by a narrow marble bridge to a smaller circle at the right, suspended over an abyss inside tall masonry walls. Floating golden lamps occupy the gap beyond the floor. The marble uses softly blended mineral clouds, faint slab shading and continuous veins, with smooth background scaling.
+- Both use the maze's **2048 × 1360 world**, with approximately the same walkable area. Following cameras and minimaps work in both orientations. Feet, dashes and knockback stop at floor edges, including flying fighters; scenery is not a new environmental damage mechanic.
+- AI routes around the plus corners and across the bridge. Team/solo spawns, CTF bases, Domination flags, Rush shards, wave resets, respawns, revival, Rebirth, summons, Chasm placement and portals use map-aware positions. Teleport validates its actual range-limited destination.
+- Validation: `npm test`, `npm run build`, and `npx playwright test test/browser/battle-maps.spec.js test/browser/maze17.spec.js`. New map tests exercise every non-survival mode on both maps; older combat fixtures keep their original rectangle so balance assertions remain deterministic.
 
 ## v0.18.3 Pre-rendered Corruption music
 

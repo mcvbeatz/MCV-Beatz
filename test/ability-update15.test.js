@@ -6,7 +6,7 @@ import {
   extraSkillsFor,
   visibility,
   canUseSkill,
-} from "../src/combat.js";
+} from "./combat-fixture.js";
 import { PLAY_MODES, PRACTICE_LIST } from "../src/mode-catalog.js";
 function arena(element = "dark", enemy = "water") {
   const g = new Combat({ element, random: () => 0.2 });

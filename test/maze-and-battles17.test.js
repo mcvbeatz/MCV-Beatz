@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { Combat, makeFighter, hasPassive, distance } from "../src/combat.js";
+import { Combat, makeFighter, hasPassive, distance } from "./combat-fixture.js";
 import { createCorruptionMap } from "../src/corruption-map.js";
 import { cameraView } from "../src/camera.js";
 const tick = (g, s, AI = false) => {

@@ -6,7 +6,7 @@ import {
   distance,
   inWorld,
   multiplier,
-} from "../src/combat.js";
+} from "./combat-fixture.js";
 function arena(element = "spirit", rival = "water") {
   const g = new Combat({ element, random: () => 0 });
   Object.assign(g.player, { x: 250, y: 450, fx: 1, fy: 0 });

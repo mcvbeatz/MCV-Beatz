@@ -7,7 +7,7 @@ import {
   viewerVisibility,
   canUseSkill,
   skillsFor,
-} from "../src/combat.js";
+} from "./combat-fixture.js";
 import { nextWave, updateAdvanced } from "../src/advanced-modes.js";
 const tick = (g, s) => {
   for (let t = 0; t < s; t += 0.02) g.update(0.02, { x: 0, y: 0 }, false);

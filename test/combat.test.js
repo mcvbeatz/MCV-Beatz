@@ -10,7 +10,7 @@ import {
   skillsFor,
   LEVEL_TWO,
   inWorld,
-} from "../src/combat.js";
+} from "./combat-fixture.js";
 const advance = (g, s, input = { x: 0, y: 0 }) => {
   for (let t = 0; t < s - 1e-8; t += 0.01) g.update(0.01, input, false);
 };

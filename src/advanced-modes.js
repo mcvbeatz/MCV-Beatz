@@ -52,7 +52,7 @@ export function spawnShard(g) {
   if (!available.length) return;
   const parts = [pick(g, available)];
   // Distribute shards across center lanes so neither spawn owns every pickup.
-  const spots = [
+  const spots = g.map?.shardSpots || [
     { x: 390, y: 220 },
     { x: 630, y: 220 },
     { x: 510, y: 290 },
@@ -285,6 +285,7 @@ export function nextWave(g) {
     }),
   );
   g.fighters = [...team, ...enemies];
+  g.placeMapFighters();
   g.tokens = [];
   g.projectiles = [];
   g.hazards = [];

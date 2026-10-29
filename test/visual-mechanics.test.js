@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { Combat, makeFighter, recipe, COMBOS } from "../src/combat.js";
+import { Combat, makeFighter, recipe, COMBOS } from "./combat-fixture.js";
 import { characterPose, isRunning, CHARACTERS } from "../src/characters.js";
 import { immersionFor } from "../src/battle-effects.js";
 

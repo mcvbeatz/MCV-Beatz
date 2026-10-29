@@ -1,3 +1,4 @@
+import { createBattleMap, BATTLE_MAP_IDS } from "./battle-maps.js";
 import { createCorruptionMap } from "./corruption-map.js";
 import {
   initializeAdvanced,
@@ -326,13 +327,21 @@ export class Combat {
     players = 4,
     random = Math.random,
     countdown = false,
+    mapId,
   } = {}) {
     this.random = random;
     this.time = 0;
     this.countdown =
       countdown && !["duel", "fused", "fused3", "team"].includes(mode) ? 4 : 0;
     this.mode = mode;
-    this.map = mode === "corruption" ? createCorruptionMap() : null;
+    this.map =
+      mode === "corruption"
+        ? createCorruptionMap()
+        : mapId === "classic"
+          ? null
+          : createBattleMap(
+              mapId ?? BATTLE_MAP_IDS[Math.min(1, Math.floor(random() * 2))],
+            );
     this.scores = [0, 0];
     this.deathUsed = new Set();
     this.rebirthUsed = new Set();
@@ -466,11 +475,20 @@ export class Combat {
         return a;
       });
     }
-    if (this.map) {
+    if (this.map?.kind === "corruption") {
       this.fighters.forEach((a, i) =>
         Object.assign(a, this.map.spawn(i, this.fighters.length)),
       );
       this.portals.portals = this.map.portals.map((p) => ({ ...p }));
+    }
+    if (this.map && this.map.kind !== "corruption") {
+      this.placeMapFighters();
+      this.flags.forEach((flag, i) => {
+        const home = (
+          mode === "ctf" ? this.map.flagHomes : this.map.capturePoints
+        )[i];
+        Object.assign(flag, home, { home: { ...home } });
+      });
     }
     for (const a of this.fighters) {
       a.infections = 0;
@@ -478,7 +496,7 @@ export class Combat {
         a.hp = a.maxHp = 2;
         a.selfHealOnly = true;
       }
-      if (mode === "ctf") a.x = a.team === 0 ? 220 : 804;
+      if (mode === "ctf" && !this.map) a.x = a.team === 0 ? 220 : 804;
       a.spawn = { x: a.x, y: a.y, element: a.element };
       a.kills = 0;
       a.deaths = 0;
@@ -489,6 +507,45 @@ export class Combat {
       size,
       players,
     });
+  }
+  placeMapFighters() {
+    if (!this.map || this.map.kind === "corruption") return;
+    const solo = ["ffa", "roulette"].includes(this.mode);
+    const teams = new Map();
+    for (const a of this.fighters) {
+      if (!teams.has(a.team)) teams.set(a.team, []);
+      teams.get(a.team).push(a);
+    }
+    this.fighters.forEach((a, i) => {
+      const members = teams.get(a.team);
+      const p = solo
+        ? this.map.spawn(i, this.fighters.length)
+        : this.map.teamSpawn(a.team, members.indexOf(a), members.length);
+      Object.assign(a, this.map.nearest(p, 24));
+      a.spawn = { x: a.x, y: a.y, element: a.element };
+    });
+  }
+  walkablePoint(p, r = 13) {
+    return this.map
+      ? this.map.walkable(p, r)
+      : Number.isFinite(p.x) &&
+          Number.isFinite(p.y) &&
+          p.x >= 135 &&
+          p.x <= 889 &&
+          p.y >= 175 &&
+          p.y <= 560;
+  }
+  floorPoint(p, r = 13) {
+    return this.map?.nearest
+      ? this.map.nearest(p, r)
+      : { x: clamp(p.x, 135, 889), y: clamp(p.y, 175, 560) };
+  }
+  moveToward(a, goal, dt) {
+    const waypoint =
+      this.map?.kind !== "corruption" && this.map
+        ? this.map.route(a, goal)
+        : goal;
+    this.move(a, waypoint.x - a.x, waypoint.y - a.y, dt);
   }
   rewardChoices() {
     return rewardChoices(this);
@@ -537,7 +594,7 @@ export class Combat {
   canSee(a, b) {
     return (
       visibility(b) > 0 &&
-      (!this.map || this.map.lineClear(a, b)) &&
+      (this.map?.kind !== "corruption" || this.map.lineClear(a, b)) &&
       (a.parts.includes("dark") ||
         this.auroraProtected(a) ||
         !this.hazards.some(
@@ -815,8 +872,7 @@ export class Combat {
         portalCooldown: 1,
       });
       delete a.respawnAt;
-      a.x = clamp(a.x, 135, 889);
-      a.y = clamp(a.y, 175, 560);
+      Object.assign(a, this.floorPoint(a));
       this.pending = this.pending.filter((p) => p.who !== a);
       this.tokens = this.tokens.filter((t) => t.owner !== a.id);
       this.effects.push({
@@ -1148,8 +1204,10 @@ export class Combat {
     fallen.dimension = null;
     fallen.transit = null;
     fallen.hp = Math.min(fallen.maxHp, 45 + 15 * power);
-    fallen.x = clamp(a.x - a.fx * 45, 135, 889);
-    fallen.y = clamp(a.y - a.fy * 45, 175, 560);
+    Object.assign(
+      fallen,
+      this.floorPoint({ x: a.x - a.fx * 45, y: a.y - a.fy * 45 }),
+    );
     fallen.portalCooldown = 0.8;
     fallen.blind = fallen.venom = fallen.burn = 0;
     fallen.spawnFlash = 0.65;
@@ -1301,6 +1359,7 @@ export class Combat {
         minion.echo = true;
         minion.summoner = a.id;
         minion.spawnFlash = 0.65;
+        Object.assign(minion, this.floorPoint(minion));
         this.fighters.push(minion);
       }
     } else if (e === "spirit") return this.revive(a, p);
@@ -1545,10 +1604,7 @@ export class Combat {
       a.stagger > 0 ||
       !Number.isFinite(x) ||
       !Number.isFinite(y) ||
-      x < 135 ||
-      x > 889 ||
-      y < 175 ||
-      y > 560 ||
+      !this.walkablePoint({ x, y }) ||
       distance(a, { x, y }) > CHASM_RANGE
     )
       return false;
@@ -1719,19 +1775,21 @@ export class Combat {
       a.blink ||
       !hasPassive(a, "multi-dimensional") ||
       this.isShocked(a) ||
-      x < 135 ||
-      x > 889 ||
-      y < 175 ||
-      y > 560
+      !this.walkablePoint({ x, y })
     )
       return false;
     const d = Math.hypot(x - a.x, y - a.y);
-    if (d < 1 || !this.aiGesture(a, "teleport")) return false;
-    if (this.cancelSabotaged(a)) return false;
+    if (d < 1) return false;
     const scale = Math.min(1, TELEPORT_RANGE / d);
-    a.blink = {
+    const destination = {
       x: a.x + (x - a.x) * scale,
       y: a.y + (y - a.y) * scale,
+    };
+    if (!this.walkablePoint(destination) || !this.aiGesture(a, "teleport"))
+      return false;
+    if (this.cancelSabotaged(a)) return false;
+    a.blink = {
+      ...destination,
       remaining: 0.2,
     };
     a.vx = a.vy = 0;
@@ -1916,10 +1974,15 @@ export class Combat {
           : target
             ? Math.max(110, Math.min(190, distance(a, target)))
             : 140;
-      candidates.push({
-        x: clamp(center.x + Math.cos(angle + turn) * reach, 155, 869),
-        y: clamp(center.y + Math.sin(angle + turn) * reach, 195, 540),
-      });
+      candidates.push(
+        this.floorPoint(
+          {
+            x: center.x + Math.cos(angle + turn) * reach,
+            y: center.y + Math.sin(angle + turn) * reach,
+          },
+          24,
+        ),
+      );
     }
     const goal = candidates.find(
       (p) => distance(a, p) > 35 && this.mobilitySafe(a, p),
@@ -1929,6 +1992,8 @@ export class Combat {
     return a.aiPlan;
   }
   aiRoute(a, goal) {
+    if (this.map?.kind !== "corruption" && this.map)
+      goal = this.map.route(a, goal);
     const desired = Math.atan2(goal.y - a.y, goal.x - a.x);
     let best = null,
       score = Infinity;
@@ -1957,8 +2022,7 @@ export class Combat {
         x: a.x + Math.cos(desired + turn) * 42,
         y: a.y + Math.sin(desired + turn) * 42,
       };
-      if (point.x < 135 || point.x > 889 || point.y < 175 || point.y > 560)
-        continue;
+      if (!this.walkablePoint(point)) continue;
       const nextRisk = risk(point);
       if (
         !this.mobilitySafe(a, point) &&
@@ -1974,7 +2038,11 @@ export class Combat {
     return best ? { x: best.x - a.x, y: best.y - a.y } : { x: 0, y: 0 };
   }
   mobilitySafe(a, point) {
-    if (point.x < 155 || point.x > 869 || point.y < 195 || point.y > 540)
+    if (
+      this.map
+        ? !this.map.walkable(point, 24)
+        : point.x < 155 || point.x > 869 || point.y < 195 || point.y > 540
+    )
       return false;
     if (
       this.fighters.some(
@@ -2038,8 +2106,7 @@ export class Combat {
     const goal = retreat
       ? { x: a.x - nx * 260, y: a.y - ny * 260 }
       : { x: focus.x - nx * 90, y: focus.y - ny * 90 };
-    goal.x = clamp(goal.x, 155, 869);
-    goal.y = clamp(goal.y, 195, 540);
+    Object.assign(goal, this.floorPoint(goal, 24));
     if (hasPassive(a, "multi-dimensional")) {
       // A decision interval is AI pacing, not a new cooldown on teleport.
       a.mobilityNext = this.time + 1.1;
@@ -2136,10 +2203,13 @@ export class Combat {
     const exits = inside.flatMap((h) =>
       Array.from({ length: 24 }, (_, i) => {
         const angle = (i * Math.PI) / 12;
-        const point = {
-          x: clamp(h.x + Math.cos(angle) * (h.r + 25), 137, 887),
-          y: clamp(h.y + Math.sin(angle) * (h.r + 25), 177, 558),
-        };
+        const point = this.floorPoint(
+          {
+            x: h.x + Math.cos(angle) * (h.r + 25),
+            y: h.y + Math.sin(angle) * (h.r + 25),
+          },
+          16,
+        );
         const concealed = smoke.reduce(
           (n, fog) => n + Math.max(0, fog.r + 16 - distance(point, fog)),
           0,
@@ -2156,7 +2226,7 @@ export class Combat {
     const exit = exits.sort((b, c) => b.cost - c.cost)[0];
     if (a.shield) this.utility(a, false);
     if (a.charging) this.releaseCharge(a);
-    this.move(a, exit.x - a.x, exit.y - a.y, dt);
+    this.moveToward(a, exit, dt);
     const target = this.enemies(a)
       .filter((b) => distance(a, b) <= STRIKE_RANGE)
       .sort((b, c) => distance(a, b) - distance(a, c))[0];
@@ -2246,7 +2316,7 @@ export class Combat {
       const direction = tactical
         ? this.aiRoute(a, route)
         : { x: route.x - a.x, y: route.y - a.y };
-      this.move(a, direction.x, direction.y, dt);
+      this.moveToward(a, { x: a.x + direction.x, y: a.y + direction.y }, dt);
       if (
         tactical &&
         target &&
@@ -2354,7 +2424,14 @@ export class Combat {
       dx = distance(a, objective) > 10 ? objective.x - a.x : 0;
       dy = distance(a, objective) > 10 ? objective.y - a.y : 0;
     }
-    this.move(a, dx, dy, dt);
+    if (
+      this.map &&
+      this.map.kind !== "corruption" &&
+      (objective || target) &&
+      !this.map.lineClear(a, objective || target, 18)
+    )
+      this.moveToward(a, objective || target, dt);
+    else this.move(a, dx, dy, dt);
     if (a.shield && a.shieldTime > 0.8) this.utility(a, false);
     a.aiTimer -= dt;
     if (a.aiTimer > 0) return;
@@ -2393,10 +2470,10 @@ export class Combat {
         if (!a.searchSpot || this.time >= (a.searchNext || 0)) {
           const angle = this.random() * Math.PI * 2,
             radius = Math.sqrt(this.random()) * 65;
-          a.searchSpot = {
-            x: clamp(a.lastSeen.x + Math.cos(angle) * radius, 135, 889),
-            y: clamp(a.lastSeen.y + Math.sin(angle) * radius, 175, 560),
-          };
+          a.searchSpot = this.floorPoint({
+            x: a.lastSeen.x + Math.cos(angle) * radius,
+            y: a.lastSeen.y + Math.sin(angle) * radius,
+          });
           a.searchNext = this.time + 0.8;
         }
         const aim = a.searchSpot,
@@ -2932,12 +3009,7 @@ export class Combat {
       return;
     }
     const gap = distance(a, focus);
-    this.move(
-      a,
-      gap > 22 ? focus.x - a.x : 0,
-      gap > 22 ? focus.y - a.y : 0,
-      dt,
-    );
+    this.moveToward(a, gap > 22 ? focus : a, dt);
     if (gap <= STRIKE_RANGE) this.strike(a, focus);
     if (this.mode === "boss" || (isGauntlet(this) && this.finalWave)) {
       if (a.charging && a.charge >= 0.35) this.releaseCharge(a);

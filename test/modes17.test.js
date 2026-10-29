@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { Combat, makeFighter, VOG_RADIUS, distance } from "../src/combat.js";
+import { Combat, makeFighter, VOG_RADIUS, distance } from "./combat-fixture.js";
 const clearWave = (g) => {
   for (const a of g.fighters.filter((a) => a.team === 1))
     g.fell(a, { killer: g.player });

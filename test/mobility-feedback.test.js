@@ -6,7 +6,7 @@ import {
   recipe,
   inWorld,
   activeForm,
-} from "../src/combat.js";
+} from "./combat-fixture.js";
 import { immersionFor } from "../src/battle-effects.js";
 import { characterPose } from "../src/characters.js";
 function arena(element = "earth", enemy = "spirit") {
