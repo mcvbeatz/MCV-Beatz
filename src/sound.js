@@ -11,6 +11,8 @@ export class Soundtrack {
     this.track = null;
     this.playPending = false;
     this.playBlocked = false;
+    this.trackEnded = false;
+    this.primed = false;
     document.addEventListener("visibilitychange", () => this.sync());
   }
   unlock() {
@@ -34,8 +36,31 @@ export class Soundtrack {
     if (!restart && this.scene === mode && this.paused === paused) return;
     this.scene = mode;
     this.paused = paused;
-    if (restart && this.track) this.track.currentTime = 0;
+    if (restart) {
+      this.trackEnded = false;
+      if (this.track) this.track.currentTime = 0;
+    }
     this.sync();
+  }
+  primeTrack() {
+    // Authorize this media element during the Start tap on iOS, silently, so
+    // audible playback can begin at Go rather than during the countdown.
+    if (!this.track || this.primed || this.playPending) return;
+    this.primed = true;
+    this.playPending = true;
+    this.track.muted = true;
+    this.track
+      .play()
+      .catch(() => {
+        this.primed = false;
+      })
+      .finally(() => {
+        this.track.pause();
+        this.track.currentTime = 0;
+        this.track.muted = false;
+        this.playPending = false;
+        this.sync();
+      });
   }
   sync() {
     if (!this.context || !this.music) return;
@@ -46,7 +71,18 @@ export class Soundtrack {
       this.track = new Audio(
         new URL("./assets/music/no-escape.mp3", import.meta.url).href,
       );
-      this.track.loop = true;
+      this.track.loop = false;
+      // Original duration is 117.048s: 0.9754x fills the 120s match (~2.5% slower).
+      this.track.playbackRate = 117.048 / 120;
+      this.track.preservesPitch = true;
+      this.track.webkitPreservesPitch = true;
+      this.track.addEventListener("loadedmetadata", () => {
+        if (Number.isFinite(this.track.duration) && this.track.duration > 0)
+          this.track.playbackRate = this.track.duration / 120;
+      });
+      this.track.addEventListener("ended", () => {
+        this.trackEnded = true;
+      });
       this.track.preload = "metadata";
       // iOS ignores HTMLMediaElement.volume; route the song through the same
       // Web Audio music gain as the ambient score, separate from SFX.
@@ -58,7 +94,12 @@ export class Soundtrack {
       this.track.pause();
       return;
     }
-    if (this.track.paused && !this.playPending && !this.playBlocked) {
+    if (
+      this.track.paused &&
+      !this.trackEnded &&
+      !this.playPending &&
+      !this.playBlocked
+    ) {
       this.playPending = true;
       this.track
         .play()

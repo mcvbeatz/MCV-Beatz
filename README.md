@@ -1,4 +1,8 @@
-# Elemental — The Colosseum · v0.18.1
+# Elemental — The Colosseum · v0.18.2
+
+## v0.18.2 Corruption soundtrack timing
+
+**No Escape** now plays once at approximately **0.9754× speed (2.46% slower)** with pitch preserved, stretching the 117.048-second original to the two-minute match length. Audible playback starts at **Go!** and pauses with the match. The song never loops or restarts after finishing; a new match resets it to the beginning. Leaving or an early match result still stops the music.
 
 ## v0.18.1 Corruption soundtrack
 
