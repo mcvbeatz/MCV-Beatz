@@ -19,7 +19,7 @@ async function begin(page, mode) {
     __arena.game.update = () => {};
   });
 }
-test("No Escape plays once at reduced tempo only for Corruption, uses music gain, and pauses with the battle and app visibility", async ({
+test("The pre-rendered No Escape track plays once at native speed only for Corruption, uses music gain, and pauses with the battle and app visibility", async ({
   page,
 }) => {
   test.setTimeout(60000);
@@ -41,13 +41,12 @@ test("No Escape plays once at reduced tempo only for Corruption, uses music gain
     gain: __app.sound.music.gain.value,
     sfx: __app.settings.sfx,
   }));
-  expect(state.src).toContain("no-escape");
-  expect(state.duration).toBeGreaterThan(116);
-  expect(state.duration).toBeLessThan(118);
+  expect(state.src).toContain("no-escape-slow");
+  expect(state.duration).toBeCloseTo(120, 1);
   expect(state.loop).toBe(false);
   expect(state.duration / state.rate).toBeCloseTo(120, 4);
-  expect(state.rate).toBeCloseTo(0.9754, 3);
-  expect(state.pitch).toBe(true);
+  expect(state.rate).toBe(1);
+  expect(state.pitch).toBe(false);
   expect(state.ambient).toBe(0);
   expect(state.gain).toBe(0.25);
   expect(state.sfx).toBe(0);

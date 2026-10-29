@@ -69,21 +69,18 @@ export class Soundtrack {
     this.ambient.gain.value = corruption || !active ? 0 : 1;
     if (corruption && !this.track) {
       this.track = new Audio(
-        new URL("./assets/music/no-escape.mp3", import.meta.url).href,
+        new URL("./assets/music/no-escape-slow.m4a", import.meta.url).href,
       );
       this.track.loop = false;
-      // Original duration is 117.048s: 0.9754x fills the 120s match (~2.5% slower).
-      this.track.playbackRate = 117.048 / 120;
-      this.track.preservesPitch = true;
-      this.track.webkitPreservesPitch = true;
-      this.track.addEventListener("loadedmetadata", () => {
-        if (Number.isFinite(this.track.duration) && this.track.duration > 0)
-          this.track.playbackRate = this.track.duration / 120;
-      });
+      // Speed and pitch are baked into this two-minute file. Native 1x playback
+      // avoids real-time pitch-preserving time-stretch / buffer artifacts.
+      this.track.playbackRate = 1;
+      this.track.preservesPitch = false;
+      this.track.webkitPreservesPitch = false;
       this.track.addEventListener("ended", () => {
         this.trackEnded = true;
       });
-      this.track.preload = "metadata";
+      this.track.preload = "auto";
       // iOS ignores HTMLMediaElement.volume; route the song through the same
       // Web Audio music gain as the ambient score, separate from SFX.
       this.trackSource = this.context.createMediaElementSource(this.track);

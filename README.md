@@ -1,4 +1,8 @@
-# Elemental — The Colosseum · v0.18.2
+# Elemental — The Colosseum · v0.18.3
+
+## v0.18.3 Pre-rendered Corruption music
+
+The Corruption soundtrack is now a locally rendered, two-minute AAC file played at native **1× speed**, with browser pitch preservation disabled. The approximately 2.5% slower speed and slightly lower pitch are baked in using sample-rate conversion, avoiding the browser's live pitch-preserving stretch processing as a possible source of clicks. One dB of headroom avoids clipping from codec/resampling peaks; a 5ms end fade prevents a cut-edge transient. The original uploaded MP3 is kept unchanged. `bash scripts/render-corruption-music.sh` reproduces the asset with FFmpeg and the SoX resampler. Playback still begins at Go, does not loop, and follows pause/resume, volume and match exit.
 
 ## v0.18.2 Corruption soundtrack timing
 
