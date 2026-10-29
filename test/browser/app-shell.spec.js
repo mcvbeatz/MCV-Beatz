@@ -70,11 +70,11 @@ test("app menus, account, settings and scrollable mode lists fit phones without 
   }
   expect(modes).toEqual([
     "tdm",
-    "gauntlet-team",
-    "domination",
-    "ctf",
     "rush",
     "boss",
+    "domination",
+    "gauntlet-team",
+    "ctf",
     "ffa",
     "roulette",
     "gauntlet",

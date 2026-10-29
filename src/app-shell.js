@@ -88,6 +88,10 @@ export function createApp(api) {
   function setScreen(next) {
     screen = next;
     document.body.dataset.screen = next;
+    sound.setScene(
+      next === "battle" && !api.game().finished ? api.game().mode : null,
+      next === "battle" && api.paused(),
+    );
     $("shell-content").hidden = ["setup", "battle"].includes(next);
     $("shell-back").hidden = next === "home";
     $("shell-title").textContent =
@@ -114,7 +118,7 @@ export function createApp(api) {
     setScreen(next);
     const c = $("shell-content");
     if (next === "home")
-      c.innerHTML = `<section class="home-hero"><span class="eyebrow">THE COLOSSEUM · v0.18</span><h1>Power is elemental.</h1><p>Choose your arena. Find your next form.</p><div class="home-elements" aria-label="Light, Dark, Water, Air, Earth and Fire">${Object.keys(
+      c.innerHTML = `<section class="home-hero"><span class="eyebrow">THE COLOSSEUM · v0.18.1</span><h1>Power is elemental.</h1><p>Choose your arena. Find your next form.</p><div class="home-elements" aria-label="Light, Dark, Water, Air, Earth and Fire">${Object.keys(
         ELEMENTS,
       )
         .map(
@@ -537,10 +541,13 @@ export function createApp(api) {
     api.resume();
   };
   document.addEventListener("pointerdown", () => sound.unlock(), {
-    once: true,
+    passive: true,
   });
+  document.addEventListener("keydown", () => sound.unlock());
   function start() {
     setScreen("battle");
+    sound.setScene(api.game().mode, false, true);
+    sound.unlock();
     matchTicket = account.startMatch(api.game().mode, category === "practice");
     $("save-status").textContent = "";
     sound.tone(300);
@@ -551,6 +558,10 @@ export function createApp(api) {
   }
   let lastReward = null;
   function tick(g) {
+    sound.setScene(
+      screen === "battle" && !g.finished ? g.mode : null,
+      screen === "battle" && api.paused(),
+    );
     if (g.intermission && screen === "battle") {
       reward.hidden = false;
       if (lastReward !== g.wave) {

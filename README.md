@@ -1,4 +1,8 @@
-# Elemental — The Colosseum · v0.18
+# Elemental — The Colosseum · v0.18.1
+
+## v0.18.1 Corruption soundtrack
+
+Corruption now plays the user-provided **No Escape** MP3 (117 seconds), looping for longer battles. It replaces the synthesized ambient music only during Corruption, starts fresh for each new match, pauses/resumes with the battle or app visibility, and stops on leaving or match end. The Music slider controls it through Web Audio so volume also works on iOS; SFX remains independent. The file is bundled locally, with no external streaming service.
 
 ## v0.18 elemental interactions and Team Battles order
 
