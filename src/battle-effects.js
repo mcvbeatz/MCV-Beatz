@@ -463,6 +463,11 @@ export function distortGravity(c, canvas, buffer, game, view, time) {
     buffer.width = canvas.width;
     buffer.height = canvas.height;
   }
+  // The snapshot uses physical pixels while the camera and hazards use world
+  // coordinates. Derive the physical transform before temporarily resetting it.
+  const transform = c.getTransform(),
+    ratioX = transform.a / view.scale,
+    ratioY = transform.d / view.scale;
   const b = buffer.getContext("2d");
   b.clearRect(0, 0, buffer.width, buffer.height);
   b.drawImage(canvas, 0, 0);
@@ -480,31 +485,37 @@ export function distortGravity(c, canvas, buffer, game, view, time) {
       [0, -1.5],
       [0, 1.5],
     ])
-      c.drawImage(buffer, dx, dy);
-    const left = Math.max(0, Math.floor((h.x - h.r) * view.scale + view.tx));
+      c.drawImage(buffer, dx * ratioX, dy * ratioY);
+    const left = Math.max(
+      0,
+      Math.floor((h.x - h.r) * transform.a + transform.e),
+    );
     const right = Math.min(
       canvas.width,
-      Math.ceil((h.x + h.r) * view.scale + view.tx),
+      Math.ceil((h.x + h.r) * transform.a + transform.e),
     );
-    const top = Math.max(0, Math.floor((h.y - h.r) * view.scale + view.ty));
+    const top = Math.max(
+      0,
+      Math.floor((h.y - h.r) * transform.d + transform.f),
+    );
     const bottom = Math.min(
       canvas.height,
-      Math.ceil((h.y + h.r) * view.scale + view.ty),
+      Math.ceil((h.y + h.r) * transform.d + transform.f),
     );
     c.globalAlpha = 0.24;
     if (right > left)
-      for (let y = top; y < bottom - 2; y += 5) {
-        const dx = Math.sin(y * 0.6 + time * 15) * 2;
+      for (let y = top; y < bottom - 2 * ratioY; y += 5 * ratioY) {
+        const dx = Math.sin((y / ratioY) * 0.6 + time * 15) * 2 * ratioX;
         c.drawImage(
           buffer,
           left,
           y,
           right - left,
-          2,
+          2 * ratioY,
           left + dx,
           y,
           right - left,
-          2,
+          2 * ratioY,
         );
       }
     c.globalAlpha = 0.12;

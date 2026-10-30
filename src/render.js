@@ -87,12 +87,13 @@ export class Renderer {
       c.width = 160;
       c.height = 160;
     }
-    this.background.width = 1024;
-    this.background.height = 680;
+    this.background.width = 2048;
+    this.background.height = 1360;
     this.makeBackground();
   }
   makeBackground() {
     const c = this.background.getContext("2d");
+    c.setTransform(2, 0, 0, 2, 0, 0);
     c.fillStyle = "#26332e";
     c.fillRect(0, 0, 1024, 680);
     let seed = 271;
@@ -338,7 +339,7 @@ export class Renderer {
     const bob = flying ? Math.sin(time * 3) * 2 - 8 : walking ? -pose.bob : 0;
     const color = a.blind > 0 ? shade(fighterColor(a), 0.35) : fighterColor(a);
     c.save();
-    c.translate(Math.round(a.x), Math.round(a.y));
+    c.translate(a.x, a.y);
     c.fillStyle = "#162b2466";
     c.beginPath();
     c.ellipse(0, 7, 21, flying ? 8 : 6, 0, 0, Math.PI * 2);
@@ -563,14 +564,17 @@ export class Renderer {
     const c = this.ctx,
       w = this.canvas.clientWidth || 1024,
       h = this.canvas.clientHeight || 680;
-    if (
-      this.canvas.width !== Math.round(w) ||
-      this.canvas.height !== Math.round(h)
-    ) {
-      this.canvas.width = Math.round(w);
-      this.canvas.height = Math.round(h);
+    // Keep camera and touch coordinates in CSS pixels; only the backing store
+    // grows on high-density displays. Cap at 2x to bound mobile fill cost.
+    const density = Math.min(2, Math.max(1, window.devicePixelRatio || 1));
+    const width = Math.round(w * density),
+      height = Math.round(h * density);
+    if (this.canvas.width !== width || this.canvas.height !== height) {
+      this.canvas.width = width;
+      this.canvas.height = height;
     }
-    c.setTransform(1, 0, 0, 1, 0, 0);
+    this.pixelRatio = { x: width / w, y: height / h };
+    c.setTransform(this.pixelRatio.x, 0, 0, this.pixelRatio.y, 0, 0);
     c.fillStyle = "#1a2c25";
     c.fillRect(0, 0, w, h);
     const root = document.getElementById("orientation-root");
@@ -588,23 +592,23 @@ export class Renderer {
     c.save();
     c.translate(tx, ty);
     c.scale(scale, scale);
-    c.imageSmoothingEnabled = false;
+    c.imageSmoothingEnabled = true;
+    c.imageSmoothingQuality = "high";
     if (game.map) {
       if (this.mazeSource !== game.map) {
         this.mazeSource = game.map;
         this.mazeBackground = document.createElement("canvas");
-        this.mazeBackground.width = game.map.width;
-        this.mazeBackground.height = game.map.height;
+        this.mazeBackground.width = game.map.width * 2;
+        this.mazeBackground.height = game.map.height * 2;
+        const backgroundContext = this.mazeBackground.getContext("2d");
+        backgroundContext.scale(2, 2);
         (game.map.kind === "corruption" ? paintCorruptionMap : paintBattleMap)(
-          this.mazeBackground.getContext("2d"),
+          backgroundContext,
           game.map,
         );
       }
-      c.imageSmoothingEnabled = game.map.kind === "tower";
-      c.imageSmoothingQuality = "high";
-      c.drawImage(this.mazeBackground, 0, 0);
-      c.imageSmoothingEnabled = false;
-    } else c.drawImage(this.background, 0, 0);
+      c.drawImage(this.mazeBackground, 0, 0, game.map.width, game.map.height);
+    } else c.drawImage(this.background, 0, 0, 1024, 680);
     const t = idle ? performance.now() / 1000 : game.time;
     if (game.map) drawBattleAmbience(c, game.map, t);
     drawTerrain(c, game, t);

@@ -1,5 +1,12 @@
 # Elemental — The Colosseum · v0.20.0
 
+## v0.21.0 Smoother high-density rendering
+
+- Render gameplay at up to 2× screen resolution per axis on high-density displays, with smoother map and character scaling and 2× cached map artwork.
+- Keep camera, touch placement, respawn panning and gravity distortion aligned at every display density.
+- Remove the Fullscreen button; battles still expand automatically and Leave returns to setup.
+
+
 ## v0.20.0 Visible terrain, three-map shuffle and fallen fighters
 
 - Magma, Flood and Quicksand now draw above the active arena floor using its actual outline and world coordinates. They remain visible throughout the Garden and Tower and stop at floor edges; their combat rules are unchanged.

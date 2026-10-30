@@ -298,7 +298,8 @@ function paintFrame(
   const f = spec.frames[frame];
   const scale = height / spec.height;
   c.save();
-  c.imageSmoothingEnabled = false;
+  c.imageSmoothingEnabled = true;
+  c.imageSmoothingQuality = "high";
   if (!!flip !== !!f.mirror) c.scale(-1, 1);
   c.drawImage(
     atlas.image,
@@ -346,7 +347,8 @@ export function drawCharacter(c, a, time) {
       f = spec.frames[3];
     const scale = 76 / spec.height;
     c.save();
-    c.imageSmoothingEnabled = false;
+    c.imageSmoothingEnabled = true;
+    c.imageSmoothingQuality = "high";
     c.drawImage(
       fusionVictory.image,
       f.x,

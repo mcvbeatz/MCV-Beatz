@@ -374,14 +374,15 @@ test.describe("phone controls", () => {
     expect(await page.evaluate(() => __arena.paused)).toBe(true);
   });
 });
-test("native fullscreen enters and exits without leaving the game trapped", async ({
+test("automatic fullscreen exits through Leave without trapping the game", async ({
   page,
 }) => {
   await begin(page);
   await expect
     .poll(() => page.evaluate(() => document.fullscreenElement?.tagName))
     .toBe("HTML");
-  await page.locator("#fullscreen-btn").click();
+  await expect(page.locator("#fullscreen-btn")).toHaveCount(0);
+  await page.locator("#leave-btn").click();
   await expect
     .poll(() => page.evaluate(() => document.fullscreenElement === null))
     .toBe(true);
