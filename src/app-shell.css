@@ -1664,3 +1664,128 @@ body[data-screen="solo-battles"] #shell-content {
   color: #ffe1a1;
   font-weight: 700;
 }
+
+/* Landscape: health left, form tabs centered, match information right;
+   all abilities share one low row between Move and Strike. */
+#orientation-root[data-orientation="landscape"] .arena-panel {
+  --battle-health-width: clamp(120px, 20cqw, 190px);
+  --battle-stats-width: clamp(152px, 24cqw, 240px);
+}
+#orientation-root[data-orientation="landscape"] .game-hud {
+  top: 8px;
+  left: 12px;
+  right: 12px;
+  display: grid;
+  grid-template-columns:
+    var(--battle-health-width) 1fr calc(var(--battle-stats-width) - 40px)
+    40px;
+  gap: 4px;
+  align-items: start;
+}
+#orientation-root[data-orientation="landscape"] .fighter-card {
+  grid-column: 1;
+  min-width: 0;
+  padding: 6px 8px;
+}
+#orientation-root[data-orientation="landscape"] .fighter-label {
+  gap: 4px;
+}
+#orientation-root[data-orientation="landscape"] .fighter-label strong {
+  overflow-wrap: anywhere;
+}
+#orientation-root[data-orientation="landscape"] .round-info {
+  grid-column: 3;
+  padding: 4px;
+  border-radius: 4px;
+  background: #131e1dcc;
+}
+#orientation-root[data-orientation="landscape"] .round-info strong {
+  margin-top: 1px;
+  font-size: 22px;
+  line-height: 1;
+}
+#orientation-root[data-orientation="landscape"] #round-mode {
+  font-size: 8px;
+  letter-spacing: 0.5px;
+}
+#orientation-root[data-orientation="landscape"] #objective-score {
+  font-size: 9px;
+  letter-spacing: 0;
+  line-height: 1.2;
+}
+#orientation-root[data-orientation="landscape"] .enemy-count {
+  grid-column: 4;
+  min-width: 0;
+  padding: 6px 2px;
+  text-align: center;
+}
+#orientation-root[data-orientation="landscape"] .enemy-count > span {
+  font-size: 7px;
+  letter-spacing: 0;
+}
+#orientation-root[data-orientation="landscape"] .skill-switcher {
+  top: 8px;
+  left: calc(var(--battle-health-width) + 24px);
+  right: calc(var(--battle-stats-width) + 24px);
+  min-height: 44px;
+  gap: 4px;
+  justify-content: safe center;
+  flex-wrap: nowrap;
+  pointer-events: auto;
+  overscroll-behavior: contain;
+}
+#orientation-root[data-orientation="landscape"] .form-button {
+  padding: 5px 7px;
+  min-height: 44px;
+  font-size: 10px;
+  gap: 4px;
+}
+#orientation-root[data-orientation="landscape"] .battle-controls {
+  bottom: max(18px, env(safe-area-inset-bottom));
+  gap: 10px;
+}
+#orientation-root[data-orientation="landscape"] .skill-controls,
+#orientation-root[data-orientation="landscape"]
+  .skill-controls.expanded-skills {
+  display: flex;
+  flex-wrap: nowrap;
+  align-items: stretch;
+  gap: 5px;
+  margin-bottom: 0;
+}
+#orientation-root[data-orientation="landscape"] .skill-controls > .ability {
+  flex: 1 1 0;
+  width: 0;
+  min-width: 0;
+  max-width: 150px;
+  height: 56px;
+  padding: 5px 3px;
+  gap: 3px;
+}
+#orientation-root[data-orientation="landscape"] .skill-controls .ability-icon,
+#orientation-root[data-orientation="landscape"] .skill-controls kbd {
+  display: none;
+}
+#orientation-root[data-orientation="landscape"]
+  .skill-controls
+  .ability
+  strong {
+  font-size: clamp(9px, 1.3cqw, 12px);
+  line-height: 1.1;
+  white-space: normal;
+}
+#orientation-root[data-orientation="landscape"] .skill-controls .ability small {
+  font-size: 8px;
+  line-height: 1.2;
+  white-space: normal;
+}
+#orientation-root[data-orientation="landscape"] .portal-notice {
+  top: 76px;
+}
+#orientation-root[data-orientation="landscape"] .charge-meter {
+  bottom: 82px;
+}
+
+#orientation-root[data-orientation="landscape"] .fighter-label > span {
+  display: none;
+}

@@ -124,9 +124,9 @@ export function paintCorruptionMap(c, map) {
 }
 export function drawMazeMap(c, game, width, height, portrait) {
   const map = game.map,
-    size = Math.min(84, width * 0.2, height * 0.28),
+    size = Math.min(84, width * 0.2, height * (portrait ? 0.28 : 0.22)),
     x = width - size - 12,
-    y = portrait ? 10 : Math.min(110, height - size - 15),
+    y = portrait ? 10 : 82,
     scale = (size - 8) / (map.radius * 2);
   c.save();
   c.translate(x + size / 2, y + size / 2);

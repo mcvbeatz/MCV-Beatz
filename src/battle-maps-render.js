@@ -319,10 +319,14 @@ export function drawBattleAmbience(c, map, time) {
 }
 export function drawBattleMinimap(c, game, width, height, portrait) {
   const map = game.map,
-    w = Math.min(136, width * 0.25),
+    w = Math.min(
+      136,
+      width * 0.25,
+      portrait ? 136 : (height * 0.22 * 2048) / 1360,
+    ),
     h = (w * 1360) / 2048;
   const x = width - w - 10,
-    y = portrait ? 10 : Math.min(110, height - h - 15),
+    y = portrait ? 10 : 82,
     scale = w / 2048;
   c.save();
   c.translate(x, y);

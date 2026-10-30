@@ -76,6 +76,7 @@ function shade(hex, factor) {
 export class Renderer {
   constructor(canvas) {
     this.canvas = canvas;
+    this.visibilityStates = new WeakMap();
     this.ctx = canvas.getContext("2d");
     this.background = document.createElement("canvas");
     this.distortion = document.createElement("canvas");
@@ -556,6 +557,30 @@ export class Renderer {
     }
     c.restore();
   }
+  characterOpacity(a, viewer, now) {
+    const owner = a.id === viewer?.id && a.element === "divine" && !a.ghost;
+    const target = a.victory
+      ? 1
+      : owner
+        ? visibility(a) > 0
+          ? 1
+          : 0
+        : viewerVisibility(a, viewer);
+    let state = this.visibilityStates.get(a);
+    if (!state) {
+      state = { from: target, target, since: now };
+      this.visibilityStates.set(a, state);
+    }
+    const p = Math.min(1, Math.max(0, (now - state.since) / 0.12));
+    const alpha =
+      state.from + (state.target - state.from) * p * p * (3 - 2 * p);
+    if (target !== state.target) {
+      state.from = alpha;
+      state.target = target;
+      state.since = now;
+    }
+    return alpha;
+  }
   worldPoint(x, y) {
     const v = this.view || { scale: 1, tx: 0, ty: 0 };
     return { x: (x - v.tx) / v.scale, y: (y - v.ty) / v.scale };
@@ -765,14 +790,20 @@ export class Renderer {
       }
       c.restore();
     }
+    const visualTime = performance.now() / 1000;
     const bodies = game.fighters
+      .filter((a) => (a.alive || a.ghost) && inWorld(a))
+      .map((a) => ({
+        a,
+        y: a.y,
+        alpha: a.ghost
+          ? 0.38
+          : this.characterOpacity(a, game.player, visualTime),
+      }))
       .filter(
-        (a) =>
-          (a.alive || a.ghost) &&
-          inWorld(a) &&
-          viewerVisibility(a, game.player) > 0,
-      )
-      .map((a) => ({ a, y: a.y }));
+        ({ a, alpha }) =>
+          alpha > 0 || (a.id === game.player.id && a.element === "divine"),
+      );
     bodies.push(
       ...(game.fallenAnimations || []).map((death) => ({
         death,
@@ -790,18 +821,19 @@ export class Renderer {
       }
       const a = body.a;
       c.save();
-      c.globalAlpha = a.ghost ? 0.38 : viewerVisibility(a, game.player);
       const immersion = a.victory ? 0 : immersionFor(game, a);
       if (
         a.id === game.player.id &&
         a.element === "divine" &&
+        !a.ghost &&
         !a.victory &&
-        visibility(a) === 0
-      )
+        body.alpha < 1
+      ) {
+        c.globalAlpha = 1 - body.alpha;
         this.outline(c, a, t);
-      else {
-        this.avatar(c, a, t, immersion);
       }
+      c.globalAlpha = body.alpha;
+      if (body.alpha > 0) this.avatar(c, a, t, immersion);
       drawWaterline(c, a, immersion, t);
       if (game.auroraProtected(a)) drawAurora(c, a, t);
       c.restore();

@@ -46,11 +46,18 @@ test("all elementals keep a frozen death appearance and fade before respawn", ()
   for (const element of CHARACTERS) {
     const g = new Combat({ mode: "roulette", element, mapId: "classic" });
     g.rebirthUsed.add(g.player.id);
+    g.player.whiteout = 3;
     g.fell(g.player);
+    assert.equal(g.player.whiteout, 0, "Flash debuff must end on death");
     assert.equal(g.fallenAnimations.length, 1, element);
     const death = g.fallenAnimations[0],
       original = { ...death.fighter };
     assert.equal(death.fighter.element, element);
+    assert.equal(
+      death.fighter.whiteout,
+      3,
+      "Keep the starting opacity for the short fade",
+    );
     assert.equal(g.player.alive, false);
     const start = deathPose(death);
     g.player.x += 100;
@@ -58,7 +65,10 @@ test("all elementals keep a frozen death appearance and fade before respawn", ()
     g.advanceDeaths(0.7);
     const middle = deathPose(death);
     assert.equal(death.fighter.x, original.x);
-    assert.notEqual(middle.rotation, start.rotation);
+    assert.equal(middle.rotation, 0);
+    assert.equal(start.rotation, 0);
+    assert.equal(middle.x, start.x);
+    assert.equal(middle.y, start.y);
     g.advanceDeaths(0.5);
     assert.ok(deathPose(death).opacity < start.opacity);
     g.advanceDeaths(0.4);

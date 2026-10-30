@@ -913,6 +913,8 @@ export class Combat {
     a.burst = 0;
     a.movingTime = 0;
     a.alive = false;
+    // The saved death appearance carries the brief visual fade; the debuff ends now.
+    a.whiteout = 0;
     a.charging = false;
     a.shield = 0;
     a.lock = null;

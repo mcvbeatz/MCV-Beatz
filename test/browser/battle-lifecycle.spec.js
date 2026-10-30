@@ -145,7 +145,7 @@ for (const orientation of ["portrait", "landscape"])
     expect(errors).toEqual([]);
     await context.close();
   });
-test("all 23 elementals have visible collapsing death frames, including Divine", async ({
+test("all 23 elementals have visible upright fading death frames, including Divine", async ({
   page,
 }) => {
   await start(page);

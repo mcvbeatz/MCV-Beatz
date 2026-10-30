@@ -1,5 +1,12 @@
 # Elemental — The Colosseum · v0.20.0
 
+## v0.22.0 Clearer combat feedback and landscape controls
+
+- Keep felled elementals upright in their hurt pose as they fade, and fade Flash back to normal within 180ms of death, including during respawn and match results.
+- Crossfade Divine's visibility and owner outline over 120ms without changing combat targeting. Blaze users face their dash direction and lean forward during the burst.
+- Move landscape match information to the upper right, element tabs to the top center, and abilities into one bottom row between Move and Strike. Narrow tab rows remain scrollable; portrait controls retain their layout.
+
+
 ## v0.21.0 Smoother high-density rendering
 
 - Render gameplay at up to 2× screen resolution per axis on high-density displays, with smoother map and character scaling and 2× cached map artwork.

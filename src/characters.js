@@ -221,17 +221,20 @@ export function isRunning(a) {
 }
 
 export function characterPose(a) {
-  const clashing = a.clash > 0;
-  const fx = clashing ? a.clashFx : a.fx,
-    fy = clashing ? a.clashFy : a.fy;
+  const dashing = a.alive && !a.ghost && !a.blink && a.burst > 0;
+  const clashing = !dashing && a.clash > 0;
+  // Blaze follows its travel vector even when target lock faces another way.
+  const fx = dashing ? a.burstX : clashing ? a.clashFx : a.fx,
+    fy = dashing ? a.burstY : clashing ? a.clashFy : a.fy;
   const side = Math.abs(fx) > Math.abs(fy);
   const facing = side ? 1 : fy < 0 ? 2 : 0;
   const progress =
     a.swing > 0 ? Math.max(0, Math.min(1, 1 - a.swing / 0.22)) : -1;
   // Match the existing 110ms strike windup. Recoil, contact, then recovery.
   const contact = progress >= 0.5 && progress < 0.92;
-  const reacting = a.hitReact > 0 && canReactToHit(a);
+  const reacting = !dashing && a.hitReact > 0 && canReactToHit(a);
   const sidestepping =
+    !dashing &&
     !!a.lock &&
     a.alive &&
     !a.ghost &&
@@ -243,7 +246,8 @@ export function characterPose(a) {
     progress < 0 &&
     !clashing &&
     !reacting;
-  const running = isRunning(a) && progress < 0 && !clashing && !reacting;
+  const running =
+    !dashing && isRunning(a) && progress < 0 && !clashing && !reacting;
   // movingTime advances only for actual voluntary movement; a wall, Shock,
   // a portal or a teleport must not produce a treadmill animation.
   const cadence =
@@ -251,7 +255,13 @@ export function characterPose(a) {
   const cycle = a.movingTime * cadence;
   const stride = Math.floor(cycle) % 4;
   return {
-    frame: facing + (contact || clashing ? 3 : 0),
+    dashing,
+    dashX: dashing ? fx : 0,
+    dashY: dashing ? fy : 0,
+    dashLean: dashing
+      ? Math.min(1, (0.3 - a.burst) / 0.045, a.burst / 0.06)
+      : 0,
+    frame: facing + (!dashing && (contact || clashing) ? 3 : 0),
     flip: side && fx < 0,
     progress,
     running,
@@ -390,6 +400,18 @@ export function drawCharacter(c, a, time) {
         : 6 * Math.sin((p - 0.5) * Math.PI * 2);
   c.save();
   c.translate(a.fx * reach, a.fy * reach);
+  if (pose.dashing) {
+    // Shear from the feet so the head leads the dash, using the matching
+    // directional frame rather than rotating the face toward the ground.
+    c.transform(
+      1,
+      0,
+      -pose.dashX * pose.dashLean * 0.48,
+      1 - pose.dashY * pose.dashLean * 0.18,
+      0,
+      0,
+    );
+  }
   if (pose.reacting) {
     const recoil = Math.sin((1 - a.hitReact / 0.24) * Math.PI);
     c.translate(a.hitDx * recoil * 11, a.hitDy * recoil * 7 - recoil * 3);
@@ -436,21 +458,15 @@ export function drawCharacter(c, a, time) {
   return true;
 }
 
-// A saved fighter appearance outlives combat removal, fusion and respawn.
-// Grounded bodies buckle; flying forms drop before collapsing into motes.
+// Keep the directional hurt silhouette upright while it fades away.
 export function deathPose(death) {
   const p = Math.max(0, Math.min(1, death.elapsed / death.duration));
-  const phase = Math.max(0, Math.min(1, (p - 0.08) / 0.4));
-  const fall = phase * phase * (3 - 2 * phase);
-  const a = death.fighter;
-  const direction = a.hitDx ? Math.sign(a.hitDx) : a.fx < 0 ? -1 : 1;
   return {
     progress: p,
-    fall,
-    opacity: Math.min(1, (1 - p) / 0.42),
-    rotation: direction * fall * (a.parts.includes("air") ? 1.45 : 1.3),
-    x: direction * fall * 8,
-    y: fall * 5 - (a.parts.includes("air") ? (1 - fall) * 8 : 0),
+    opacity: Math.min(1, (1 - p) / 0.6),
+    rotation: 0,
+    x: 0,
+    y: death.fighter.parts.includes("air") ? -8 : 0,
   };
 }
 export function drawFallenCharacter(c, death, color = "#e1d8b5") {
@@ -463,13 +479,10 @@ export function drawFallenCharacter(c, death, color = "#e1d8b5") {
   c.globalAlpha *= pose.opacity;
   c.fillStyle = "#10172266";
   c.beginPath();
-  c.ellipse(pose.x * 2, 7, 21 + pose.fall * 12, 6, 0, 0, Math.PI * 2);
+  c.ellipse(0, 7, 21, 6, 0, 0, Math.PI * 2);
   c.fill();
   c.save();
   c.translate(pose.x, pose.y);
-  c.rotate(pose.rotation);
-  const shrink = death.lost ? 1 - pose.progress * 0.55 : 1;
-  c.scale(shrink, (1 - pose.fall * 0.22) * shrink);
   const drawn =
     paintFrame(c, a.element, facing, side && a.fx < 0, 64, "hurt") ||
     paintFrame(c, a.element, facing, side && a.fx < 0, 64);
