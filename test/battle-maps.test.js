@@ -24,13 +24,14 @@ const tick = (g, seconds, ai = false) => {
   for (let t = 0; t < seconds && !g.finished; t += 0.02)
     g.update(0.02, { x: 0, y: 0 }, ai);
 };
-test("new matches choose either new map and survival always retains the maze", () => {
+test("new matches shuffle all three maps and survival always retains the maze", () => {
   for (const mode of modes)
     for (const [random, kind] of [
-      [() => 0, "garden"],
+      [() => 0, "classic"],
+      [() => 0.4, "garden"],
       [() => 0.99, "tower"],
     ])
-      assert.equal(new Combat({ mode, random }).map.kind, kind);
+      assert.equal(new Combat({ mode, random }).mapId, kind);
   assert.equal(
     new Combat({ mode: "corruption", mapId: "tower" }).map.kind,
     "corruption",

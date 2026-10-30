@@ -159,6 +159,15 @@ export function drawMazeMap(c, game, width, height, portrait) {
     c.arc((p.x - map.cx) * scale, (p.y - map.cy) * scale, 3, 0, TAU);
     c.fill();
   }
+  if (game.spectatorFocus) {
+    c.strokeStyle = "#b3edff";
+    c.strokeRect(
+      (game.spectatorFocus.x - map.cx) * scale - 4,
+      (game.spectatorFocus.y - map.cy) * scale - 3,
+      8,
+      6,
+    );
+  }
   c.fillStyle = "#ffe0a4";
   c.beginPath();
   c.arc(

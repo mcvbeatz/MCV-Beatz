@@ -1,4 +1,12 @@
-# Elemental — The Colosseum · v0.19.0
+# Elemental — The Colosseum · v0.20.0
+
+## v0.20.0 Visible terrain, three-map shuffle and fallen fighters
+
+- Magma, Flood and Quicksand now draw above the active arena floor using its actual outline and world coordinates. They remain visible throughout the Garden and Tower and stop at floor edges; their combat rules are unchanged.
+- The original **Sunken Colosseum** returns alongside **Crosswater Garden** and **Astral Tower**, each with an equal chance for non-survival matches. Survive the Night retains its maze. Resuming a match and advancing Waves keep the current map.
+- While felled with a pending respawn, the **move stick / WASD** pans an independent camera across the map. The stick reads **LOOK**, the HUD explains the control, and the minimap marks the camera separately. Respawning restores player-following immediately. Bodies, tokens and spawn positions never move with the camera; Angel guard still controls the ghost. The smaller Colosseum zooms in during landscape spectating to allow panning.
+- All **23 elementals** now collapse and fade into colored motes over 1.5 seconds, using their own directional artwork. Flying forms descend first. Death snapshots survive removal and the victory transition, pause with the game and clear on revival/respawn. Damage, scoring, tokens and the ten-second respawn timing still occur immediately. Phoenix keeps its immediate first Rebirth; its subsequent fall uses the death animation.
+- Regression coverage includes visible terrain pixels and edge clipping on all three arenas, actual joystick camera movement in both phone orientations, every elemental's rendered death frames, respawn reset, ghost control and victory/intermission animation cleanup.
 
 ## v0.19.0 Survive the Night and rotating battle maps
 

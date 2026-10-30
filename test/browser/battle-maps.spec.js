@@ -13,7 +13,7 @@ for (const mapId of ["garden", "tower"])
       await page.addInitScript(
         ({ mapId, orientation }) => {
           HTMLElement.prototype.requestFullscreen = undefined;
-          Math.random = () => (mapId === "garden" ? 0.1 : 0.9);
+          Math.random = () => (mapId === "garden" ? 0.4 : 0.9);
           localStorage.setItem(
             "elemental-settings",
             JSON.stringify({ orientation }),

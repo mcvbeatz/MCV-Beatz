@@ -1,3 +1,4 @@
+import { floorPath } from "./battle-maps-render.js";
 import { inWorld, visibility, distance, quicksandImmune } from "./combat.js";
 import { weaponStyle } from "./characters.js";
 
@@ -139,10 +140,9 @@ export function drawTerrain(c, game, time) {
       continue;
     }
     if (h.kind === "magma") {
-      // Match the existing ground footprint, with molten channels and dark crust.
+      // Match the current floor, with molten channels and dark crust.
       c.save();
-      c.beginPath();
-      c.rect(135, 175, 754, 385);
+      floorPath(c, game.map);
       c.clip();
       c.beginPath();
       c.ellipse(h.x, h.y, h.r, h.r * 0.7, 0, 0, TAU);
@@ -223,32 +223,31 @@ export function drawTerrain(c, game, time) {
       continue;
     }
     c.save();
-    c.beginPath();
-    c.rect(135, 175, 754, 385);
+    floorPath(c, game.map);
     c.clip();
     c.beginPath();
     c.arc(h.x, h.y, h.r, 0, TAU);
     c.clip();
     if (h.kind === "flood") {
-      const water = c.createLinearGradient(0, 175, 0, 560);
+      const water = c.createLinearGradient(0, h.y - h.r, 0, h.y + h.r);
       water.addColorStop(0, "#377f9bcf");
       water.addColorStop(1, "#195a78e8");
       c.fillStyle = water;
-      c.fillRect(135, 175, 754, 385);
-      for (let y = 180; y < 570; y += 17) {
+      c.fillRect(h.x - h.r, h.y - h.r, h.r * 2, h.r * 2);
+      for (let y = h.y - h.r; y <= h.y + h.r; y += 17) {
         c.strokeStyle = y % 3 ? "#9cdeea66" : "#c5f3f277";
         c.lineWidth = 1.5;
         c.beginPath();
-        for (let x = 130; x <= 900; x += 9) {
+        for (let x = h.x - h.r; x <= h.x + h.r; x += 9) {
           const yy = y + Math.sin(x * 0.045 + time * 2 + y) * 3;
-          if (x === 130) c.moveTo(x, yy);
+          if (x === h.x - h.r) c.moveTo(x, yy);
           else c.lineTo(x, yy);
         }
         c.stroke();
       }
       for (let i = 0; i < 30; i++) {
-        const x = 140 + ((i * 113 + time * 9) % 740);
-        const y = 180 + ((i * 83) % 370);
+        const x = h.x - h.r + ((i * 113 + time * 9) % (h.r * 2));
+        const y = h.y - h.r + ((i * 83) % (h.r * 2));
         c.fillStyle = "#d7f9ed55";
         c.fillRect(x, y + Math.sin(time * 3 + i) * 3, 8, 1);
       }

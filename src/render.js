@@ -8,6 +8,7 @@ import { cameraView } from "./camera.js";
 import { inWorld, visibility, viewerVisibility } from "./combat.js";
 import {
   drawCharacter,
+  drawFallenCharacter,
   drawCharacterStrike,
   characterPose,
 } from "./characters.js";
@@ -577,7 +578,8 @@ export class Renderer {
       portrait: root?.dataset.orientation === "portrait" && !game.finished,
       screenWidth: root?.clientWidth || w,
       screenHeight: root?.clientHeight || h,
-      focus: game.player,
+      focus: game.spectatorFocus || game.player,
+      spectating: !!game.spectatorFocus,
       map: game.map,
       overview: game.finished,
     });
@@ -759,14 +761,30 @@ export class Renderer {
       }
       c.restore();
     }
-    for (const a of [...game.fighters]
+    const bodies = game.fighters
       .filter(
         (a) =>
           (a.alive || a.ghost) &&
           inWorld(a) &&
           viewerVisibility(a, game.player) > 0,
       )
-      .sort((a, b) => a.y - b.y)) {
+      .map((a) => ({ a, y: a.y }));
+    bodies.push(
+      ...(game.fallenAnimations || []).map((death) => ({
+        death,
+        y: death.fighter.y,
+      })),
+    );
+    for (const body of bodies.sort((a, b) => a.y - b.y)) {
+      if (body.death) {
+        const death = body.death;
+        c.save();
+        c.translate(death.fighter.x, death.fighter.y);
+        drawFallenCharacter(c, death, fighterColor(death.fighter));
+        c.restore();
+        continue;
+      }
+      const a = body.a;
       c.save();
       c.globalAlpha = a.ghost ? 0.38 : viewerVisibility(a, game.player);
       const immersion = a.victory ? 0 : immersionFor(game, a);
@@ -960,21 +978,22 @@ export class Renderer {
       c.stroke();
       c.globalAlpha = 1;
     }
-    for (const [x, y] of [
-      [210, 151],
-      [814, 151],
-      [210, 586],
-      [814, 586],
-    ]) {
-      c.fillStyle = "#3e3929";
-      c.fillRect(x - 5, y, 10, 12);
-      c.fillStyle = "#c9984e";
-      c.fillRect(x - 4, y - 7, 8, 9);
-      c.fillStyle = "#efd18a";
-      c.fillRect(x - 2, y - 12 + Math.sin(t * 8 + x) * 2, 4, 9);
-      c.fillStyle = "#f6de9c";
-      c.fillRect(x + Math.sin(t * 2) * 4, y - 20 - ((t * 9) % 15), 2, 2);
-    }
+    if (!game.map)
+      for (const [x, y] of [
+        [210, 151],
+        [814, 151],
+        [210, 586],
+        [814, 586],
+      ]) {
+        c.fillStyle = "#3e3929";
+        c.fillRect(x - 5, y, 10, 12);
+        c.fillStyle = "#c9984e";
+        c.fillRect(x - 4, y - 7, 8, 9);
+        c.fillStyle = "#efd18a";
+        c.fillRect(x - 2, y - 12 + Math.sin(t * 8 + x) * 2, 4, 9);
+        c.fillStyle = "#f6de9c";
+        c.fillRect(x + Math.sin(t * 2) * 4, y - 20 - ((t * 9) % 15), 2, 2);
+      }
     distortGravity(c, this.canvas, this.distortion, game, this.view, t);
     drawSmoke(c, game, t);
     if (

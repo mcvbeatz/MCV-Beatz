@@ -434,6 +434,65 @@ export function drawCharacter(c, a, time) {
   return true;
 }
 
+// A saved fighter appearance outlives combat removal, fusion and respawn.
+// Grounded bodies buckle; flying forms drop before collapsing into motes.
+export function deathPose(death) {
+  const p = Math.max(0, Math.min(1, death.elapsed / death.duration));
+  const phase = Math.max(0, Math.min(1, (p - 0.08) / 0.4));
+  const fall = phase * phase * (3 - 2 * phase);
+  const a = death.fighter;
+  const direction = a.hitDx ? Math.sign(a.hitDx) : a.fx < 0 ? -1 : 1;
+  return {
+    progress: p,
+    fall,
+    opacity: Math.min(1, (1 - p) / 0.42),
+    rotation: direction * fall * (a.parts.includes("air") ? 1.45 : 1.3),
+    x: direction * fall * 8,
+    y: fall * 5 - (a.parts.includes("air") ? (1 - fall) * 8 : 0),
+  };
+}
+export function drawFallenCharacter(c, death, color = "#e1d8b5") {
+  const a = death.fighter,
+    pose = deathPose(death);
+  if (pose.opacity <= 0) return false;
+  const side = Math.abs(a.fx) > Math.abs(a.fy);
+  const facing = side ? 1 : a.fy < 0 ? 2 : 0;
+  c.save();
+  c.globalAlpha *= pose.opacity;
+  c.fillStyle = "#10172266";
+  c.beginPath();
+  c.ellipse(pose.x * 2, 7, 21 + pose.fall * 12, 6, 0, 0, Math.PI * 2);
+  c.fill();
+  c.save();
+  c.translate(pose.x, pose.y);
+  c.rotate(pose.rotation);
+  const shrink = death.lost ? 1 - pose.progress * 0.55 : 1;
+  c.scale(shrink, (1 - pose.fall * 0.22) * shrink);
+  const drawn =
+    paintFrame(c, a.element, facing, side && a.fx < 0, 64, "hurt") ||
+    paintFrame(c, a.element, facing, side && a.fx < 0, 64);
+  c.restore();
+  if (pose.progress > 0.45) {
+    const disperse = (pose.progress - 0.45) / 0.55;
+    c.fillStyle = color;
+    for (let i = 0; i < 12; i++) {
+      const angle = i * 2.4;
+      const radius = 8 + disperse * (16 + (i % 4) * 6);
+      c.beginPath();
+      c.arc(
+        pose.x * 2 + Math.cos(angle) * radius,
+        2 + Math.sin(angle) * radius * 0.4 - disperse * 20,
+        1.3 + (i % 3) * 0.5,
+        0,
+        Math.PI * 2,
+      );
+      c.fill();
+    }
+  }
+  c.restore();
+  return drawn;
+}
+
 export function paintPortraits(root = document) {
   for (const canvas of root.querySelectorAll("canvas[data-character]")) {
     const c = canvas.getContext("2d");

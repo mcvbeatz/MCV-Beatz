@@ -1,7 +1,11 @@
 const TAU = Math.PI * 2;
-function floorPath(c, map) {
+export function floorPath(c, map) {
   c.beginPath();
-  if (map.kind === "garden") {
+  if (!map) {
+    c.rect(135, 175, 754, 385);
+  } else if (map.kind === "corruption") {
+    c.arc(map.cx, map.cy, map.radius - map.wallWidth / 2, 0, TAU);
+  } else if (map.kind === "garden") {
     const [h, v] = map.shapes,
       right = h.x + h.w,
       bottom = h.y + h.h,
@@ -339,6 +343,12 @@ export function drawBattleMinimap(c, game, width, height, portrait) {
   for (const p of game.portals.portals) {
     c.fillStyle = "#d4fff4";
     c.fillRect(p.x * scale - 1.5, p.y * scale - 1.5, 3, 3);
+  }
+  if (game.spectatorFocus) {
+    const focus = game.spectatorFocus;
+    c.strokeStyle = "#b3edff";
+    c.lineWidth = 1;
+    c.strokeRect(focus.x * scale - 5, focus.y * scale - 4, 10, 8);
   }
   c.fillStyle = "#ffe098";
   c.strokeStyle = "#302619";

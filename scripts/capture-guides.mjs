@@ -59,7 +59,7 @@ async function capture(name) {
 }
 for (const [i, mode] of modes.entries()) {
   await page.evaluate((i) => {
-    Math.random = () => (i % 2 ? 0.85 : 0.35);
+    Math.random = () => [0.05, 0.45, 0.85][i % 3];
   }, i);
   await start(mode, mode === "corruption" ? "light" : undefined);
   await page.evaluate(async (mode) => {

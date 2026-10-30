@@ -1,4 +1,5 @@
-import { createBattleMap, BATTLE_MAP_IDS } from "./battle-maps.js";
+import { updateRespawnCamera } from "./camera.js";
+import { createBattleMap, MATCH_MAP_IDS } from "./battle-maps.js";
 import { createCorruptionMap } from "./corruption-map.js";
 import {
   initializeAdvanced,
@@ -334,14 +335,24 @@ export class Combat {
     this.countdown =
       countdown && !["duel", "fused", "fused3", "team"].includes(mode) ? 4 : 0;
     this.mode = mode;
-    this.map =
+    this.mapId =
       mode === "corruption"
+        ? "corruption"
+        : (mapId ??
+          MATCH_MAP_IDS[
+            Math.min(
+              MATCH_MAP_IDS.length - 1,
+              Math.floor(random() * MATCH_MAP_IDS.length),
+            )
+          ]);
+    this.map =
+      this.mapId === "corruption"
         ? createCorruptionMap()
-        : mapId === "classic"
+        : this.mapId === "classic"
           ? null
-          : createBattleMap(
-              mapId ?? BATTLE_MAP_IDS[Math.min(1, Math.floor(random() * 2))],
-            );
+          : createBattleMap(this.mapId);
+    this.spectatorFocus = null;
+    this.fallenAnimations = [];
     this.scores = [0, 0];
     this.deathUsed = new Set();
     this.rebirthUsed = new Set();
@@ -886,6 +897,14 @@ export class Combat {
       });
       return;
     }
+    if (wasAlive) {
+      this.fallenAnimations.push({
+        fighter: { ...a, parts: [...a.parts], victory: false },
+        elapsed: 0,
+        duration: 1.5,
+        lost,
+      });
+    }
     a.prisonHp = 0;
     a.chasmReady = false;
     a.hp = 0;
@@ -1203,6 +1222,10 @@ export class Combat {
     fallen.fusedInto = null;
     fallen.dimension = null;
     fallen.transit = null;
+    this.fallenAnimations = this.fallenAnimations.filter(
+      (d) => d.fighter.id !== fallen.id,
+    );
+    if (fallen === this.player) this.spectatorFocus = null;
     fallen.hp = Math.min(fallen.maxHp, 45 + 15 * power);
     Object.assign(
       fallen,
@@ -2784,8 +2807,17 @@ export class Combat {
       (h) => !h.removed && (h.life > 0 || !inWorld(h)),
     );
   }
+  advanceDeaths(dt) {
+    for (const death of this.fallenAnimations) death.elapsed += Math.max(0, dt);
+    this.fallenAnimations = this.fallenAnimations.filter(
+      (death) =>
+        death.elapsed < death.duration &&
+        !this.fighters.some((a) => a.id === death.fighter.id && a.alive),
+    );
+  }
   update(dt, input = { x: 0, y: 0 }, runAI = true) {
     if (this.finished) return;
+    this.advanceDeaths(dt);
     if (this.intermission) return advanceReward(this, dt);
     dt = Math.min(dt, 0.05);
     if (this.countdown > 0) {
@@ -2817,6 +2849,7 @@ export class Combat {
       if (!a.alive && a.respawnAt !== undefined && this.time >= a.respawnAt)
         this.respawn(a);
     }
+    updateRespawnCamera(this, dt, input);
     this.portals.update();
     for (const a of this.fighters) {
       if (!a.alive && !a.ghost) continue;
@@ -3133,6 +3166,10 @@ export class Combat {
   }
   respawn(a) {
     if (!a.spawn || a.echo) return false;
+    this.fallenAnimations = this.fallenAnimations.filter(
+      (d) => d.fighter.id !== a.id,
+    );
+    if (a === this.player) this.spectatorFocus = null;
     const {
       spawn,
       kills,
@@ -3247,12 +3284,16 @@ export class Combat {
       : enemy;
   }
   celebrate(ids) {
+    this.spectatorFocus = null;
     this.winnerIds = ids;
     this.celebrationRemaining = this.fighters.some(
       (a) => a.alive && !a.echo && ids.includes(a.id),
     )
       ? 4
-      : 0;
+      : Math.max(
+          0,
+          ...this.fallenAnimations.map((d) => d.duration - d.elapsed),
+        );
     this.celebrationElapsed = 0;
     this.effects = [];
     for (const a of this.fighters) {
@@ -3266,6 +3307,7 @@ export class Combat {
     }
   }
   advanceCelebration(dt) {
+    this.advanceDeaths(dt);
     const elapsed = Math.min(Math.max(0, dt), this.celebrationRemaining || 0);
     this.celebrationRemaining = Math.max(
       0,

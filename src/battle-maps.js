@@ -2,6 +2,7 @@
 const clamp = (n, a, b) => Math.max(a, Math.min(b, n));
 const distance = (a, b) => Math.hypot(a.x - b.x, a.y - b.y);
 export const BATTLE_MAP_IDS = ["garden", "tower"];
+export const MATCH_MAP_IDS = ["classic", ...BATTLE_MAP_IDS];
 export function createBattleMap(
   id = BATTLE_MAP_IDS[Math.floor(Math.random() * 2)],
 ) {
