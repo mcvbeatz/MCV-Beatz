@@ -203,23 +203,40 @@ test("Blaze leans and faces the dash direction across inherited elemental design
           lock: "rival",
         });
         const pose = characterPose(a);
+        const matrices = [];
+        const drawImage = c.drawImage.bind(c);
+        c.drawImage = (...args) => {
+          const { a, b, c: skew, d } = c.getTransform();
+          matrices.push({ a, b, c: skew, d });
+          drawImage(...args);
+        };
         c.save();
         c.translate(100 + col * 200, 110 + row * 145);
         drawCharacter(c, a, 1);
         c.restore();
+        c.drawImage = drawImage;
         c.fillStyle = "#efe2b4";
         c.font = "12px sans-serif";
         c.fillText(`${element} ${dx},${dy}`, 50 + col * 200, 135 + row * 145);
-        samples.push({ dx, dy, pose });
+        samples.push({ dx, dy, pose, matrices });
       }
     }
     return { samples, image: canvas.toDataURL().split(",")[1] };
   });
-  for (const { dx, dy, pose } of result.samples) {
+  for (const { dx, dy, pose, matrices } of result.samples) {
     expect(pose.dashing).toBe(true);
     expect(pose.dashLean).toBe(1);
     expect(pose.facing).toBe(dx ? 1 : dy < 0 ? 2 : 0);
     expect(pose.flip).toBe(dx < 0);
+    expect(matrices.length).toBeGreaterThan(0);
+    for (const m of matrices) {
+      // Rotation/mirroring preserve lengths and right angles. Shear and
+      // nonuniform scaling would visibly warp the body during a dash.
+      expect(Math.hypot(m.a, m.b)).toBeCloseTo(1, 8);
+      expect(Math.hypot(m.c, m.d)).toBeCloseTo(1, 8);
+      expect(m.a * m.c + m.b * m.d).toBeCloseTo(0, 8);
+      if (dx) expect(-m.c * dx).toBeGreaterThan(0);
+    }
   }
   await writeFile(
     "/tmp/elemental-dash-poses.png",

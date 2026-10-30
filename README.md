@@ -1,4 +1,9 @@
-# Elemental — The Colosseum · v0.20.0
+# Elemental — The Colosseum · v0.22.1
+
+## v0.22.1 Rigid Blaze dash poses
+
+- Replace dash skewing and stretching with a small rigid lean. Elementals keep their original proportions and face their travel direction.
+
 
 ## v0.22.0 Clearer combat feedback and landscape controls
 

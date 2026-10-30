@@ -401,16 +401,10 @@ export function drawCharacter(c, a, time) {
   c.save();
   c.translate(a.fx * reach, a.fy * reach);
   if (pose.dashing) {
-    // Shear from the feet so the head leads the dash, using the matching
-    // directional frame rather than rotating the face toward the ground.
-    c.transform(
-      1,
-      0,
-      -pose.dashX * pose.dashLean * 0.48,
-      1 - pose.dashY * pose.dashLean * 0.18,
-      0,
-      0,
-    );
+    // Keep the sprite rigid: lean around the feet without skewing or scaling.
+    // Front/back dashes use their directional frame and a small forward shift.
+    c.translate(0, pose.dashY * pose.dashLean * 8);
+    c.rotate(pose.dashX * pose.dashLean * 0.35);
   }
   if (pose.reacting) {
     const recoil = Math.sin((1 - a.hitReact / 0.24) * Math.PI);
