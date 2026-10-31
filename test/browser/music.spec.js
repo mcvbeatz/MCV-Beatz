@@ -19,7 +19,7 @@ async function begin(page, mode) {
     __arena.game.update = () => {};
   });
 }
-test("The pre-rendered No Escape track plays once at native speed only for Corruption, uses music gain, and pauses with the battle and app visibility", async ({
+test("The original No Escape recording plays once at native speed only for Survive the Night, uses music gain, and pauses with the battle and app visibility", async ({
   page,
 }) => {
   test.setTimeout(60000);
@@ -41,10 +41,10 @@ test("The pre-rendered No Escape track plays once at native speed only for Corru
     gain: __app.sound.music.gain.value,
     sfx: __app.settings.sfx,
   }));
-  expect(state.src).toContain("no-escape-slow");
-  expect(state.duration).toBeCloseTo(120, 1);
+  expect(state.src).toContain("no-escape.mp3");
+  expect(state.duration).toBeCloseTo(123.048, 2);
   expect(state.loop).toBe(false);
-  expect(state.duration / state.rate).toBeCloseTo(120, 4);
+  expect(state.duration / state.rate).toBeCloseTo(123.048, 2);
   expect(state.rate).toBe(1);
   expect(state.pitch).toBe(false);
   expect(state.ambient).toBe(0);
@@ -108,7 +108,7 @@ test("The pre-rendered No Escape track plays once at native speed only for Corru
     .toBe(true);
   expect(errors).toEqual([]);
 });
-test("new Corruption battles restart the song, other modes keep ambient music, and the Settings slider controls the track", async ({
+test("new Survive the Night battles restart the song, other modes keep ambient music, and the Settings slider controls the track", async ({
   page,
 }) => {
   await ready(page);
@@ -136,7 +136,7 @@ test("new Corruption battles restart the song, other modes keep ambient music, a
   expect(await page.evaluate(() => __app.sound.ambient.gain.value)).toBe(1);
 });
 
-test("Corruption music waits for Go and never restarts after its natural end", async ({
+test("Survive the Night music starts during the countdown and never restarts after its natural end", async ({
   page,
 }) => {
   await ready(page);
@@ -147,19 +147,29 @@ test("Corruption music waits for Go and never restarts after its natural end", a
     __arena.game.update = () => {};
     __arena.game.countdown = 3;
   });
+  await expect(page.locator("#battle-countdown")).toHaveText("2");
   await expect
-    .poll(() =>
-      page.evaluate(() => __app.sound.primed && !__app.sound.playPending),
-    )
+    .poll(() => page.evaluate(() => __app.sound.track.currentTime))
+    .toBeGreaterThan(0.1);
+  expect(await page.evaluate(() => __arena.game.time)).toBe(0);
+  const duringCountdown = await page.evaluate(
+    () => __app.sound.track.currentTime,
+  );
+  await page.locator("#pause-btn").click();
+  await expect
+    .poll(() => page.evaluate(() => __app.sound.track.paused))
     .toBe(true);
-  expect(await page.evaluate(() => __app.sound.track.paused)).toBe(true);
-  expect(await page.evaluate(() => __app.sound.track.currentTime)).toBe(0);
+  await page.locator("#overlay-play").click();
+  await expect
+    .poll(() => page.evaluate(() => __app.sound.track.currentTime))
+    .toBeGreaterThan(duringCountdown);
+  const beforeGo = await page.evaluate(() => __app.sound.track.currentTime);
   await page.evaluate(() => {
     __arena.game.countdown = 1;
   });
   await expect
     .poll(() => page.evaluate(() => __app.sound.track.currentTime))
-    .toBeGreaterThan(0.1);
+    .toBeGreaterThan(beforeGo + 0.1);
   await page.evaluate(() => {
     const t = __app.sound.track;
     t.currentTime = t.duration - 0.15;
@@ -180,4 +190,34 @@ test("Corruption music waits for Go and never restarts after its natural end", a
   expect(await page.evaluate(() => __app.sound.track.currentTime)).toBeLessThan(
     5,
   );
+});
+
+test("the song preloads silently in setup and starts with the actual three-second countdown", async ({
+  page,
+}) => {
+  await ready(page);
+  await page.evaluate(() => __app.chooseMode("corruption"));
+  await expect
+    .poll(() => page.evaluate(() => __app.sound.track?.readyState || 0))
+    .toBeGreaterThan(1);
+  expect(await page.evaluate(() => __app.sound.track.paused)).toBe(true);
+  expect(await page.evaluate(() => __app.sound.track.currentTime)).toBe(0);
+  await page.locator("#begin-btn").click();
+  await expect(page.locator("#battle-countdown")).toHaveText("3");
+  await expect
+    .poll(() => page.evaluate(() => __app.sound.track.currentTime))
+    .toBeGreaterThan(0.1);
+  expect(await page.evaluate(() => __arena.game.countingDown)).toBe(true);
+  expect(await page.evaluate(() => __arena.game.time)).toBe(0);
+  await page.evaluate(() => {
+    __arena.game.ai = () => {};
+  });
+  await expect
+    .poll(() => page.evaluate(() => __arena.game.time), { timeout: 5000 })
+    .toBeGreaterThan(0.15);
+  const gap = await page.evaluate(
+    () => __app.sound.track.currentTime - __arena.game.time,
+  );
+  expect(gap).toBeGreaterThan(2.6);
+  expect(gap).toBeLessThan(3.4);
 });

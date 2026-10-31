@@ -90,9 +90,7 @@ export function createApp(api) {
     document.body.dataset.screen = next;
     sound.setScene(
       next === "battle" && !api.game().finished ? api.game().mode : null,
-      next === "battle" &&
-        (api.paused() ||
-          (api.game().mode === "corruption" && api.game().countingDown)),
+      next === "battle" && api.paused(),
     );
     $("shell-content").hidden = ["setup", "battle"].includes(next);
     $("shell-back").hidden = next === "home";
@@ -120,7 +118,7 @@ export function createApp(api) {
     setScreen(next);
     const c = $("shell-content");
     if (next === "home")
-      c.innerHTML = `<section class="home-hero"><span class="eyebrow">THE COLOSSEUM · v0.23.0</span><h1>Power is elemental.</h1><p>Choose your arena. Find your next form.</p><div class="home-elements" aria-label="Light, Dark, Water, Air, Earth and Fire">${Object.keys(
+      c.innerHTML = `<section class="home-hero"><span class="eyebrow">THE COLOSSEUM · v0.24.0</span><h1>Power is elemental.</h1><p>Choose your arena. Find your next form.</p><div class="home-elements" aria-label="Light, Dark, Water, Air, Earth and Fire">${Object.keys(
         ELEMENTS,
       )
         .map(
@@ -218,6 +216,7 @@ export function createApp(api) {
         ? "team-battles"
         : "solo-battles";
     api.chooseMode(id);
+    if (id === "corruption") sound.prepareTrack();
     setScreen("setup");
     $("setup-mode-title").textContent = MODES[id].name;
     $("setup-how").onclick = () => modeGuide(id);
@@ -548,13 +547,8 @@ export function createApp(api) {
   document.addEventListener("keydown", () => sound.unlock());
   function start() {
     setScreen("battle");
-    sound.setScene(
-      api.game().mode,
-      api.game().mode === "corruption" && api.game().countingDown,
-      true,
-    );
+    sound.setScene(api.game().mode, false, true);
     sound.unlock();
-    if (api.game().mode === "corruption") sound.primeTrack();
     matchTicket = account.startMatch(api.game().mode, category === "practice");
     $("save-status").textContent = "";
     sound.tone(300);
@@ -567,8 +561,7 @@ export function createApp(api) {
   function tick(g) {
     sound.setScene(
       screen === "battle" && !g.finished ? g.mode : null,
-      screen === "battle" &&
-        (api.paused() || (g.mode === "corruption" && g.countingDown)),
+      screen === "battle" && api.paused(),
     );
     if (g.intermission && screen === "battle") {
       reward.hidden = false;

@@ -1,4 +1,9 @@
-# Elemental — The Colosseum · v0.23.0
+# Elemental — The Colosseum · v0.24.0
+
+## v0.24.0 New No Escape recording
+
+Survive the Night uses the new 123.048-second No Escape MP3 exactly as uploaded, at native 1× speed without stretching or re-encoding. It preloads silently in setup and starts with the three-second countdown, continuing through the two-minute match. Pause/resume, music volume, match exit and single-play behavior remain supported. The previous slowed AAC asset and its conversion script have been retired.
+
 
 ## v0.23.0 War and consistent landscape tabs
 

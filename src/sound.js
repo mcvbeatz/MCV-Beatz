@@ -12,7 +12,6 @@ export class Soundtrack {
     this.playPending = false;
     this.playBlocked = false;
     this.trackEnded = false;
-    this.primed = false;
     document.addEventListener("visibilitychange", () => this.sync());
   }
   unlock() {
@@ -42,38 +41,13 @@ export class Soundtrack {
     }
     this.sync();
   }
-  primeTrack() {
-    // Authorize this media element during the Start tap on iOS, silently, so
-    // audible playback can begin at Go rather than during the countdown.
-    if (!this.track || this.primed || this.playPending) return;
-    this.primed = true;
-    this.playPending = true;
-    this.track.muted = true;
-    this.track
-      .play()
-      .catch(() => {
-        this.primed = false;
-      })
-      .finally(() => {
-        this.track.pause();
-        this.track.currentTime = 0;
-        this.track.muted = false;
-        this.playPending = false;
-        this.sync();
-      });
-  }
-  sync() {
-    if (!this.context || !this.music) return;
-    const corruption = this.scene === "corruption";
-    const active = !this.paused && !document.hidden;
-    this.ambient.gain.value = corruption || !active ? 0 : 1;
-    if (corruption && !this.track) {
+  prepareTrack() {
+    // Fetch the unchanged recording during setup, before the countdown tap.
+    if (!this.track) {
       this.track = new Audio(
-        new URL("./assets/music/no-escape-slow.m4a", import.meta.url).href,
+        new URL("./assets/music/no-escape.mp3", import.meta.url).href,
       );
       this.track.loop = false;
-      // Speed and pitch are baked into this two-minute file. Native 1x playback
-      // avoids real-time pitch-preserving time-stretch / buffer artifacts.
       this.track.playbackRate = 1;
       this.track.preservesPitch = false;
       this.track.webkitPreservesPitch = false;
@@ -81,11 +55,20 @@ export class Soundtrack {
         this.trackEnded = true;
       });
       this.track.preload = "auto";
-      // iOS ignores HTMLMediaElement.volume; route the song through the same
-      // Web Audio music gain as the ambient score, separate from SFX.
+      this.track.load();
+    }
+    if (this.context && this.music && !this.trackSource) {
+      // iOS ignores HTMLMediaElement.volume; keep the independent music gain.
       this.trackSource = this.context.createMediaElementSource(this.track);
       this.trackSource.connect(this.music);
     }
+  }
+  sync() {
+    if (!this.context || !this.music) return;
+    const corruption = this.scene === "corruption";
+    const active = !this.paused && !document.hidden;
+    this.ambient.gain.value = corruption || !active ? 0 : 1;
+    if (corruption) this.prepareTrack();
     if (!this.track) return;
     if (!corruption || !active || !this.settings.music) {
       this.track.pause();
