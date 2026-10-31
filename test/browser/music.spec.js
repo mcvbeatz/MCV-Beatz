@@ -97,7 +97,7 @@ test("The original No Escape recording plays once at native speed only for Survi
   await expect
     .poll(() => page.evaluate(() => __app.sound.track.paused))
     .toBe(true);
-  expect(await page.evaluate(() => __app.sound.ambient.gain.value)).toBe(1);
+  expect(await page.evaluate(() => __app.sound.ambient.gain.value)).toBe(0);
   await page.locator("#resume-btn").click();
   await expect
     .poll(() => page.evaluate(() => __app.sound.track.paused))

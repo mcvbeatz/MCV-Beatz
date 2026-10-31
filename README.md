@@ -1,4 +1,9 @@
-# Elemental — The Colosseum · v0.24.0
+# Elemental — The Colosseum · v0.25.0
+
+## v0.25.0 Solace menu music
+
+The uploaded Solace MP3 now plays throughout Home, setup and the other menus. It is decoded once and looped by Web Audio directly at the buffer boundary, with no replay delay. The recording is unchanged, uses the Music volume setting, preserves its position between menu screens, and pauses when the app is hidden, muted, or enters a battle. Browsers unlock audio on the first interaction. Battle soundtracks, including No Escape starting with the Survive the Night countdown, retain their timing.
+
 
 ## v0.24.0 New No Escape recording
 

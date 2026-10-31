@@ -89,8 +89,14 @@ export function createApp(api) {
     screen = next;
     document.body.dataset.screen = next;
     sound.setScene(
-      next === "battle" && !api.game().finished ? api.game().mode : null,
-      next === "battle" && api.paused(),
+      next === "battle"
+        ? api.game().finished
+          ? "results"
+          : api.game().mode
+        : next === "loading"
+          ? "loading"
+          : "menu",
+      next === "loading" || (next === "battle" && api.paused()),
     );
     $("shell-content").hidden = ["setup", "battle"].includes(next);
     $("shell-back").hidden = next === "home";
@@ -118,7 +124,7 @@ export function createApp(api) {
     setScreen(next);
     const c = $("shell-content");
     if (next === "home")
-      c.innerHTML = `<section class="home-hero"><span class="eyebrow">THE COLOSSEUM · v0.24.0</span><h1>Power is elemental.</h1><p>Choose your arena. Find your next form.</p><div class="home-elements" aria-label="Light, Dark, Water, Air, Earth and Fire">${Object.keys(
+      c.innerHTML = `<section class="home-hero"><span class="eyebrow">THE COLOSSEUM · v0.25.0</span><h1>Power is elemental.</h1><p>Choose your arena. Find your next form.</p><div class="home-elements" aria-label="Light, Dark, Water, Air, Earth and Fire">${Object.keys(
         ELEMENTS,
       )
         .map(
@@ -560,8 +566,14 @@ export function createApp(api) {
   let lastReward = null;
   function tick(g) {
     sound.setScene(
-      screen === "battle" && !g.finished ? g.mode : null,
-      screen === "battle" && api.paused(),
+      screen === "battle"
+        ? g.finished
+          ? "results"
+          : g.mode
+        : screen === "loading"
+          ? "loading"
+          : "menu",
+      screen === "loading" || (screen === "battle" && api.paused()),
     );
     if (g.intermission && screen === "battle") {
       reward.hidden = false;

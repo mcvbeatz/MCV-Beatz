@@ -9,6 +9,11 @@ export class Soundtrack {
     this.scene = null;
     this.paused = false;
     this.track = null;
+    this.menuBuffer = null;
+    this.menuLoading = null;
+    this.menuSource = null;
+    this.menuOffset = 0;
+    this.menuStartedAt = 0;
     this.playPending = false;
     this.playBlocked = false;
     this.trackEnded = false;
@@ -63,11 +68,62 @@ export class Soundtrack {
       this.trackSource.connect(this.music);
     }
   }
+  prepareMenu() {
+    if (!this.context || this.menuBuffer || this.menuLoading) return;
+    this.menuLoading = fetch(
+      new URL("./assets/music/solace.mp3", import.meta.url).href,
+    )
+      .then((response) => {
+        if (!response.ok) throw new Error("Menu music could not load");
+        return response.arrayBuffer();
+      })
+      .then((data) => this.context.decodeAudioData(data))
+      .then((buffer) => {
+        this.menuBuffer = buffer;
+        this.sync();
+      })
+      .catch(() => {
+        // Retry on the next gesture or scene change, without a retry loop.
+        this.menuLoading = null;
+      });
+  }
+  menuPosition() {
+    if (!this.menuBuffer) return 0;
+    const elapsed = this.menuSource
+      ? this.context.currentTime - this.menuStartedAt
+      : 0;
+    return (this.menuOffset + elapsed) % this.menuBuffer.duration;
+  }
+  stopMenu() {
+    if (!this.menuSource) return;
+    this.menuOffset = this.menuPosition();
+    this.menuSource.stop();
+    this.menuSource.disconnect();
+    this.menuSource = null;
+  }
+  syncMenu(active) {
+    if (!active) return this.stopMenu();
+    this.prepareMenu();
+    if (!this.menuBuffer || this.menuSource) return;
+    const source = this.context.createBufferSource();
+    source.buffer = this.menuBuffer;
+    // The audio engine wraps at the buffer boundary with no replay callback,
+    // network request, timer delay, or extra silence between repetitions.
+    source.loop = true;
+    source.loopStart = 0;
+    source.loopEnd = this.menuBuffer.duration;
+    source.connect(this.music);
+    this.menuStartedAt = this.context.currentTime;
+    this.menuSource = source;
+    source.start(0, this.menuOffset);
+  }
   sync() {
     if (!this.context || !this.music) return;
     const corruption = this.scene === "corruption";
     const active = !this.paused && !document.hidden;
-    this.ambient.gain.value = corruption || !active ? 0 : 1;
+    const menu = this.scene === "menu";
+    this.ambient.gain.value = corruption || menu || !active ? 0 : 1;
+    this.syncMenu(menu && active && this.settings.music > 0);
     if (corruption) this.prepareTrack();
     if (!this.track) return;
     if (!corruption || !active || !this.settings.music) {
@@ -147,7 +203,7 @@ export class Soundtrack {
       !this.context ||
       document.hidden ||
       this.paused ||
-      this.scene === "corruption" ||
+      ["corruption", "menu", "loading"].includes(this.scene) ||
       !this.settings.music
     )
       return;
