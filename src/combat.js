@@ -1,3 +1,4 @@
+import { initializeWar, updateWar, warRecoveryTarget } from "./war.js";
 import { updateRespawnCamera } from "./camera.js";
 import { createBattleMap, MATCH_MAP_IDS } from "./battle-maps.js";
 import { createCorruptionMap } from "./corruption-map.js";
@@ -329,12 +330,30 @@ export class Combat {
     random = Math.random,
     countdown = false,
     mapId,
+    enemyElement,
   } = {}) {
     this.random = random;
     this.time = 0;
     this.countdown =
       countdown && !["duel", "fused", "fused3", "team"].includes(mode) ? 4 : 0;
     this.mode = mode;
+    if (mode === "war") {
+      if (!Object.hasOwn(ELEMENTS, element)) element = "fire";
+      const rivals = Object.keys(ELEMENTS).filter((e) => e !== element);
+      this.warElements = [
+        element,
+        rivals.includes(enemyElement)
+          ? enemyElement
+          : rivals[
+              Math.min(rivals.length - 1, Math.floor(random() * rivals.length))
+            ],
+      ];
+      if (
+        this.warElements.includes("water") &&
+        this.warElements.includes("fire")
+      )
+        mapId = "volcano";
+    }
     this.mapId =
       mode === "corruption"
         ? "corruption"
@@ -364,12 +383,13 @@ export class Combat {
     this.timeLimit =
       mode === "corruption"
         ? 120
-        : ["tdm", "domination", "rush", "roulette", "ffa"].includes(mode)
+        : ["tdm", "war", "domination", "rush", "roulette", "ffa"].includes(mode)
           ? 180
           : null;
     this.respawnDelay = [
       "ctf",
       "tdm",
+      "war",
       "corruption",
       "domination",
       "rush",
@@ -412,9 +432,15 @@ export class Combat {
     this.fighters = [];
     this.sequence = 0;
     this.portals = new PortalSystem(this);
-    const n = ["team", "ctf", "tdm", "domination", "rush"].includes(mode)
-        ? Math.max(mode === "rush" ? 3 : 2, Math.min(4, Math.floor(size) || 2))
-        : 1,
+    const n =
+        mode === "war"
+          ? Math.max(3, Math.min(5, Math.floor(size) || 3))
+          : ["team", "ctf", "tdm", "domination", "rush"].includes(mode)
+            ? Math.max(
+                mode === "rush" ? 3 : 2,
+                Math.min(4, Math.floor(size) || 2),
+              )
+            : 1,
       pool =
         mode === "fused"
           ? LEVEL_TWO
@@ -428,7 +454,9 @@ export class Combat {
       this.fighters.push(
         makeFighter(
           i === 0 ? "player" : `ally-${i}`,
-          i === 0 ? element : ["air", "light", "earth"][i - 1],
+          mode === "war" || i === 0
+            ? element
+            : ["air", "light", "earth"][i - 1],
           0,
           330 - i * 34,
           340 + (i - (n - 1) / 2) * 95,
@@ -437,7 +465,11 @@ export class Combat {
       this.fighters.push(
         makeFighter(
           `enemy-${i}`,
-          pool[Math.min(pool.length - 1, Math.floor(random() * pool.length))],
+          mode === "war"
+            ? this.warElements[1]
+            : pool[
+                Math.min(pool.length - 1, Math.floor(random() * pool.length))
+              ],
           1,
           710 + i * 26,
           340 + (i - (n - 1) / 2) * 95,
@@ -513,6 +545,7 @@ export class Combat {
       a.deaths = 0;
     }
     this.player = this.fighters[0];
+    initializeWar(this);
     initializeAdvanced(this, {
       element: ELEMENTS[element] ? element : "fire",
       size,
@@ -831,7 +864,8 @@ export class Combat {
         : source;
       if (credited && credited.team !== a.team) {
         credited.kills = (credited.kills || 0) + 1;
-        if (["tdm", "rush"].includes(this.mode)) this.scores[credited.team]++;
+        if (["tdm", "war", "rush"].includes(this.mode))
+          this.scores[credited.team]++;
       }
       if (this.respawnDelay) a.respawnAt = this.time + this.respawnDelay;
       for (const flag of this.flags)
@@ -2311,6 +2345,11 @@ export class Combat {
       return;
     }
     a.aiControlled = true;
+    const recovery = warRecoveryTarget(this, a);
+    if (recovery) {
+      this.moveToward(a, recovery, dt);
+      return;
+    }
     this.aiProgress(a);
     // Prefer a vulnerable nearby rival, especially one threatening a hurt ally.
     const score = (b) =>
@@ -2827,7 +2866,10 @@ export class Combat {
       this.countdown = Math.max(0, this.countdown - dt);
       if (wasLocked) return;
     }
-    if (["tdm", "roulette", "ffa"].includes(this.mode) && this.checkMatchEnd())
+    if (
+      ["tdm", "war", "roulette", "ffa"].includes(this.mode) &&
+      this.checkMatchEnd()
+    )
       return;
     this.time += dt;
     updateAdvanced(this);
@@ -2966,6 +3008,7 @@ export class Combat {
     this.events = this.events.filter((e) => this.time - e.time < 1.4);
     this.updateFlags();
     this.updateDomination(dt);
+    updateWar(this, dt);
     this.checkMatchEnd();
   }
   corruptionHit(source, target) {
@@ -3396,13 +3439,13 @@ export class Combat {
     if (teams.size < 2)
       return this.finish(
         teams.size ? [...teams][0] : null,
-        this.mode === "tdm"
+        ["tdm", "war"].includes(this.mode)
           ? "Team eliminated during respawns"
           : this.mode === "ffa"
             ? "Last elemental standing"
             : "Elimination",
       );
-    if (this.mode === "tdm" && this.time >= this.timeLimit) {
+    if (["tdm", "war"].includes(this.mode) && this.time >= this.timeLimit) {
       return this.finish(
         this.scores[0] === this.scores[1]
           ? null

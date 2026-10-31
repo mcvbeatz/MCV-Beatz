@@ -6,30 +6,39 @@ export const MATCH_MAP_IDS = ["classic", ...BATTLE_MAP_IDS];
 export function createBattleMap(
   id = BATTLE_MAP_IDS[Math.floor(Math.random() * 2)],
 ) {
-  if (!BATTLE_MAP_IDS.includes(id))
+  if (![...BATTLE_MAP_IDS, "volcano"].includes(id))
     throw new Error(`Unknown battle map: ${id}`);
-  const garden = id === "garden";
+  const garden = id === "garden",
+    volcano = id === "volcano";
   const map = {
     kind: id,
-    name: garden ? "The Crosswater Garden" : "The Astral Tower",
+    name: volcano
+      ? "The Ember Caldera"
+      : garden
+        ? "The Crosswater Garden"
+        : "The Astral Tower",
     width: 2048,
     height: 1360,
     cx: 1024,
     cy: 680,
     // Both floors have approximately the maze's 1.16 million square units.
-    bounds: garden
-      ? { left: 336, top: 0, width: 1376, height: 1360 }
-      : { left: 110, top: 0, width: 1890, height: 1360 },
-    shapes: garden
-      ? [
-          { x: 416, y: 355, w: 1216, h: 650 },
-          { x: 699, y: 72, w: 650, h: 1216 },
-        ]
-      : [
-          { x: 760, y: 680, r: 545 },
-          { x: 1680, y: 680, r: 250 },
-          { x: 1200, y: 590, w: 400, h: 180 },
-        ],
+    bounds: volcano
+      ? { left: 334, top: 0, width: 1380, height: 1360 }
+      : garden
+        ? { left: 336, top: 0, width: 1376, height: 1360 }
+        : { left: 110, top: 0, width: 1890, height: 1360 },
+    shapes: volcano
+      ? [{ x: 1024, y: 680, r: 590 }]
+      : garden
+        ? [
+            { x: 416, y: 355, w: 1216, h: 650 },
+            { x: 699, y: 72, w: 650, h: 1216 },
+          ]
+        : [
+            { x: 760, y: 680, r: 545 },
+            { x: 1680, y: 680, r: 250 },
+            { x: 1200, y: 590, w: 400, h: 180 },
+          ],
     portals: [],
   };
   // A body must fit wholly inside a component. Components overlap generously,
@@ -119,22 +128,24 @@ export function createBattleMap(
     }
     return distance(start, a);
   };
-  const nodes = garden
-    ? [
-        [735, 391],
-        [1313, 391],
-        [735, 969],
-        [1313, 969],
-        [1024, 680],
-      ]
-    : [
-        [760, 680],
-        [1240, 630],
-        [1240, 730],
-        [1490, 630],
-        [1490, 730],
-        [1680, 680],
-      ];
+  const nodes = volcano
+    ? [[1024, 680]]
+    : garden
+      ? [
+          [735, 391],
+          [1313, 391],
+          [735, 969],
+          [1313, 969],
+          [1024, 680],
+        ]
+      : [
+          [760, 680],
+          [1240, 630],
+          [1240, 730],
+          [1490, 630],
+          [1490, 730],
+          [1680, 680],
+        ];
   map.nodes = nodes.map(([x, y]) => ({ x, y }));
   const edges = map.nodes.map((a) =>
     map.nodes.map((b) => (map.lineClear(a, b, 18) ? distance(a, b) : Infinity)),
@@ -182,11 +193,11 @@ export function createBattleMap(
     return map.nearest(portal);
   };
   map.teamSpawn = (team, i, count) => ({
-    x: garden ? (team === 0 ? 560 : 1488) : team === 0 ? 460 : 1700,
+    x: garden || volcano ? (team === 0 ? 560 : 1488) : team === 0 ? 460 : 1700,
     y: 680 + (i - (count - 1) / 2) * 56,
   });
   map.spawn = (i, count) => {
-    if (garden) {
+    if (garden || volcano) {
       const angle = Math.PI + (i * Math.PI * 2) / count;
       return map.nearest(
         { x: 1024 + Math.cos(angle) * 485, y: 680 + Math.sin(angle) * 485 },

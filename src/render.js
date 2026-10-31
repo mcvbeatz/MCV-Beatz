@@ -1,3 +1,4 @@
+import { drawWarSupplies } from "./war-render.js";
 import {
   paintBattleMap,
   drawBattleAmbience,
@@ -637,6 +638,7 @@ export class Renderer {
     const t = idle ? performance.now() / 1000 : game.time;
     if (game.map) drawBattleAmbience(c, game.map, t);
     drawTerrain(c, game, t);
+    drawWarSupplies(c, game, t);
     for (const flag of game.flags) {
       const color = flag.team === game.player.team ? "#75d8f3" : "#f18e76";
       c.save();

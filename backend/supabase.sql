@@ -40,7 +40,7 @@ returns void language plpgsql security definer set search_path='' as $$
 declare inserted integer;
 begin
  if auth.uid() is null then raise exception 'Sign in required'; end if;
- if p_mode not in ('boss','ctf','domination','gauntlet','gauntlet-team','roulette','ffa','tdm','rush','corruption')
+ if p_mode not in ('boss','ctf','domination','gauntlet','gauntlet-team','roulette','ffa','tdm','war','rush','corruption')
    or p_kills is null or p_kills not between 0 and 10000 or p_deaths is null or p_deaths not between 0 and 1000
    or p_result is null or p_result not in ('victory','defeat','draw') or p_duration is null or p_duration not between 0 and 10800
  then raise exception 'Invalid match result'; end if;

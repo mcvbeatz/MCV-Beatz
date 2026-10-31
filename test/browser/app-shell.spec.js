@@ -70,6 +70,7 @@ test("app menus, account, settings and scrollable mode lists fit phones without 
   }
   expect(modes).toEqual([
     "tdm",
+    "war",
     "rush",
     "boss",
     "domination",

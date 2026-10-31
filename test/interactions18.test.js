@@ -156,6 +156,7 @@ test("Flash uses 85% of Vog radius in every direction and respects mode friendly
 test("Team Battles use the requested order", () => {
   assert.deepEqual(TEAM_MODES, [
     "tdm",
+    "war",
     "rush",
     "boss",
     "domination",

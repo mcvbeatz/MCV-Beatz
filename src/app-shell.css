@@ -1723,7 +1723,10 @@ body[data-screen="solo-battles"] #shell-content {
   font-size: 7px;
   letter-spacing: 0;
 }
-#orientation-root[data-orientation="landscape"] .skill-switcher {
+#orientation-root[data-orientation="landscape"]
+  .arena-panel
+  .game-wrap
+  .skill-switcher {
   top: 8px;
   left: calc(var(--battle-health-width) + 24px);
   right: calc(var(--battle-stats-width) + 24px);

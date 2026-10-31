@@ -63,7 +63,15 @@ test("Play has ordered Team/Solo lists, native scrolling and Quick Match across 
     await page
       .locator("[data-launch]")
       .evaluateAll((es) => es.map((e) => e.dataset.launch)),
-  ).toEqual(["tdm", "rush", "boss", "domination", "gauntlet-team", "ctf"]);
+  ).toEqual([
+    "tdm",
+    "war",
+    "rush",
+    "boss",
+    "domination",
+    "gauntlet-team",
+    "ctf",
+  ]);
   expect(
     await page
       .locator(".mode-scroll")

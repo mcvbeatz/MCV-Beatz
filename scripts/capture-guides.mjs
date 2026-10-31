@@ -29,6 +29,7 @@ const modes = [
   "roulette",
   "ffa",
   "tdm",
+  "war",
   "rush",
   "corruption",
   "duel",
@@ -58,12 +59,22 @@ async function capture(name) {
     .screenshot({ path: `public/guides/${name}.png` });
 }
 for (const [i, mode] of modes.entries()) {
-  await page.evaluate((i) => {
-    Math.random = () => [0.05, 0.45, 0.85][i % 3];
-  }, i);
-  await start(mode, mode === "corruption" ? "light" : undefined);
+  await page.evaluate(
+    ({ i, mode }) => {
+      Math.random = () => (mode === "war" ? 0.999 : [0.05, 0.45, 0.85][i % 3]);
+    },
+    { i, mode },
+  );
+  await start(
+    mode,
+    mode === "war" ? "water" : mode === "corruption" ? "light" : undefined,
+  );
   await page.evaluate(async (mode) => {
     const g = __arena.game;
+    if (mode === "war") {
+      g.time = 10;
+      (await import("/src/war.js")).updateWar(g, 0);
+    }
     if (mode === "roulette") {
       g.time = 20;
       const { updateAdvanced } = await import("/src/advanced-modes.js");

@@ -1,3 +1,7 @@
+import {
+  paintVolcanicMap,
+  drawVolcanicAmbience,
+} from "./volcanic-map-render.js";
 const TAU = Math.PI * 2;
 export function floorPath(c, map) {
   c.beginPath();
@@ -5,6 +9,8 @@ export function floorPath(c, map) {
     c.rect(135, 175, 754, 385);
   } else if (map.kind === "corruption") {
     c.arc(map.cx, map.cy, map.radius - map.wallWidth / 2, 0, TAU);
+  } else if (map.kind === "volcano") {
+    c.arc(map.cx, map.cy, map.shapes[0].r, 0, TAU);
   } else if (map.kind === "garden") {
     const [h, v] = map.shapes,
       right = h.x + h.w,
@@ -72,6 +78,7 @@ function lamp(c, x, y, t = 0) {
   c.fillRect(x - 1, y - 7, 2, 13);
 }
 export function paintBattleMap(c, map) {
+  if (map.kind === "volcano") return paintVolcanicMap(c, map);
   const garden = map.kind === "garden",
     random = seeded();
   c.fillStyle = garden ? "#123b48" : "#070916";
@@ -294,6 +301,7 @@ export function paintBattleMap(c, map) {
   c.stroke();
 }
 export function drawBattleAmbience(c, map, time) {
+  if (map.kind === "volcano") return drawVolcanicAmbience(c, map, time);
   if (map.kind !== "tower") return;
   // All lamps occupy the open gap, clear of both platform and tower masonry.
   for (const [x, y] of [
@@ -337,9 +345,21 @@ export function drawBattleMinimap(c, game, width, height, portrait) {
   c.save();
   c.scale(scale, scale);
   floorPath(c, map);
-  c.fillStyle = map.kind === "garden" ? "#87a565" : "#bdc4dc";
+  c.fillStyle =
+    map.kind === "volcano"
+      ? "#a48270"
+      : map.kind === "garden"
+        ? "#87a565"
+        : "#bdc4dc";
   c.fill();
   c.restore();
+  for (const base of game.warBases || []) {
+    c.strokeStyle = base.team === game.player.team ? "#9affd6" : "#ff9a78";
+    c.lineWidth = 1.5;
+    c.beginPath();
+    c.arc(base.x * scale, base.y * scale, 4, 0, TAU);
+    c.stroke();
+  }
   for (const flag of game.flags) {
     c.fillStyle = flag.team === game.player.team ? "#7ee4ff" : "#ff8b76";
     c.fillRect(flag.x * scale - 2, flag.y * scale - 2, 4, 4);

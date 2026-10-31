@@ -28,7 +28,7 @@ test("floor abilities render above every arena and clip at its edges", async ({
     const { drawTerrain } = await import("/src/battle-effects.js");
     __arena.game.update = () => {};
     const results = [];
-    for (const mapId of ["classic", "garden", "tower"])
+    for (const mapId of ["classic", "garden", "tower", "volcano"])
       for (const kind of ["magma", "flood", "quicksand"]) {
         const g = new Combat({ mode: "duel", mapId, element: "earth" });
         const center =
@@ -36,7 +36,9 @@ test("floor abilities render above every arena and clip at its edges", async ({
             ? { x: 520, y: 360 }
             : mapId === "garden"
               ? { x: 1450, y: 680 }
-              : { x: 1680, y: 680 };
+              : mapId === "volcano"
+                ? { x: 1024, y: 680 }
+                : { x: 1680, y: 680 };
         Object.assign(g.player, { x: center.x - 100, y: center.y });
         g.time = 1;
         const renderer = __arena.renderer,
@@ -66,7 +68,9 @@ test("floor abilities render above every arena and clip at its edges", async ({
             ? { x: 880, y: 350 }
             : mapId === "garden"
               ? { x: 1620, y: 680 }
-              : { x: 1920, y: 680 };
+              : mapId === "volcano"
+                ? { x: 1604, y: 680 }
+                : { x: 1920, y: 680 };
         g.hazards = [{ ...h, ...edge }];
         drawTerrain(fc, g, 1);
         const inside = fc.getImageData(edge.x - 15, edge.y, 1, 1).data[3];

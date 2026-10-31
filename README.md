@@ -1,4 +1,12 @@
-# Elemental — The Colosseum · v0.22.1
+# Elemental — The Colosseum · v0.23.0
+
+## v0.23.0 War and consistent landscape tabs
+
+- Landscape element tabs remain in the top row across every mode and map, including modes with objective/score lines.
+- War adds 3v3, 4v4 and 5v5 battles. Choose an origin: all allies share it, and every rival shares a different randomly chosen origin. Team Deathmatch scoring, friendly fire, three-minute rounds, ten-second respawns and early team-wipe wins apply.
+- Each non-Light army receives a team-owned base health drop every ten seconds. Contact restores up to 59.8 HP (fully charged Healing); full-health fighters leave drops for allies. Drops accumulate until used, and injured AI returns for supplies.
+- Water versus Fire always fights on the Ember Caldera, a basalt arena surrounded by lava and volcanic crags. Water loses exactly 1 HP per second while alive in the arena. Other War matchups keep the existing three-map shuffle.
+
 
 ## v0.22.1 Rigid Blaze dash poses
 

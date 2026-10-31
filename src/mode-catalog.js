@@ -146,6 +146,27 @@ export const MODES = {
       ],
     ],
   },
+  war: {
+    name: "War",
+    tag: "3v3 · 4v4 · 5v5",
+    slides: [
+      [
+        "One element. One army.",
+        "Choose an origin. Your entire team shares it, and the opposing team shares a different random origin. Six to ten fighters; friendly fire is on.",
+        "⚔",
+      ],
+      [
+        "Return for healing",
+        "Except for Light, each team receives one health drop at its base every ten seconds. Touch your team's drop to restore 59.8 HP, equal to fully charged Healing. Full-health fighters leave drops for allies.",
+        "✚",
+      ],
+      [
+        "Fight through the heat",
+        "Water versus Fire always takes place in the Ember Caldera. Water loses 1 HP per second there. Most kills at three minutes wins; respawns take ten seconds and a full team wipe ends the match early.",
+        "♨",
+      ],
+    ],
+  },
   tdm: {
     name: "Team Death Match",
     tag: "Teams · 3 minutes",
@@ -292,6 +313,7 @@ export const MODES = {
 };
 export const TEAM_MODES = [
   "tdm",
+  "war",
   "rush",
   "boss",
   "domination",
