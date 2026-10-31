@@ -2069,7 +2069,9 @@ export class Combat {
                   ? !this.flying(a) && !quicksandImmune(a)
                   : h.kind === "gravity"
                     ? h.owner.team !== a.team && !hasPassive(a, "apparition")
-                    : ["magma", "heatwave"].includes(h.kind) && !burnImmune(a)),
+                    : (h.kind === "heatwave" ||
+                        (h.kind === "magma" && !this.flying(a))) &&
+                      !burnImmune(a)),
         )
         .reduce(
           (sum, h) => sum + Math.max(0, h.r + 12 - distance(point, h)),
@@ -2120,7 +2122,10 @@ export class Combat {
         return h.owner.team !== a.team && !hasPassive(a, "apparition");
       if (h.kind === "flood")
         return !this.flying(a) && !a.parts.includes("water");
-      return ["magma", "heatwave"].includes(h.kind) && !burnImmune(a);
+      return (
+        (h.kind === "heatwave" || (h.kind === "magma" && !this.flying(a))) &&
+        !burnImmune(a)
+      );
     });
   }
   aiMobility(a, target, patient) {
@@ -2462,7 +2467,9 @@ export class Combat {
               ? h.owner.team !== a.team && !hasPassive(a, "apparition")
               : h.kind === "quicksand"
                 ? !this.flying(a) && !quicksandImmune(a)
-                : ["magma", "heatwave"].includes(h.kind) && !burnImmune(a);
+                : (h.kind === "heatwave" ||
+                    (h.kind === "magma" && !this.flying(a))) &&
+                  !burnImmune(a);
       const gap = distance(a, h);
       if (harmful && gap < h.r + 25) {
         dx += ((a.x - h.x) / (gap || 1)) * 2;

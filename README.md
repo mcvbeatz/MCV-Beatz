@@ -1,4 +1,8 @@
-# Elemental — The Colosseum · v0.26.0
+# Elemental — The Colosseum · v0.26.1
+
+## v0.26.1 Flying AI and magma
+
+Flying elementals ignore magma when steering, planning routes, and choosing teleport or portal destinations, including while using another skill tab. Grounded elementals still avoid harmful magma, and flight does not prevent Heatwave avoidance.
 
 ## v0.26.0 Battle playlists and outcome music
 
