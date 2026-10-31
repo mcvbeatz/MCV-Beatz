@@ -1,4 +1,12 @@
-# Elemental — The Colosseum · v0.25.0
+# Elemental — The Colosseum · v0.26.0
+
+## v0.26.0 Battle playlists and outcome music
+
+- Team/player victory starts **inner glow**; defeat starts **From the Ashes**. They play once through the celebration/results screen and stop when leaving or starting another battle. Draws play neither outcome song.
+- Ember Caldera battles use **no smoke**, repeating if needed. Survive the Night retains **No Escape** from the start of its countdown.
+- Other battles shuffle **MCV- Watch And Learn**, **MCV- KennebeccebenneK**, **none other** and **MCV- Sick**. Each new battle selects the next song; long battles advance when a song finishes. All four play before the playlist reshuffles, with no consecutive repeats.
+- Uploaded audio stays unchanged at native speed. Music volume, pause/resume and app visibility apply to all tracks; Solace remains the seamless menu loop. A shared media element keeps result transitions on the player authorized by the battle's Start tap.
+
 
 ## v0.25.0 Solace menu music
 

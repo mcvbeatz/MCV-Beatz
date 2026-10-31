@@ -37,7 +37,6 @@ test("The original No Escape recording plays once at native speed only for Survi
     loop: __app.sound.track.loop,
     rate: __app.sound.track.playbackRate,
     pitch: __app.sound.track.preservesPitch,
-    ambient: __app.sound.ambient.gain.value,
     gain: __app.sound.music.gain.value,
     sfx: __app.settings.sfx,
   }));
@@ -47,7 +46,6 @@ test("The original No Escape recording plays once at native speed only for Survi
   expect(state.duration / state.rate).toBeCloseTo(123.048, 2);
   expect(state.rate).toBe(1);
   expect(state.pitch).toBe(false);
-  expect(state.ambient).toBe(0);
   expect(state.gain).toBe(0.25);
   expect(state.sfx).toBe(0);
   await page.locator("#pause-btn").click();
@@ -97,18 +95,23 @@ test("The original No Escape recording plays once at native speed only for Survi
   await expect
     .poll(() => page.evaluate(() => __app.sound.track.paused))
     .toBe(true);
-  expect(await page.evaluate(() => __app.sound.ambient.gain.value)).toBe(0);
+  await expect
+    .poll(() => page.evaluate(() => !!__app.sound.menuSource))
+    .toBe(true);
   await page.locator("#resume-btn").click();
   await expect
     .poll(() => page.evaluate(() => __app.sound.track.paused))
     .toBe(false);
   await page.evaluate(() => __arena.game.finish(0, "Test end"));
   await expect
+    .poll(() => page.evaluate(() => __app.sound.trackId))
+    .toBe("inner-glow");
+  await expect
     .poll(() => page.evaluate(() => __app.sound.track.paused))
-    .toBe(true);
+    .toBe(false);
   expect(errors).toEqual([]);
 });
-test("new Survive the Night battles restart the song, other modes keep ambient music, and the Settings slider controls the track", async ({
+test("new Survive the Night battles restart the song, other modes use the battle playlist, and the Settings slider controls the track", async ({
   page,
 }) => {
   await ready(page);
@@ -132,8 +135,10 @@ test("new Survive the Night battles restart the song, other modes keep ambient m
   );
   await page.locator("#leave-btn").click();
   await begin(page, "duel");
-  expect(await page.evaluate(() => __app.sound.track.paused)).toBe(true);
-  expect(await page.evaluate(() => __app.sound.ambient.gain.value)).toBe(1);
+  expect(await page.evaluate(() => __app.sound.trackId)).not.toBe("no-escape");
+  await expect
+    .poll(() => page.evaluate(() => __app.sound.track.paused))
+    .toBe(false);
 });
 
 test("Survive the Night music starts during the countdown and never restarts after its natural end", async ({

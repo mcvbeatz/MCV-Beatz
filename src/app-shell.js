@@ -1,3 +1,4 @@
+import { musicScene } from "./music-catalog.js";
 import { icon } from "./icons.js";
 import { portraitMarkup, paintPortraits } from "./characters.js";
 import { orientationPoint, enableOrientedScroll } from "./orientation.js";
@@ -89,13 +90,7 @@ export function createApp(api) {
     screen = next;
     document.body.dataset.screen = next;
     sound.setScene(
-      next === "battle"
-        ? api.game().finished
-          ? "results"
-          : api.game().mode
-        : next === "loading"
-          ? "loading"
-          : "menu",
+      musicScene(next, api.game()),
       next === "loading" || (next === "battle" && api.paused()),
     );
     $("shell-content").hidden = ["setup", "battle"].includes(next);
@@ -124,7 +119,7 @@ export function createApp(api) {
     setScreen(next);
     const c = $("shell-content");
     if (next === "home")
-      c.innerHTML = `<section class="home-hero"><span class="eyebrow">THE COLOSSEUM · v0.25.0</span><h1>Power is elemental.</h1><p>Choose your arena. Find your next form.</p><div class="home-elements" aria-label="Light, Dark, Water, Air, Earth and Fire">${Object.keys(
+      c.innerHTML = `<section class="home-hero"><span class="eyebrow">THE COLOSSEUM · v0.26.0</span><h1>Power is elemental.</h1><p>Choose your arena. Find your next form.</p><div class="home-elements" aria-label="Light, Dark, Water, Air, Earth and Fire">${Object.keys(
         ELEMENTS,
       )
         .map(
@@ -552,8 +547,8 @@ export function createApp(api) {
   });
   document.addEventListener("keydown", () => sound.unlock());
   function start() {
+    sound.setScene(musicScene("battle", api.game()), false, true);
     setScreen("battle");
-    sound.setScene(api.game().mode, false, true);
     sound.unlock();
     matchTicket = account.startMatch(api.game().mode, category === "practice");
     $("save-status").textContent = "";
@@ -566,13 +561,7 @@ export function createApp(api) {
   let lastReward = null;
   function tick(g) {
     sound.setScene(
-      screen === "battle"
-        ? g.finished
-          ? "results"
-          : g.mode
-        : screen === "loading"
-          ? "loading"
-          : "menu",
+      musicScene(screen, g),
       screen === "loading" || (screen === "battle" && api.paused()),
     );
     if (g.intermission && screen === "battle") {

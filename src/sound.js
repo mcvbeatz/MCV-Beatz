@@ -1,14 +1,18 @@
+import { BattlePlaylist, TRACK_URLS } from "./music-catalog.js";
 const clamp = (n) => Math.max(0, Math.min(1, Number(n) || 0));
 export class Soundtrack {
   constructor(settings) {
     this.settings = settings;
     this.context = null;
     this.music = null;
-    this.timer = null;
-    this.note = 0;
     this.scene = null;
     this.paused = false;
     this.track = null;
+    this.trackId = null;
+    this.desiredTrackId = null;
+    this.trackGeneration = 0;
+    this.playlist = new BattlePlaylist();
+    this.battleTrackId = null;
     this.menuBuffer = null;
     this.menuLoading = null;
     this.menuSource = null;
@@ -28,9 +32,6 @@ export class Soundtrack {
         this.music = this.context.createGain();
         this.music.connect(this.context.destination);
         this.music.gain.value = this.settings.music;
-        this.ambient = this.context.createGain();
-        this.ambient.connect(this.music);
-        this.timer = setInterval(() => this.playMusic(), 700);
       }
       this.playBlocked = false;
       this.sync();
@@ -38,32 +39,55 @@ export class Soundtrack {
   }
   setScene(mode, paused = false, restart = false) {
     if (!restart && this.scene === mode && this.paused === paused) return;
+    if (mode === "battle" && (restart || !this.battleTrackId))
+      this.battleTrackId = this.playlist.next();
     this.scene = mode;
     this.paused = paused;
+    this.desiredTrackId =
+      {
+        battle: this.battleTrackId,
+        corruption: "no-escape",
+        volcano: "no-smoke",
+        victory: "inner-glow",
+        defeat: "from-the-ashes",
+      }[mode] || null;
     if (restart) {
       this.trackEnded = false;
       if (this.track) this.track.currentTime = 0;
     }
     this.sync();
   }
-  prepareTrack() {
-    // Fetch the unchanged recording during setup, before the countdown tap.
+  prepareTrack(id = "no-escape") {
     if (!this.track) {
-      this.track = new Audio(
-        new URL("./assets/music/no-escape.mp3", import.meta.url).href,
-      );
-      this.track.loop = false;
+      // Reuse one user-authorized media element for battles and results so a
+      // win/loss transition can play without another tap, including on iOS.
+      this.track = new Audio();
       this.track.playbackRate = 1;
       this.track.preservesPitch = false;
       this.track.webkitPreservesPitch = false;
       this.track.addEventListener("ended", () => {
+        if (!this.track.ended) return;
         this.trackEnded = true;
+        if (this.scene === "battle") {
+          this.battleTrackId = this.playlist.next();
+          this.desiredTrackId = this.battleTrackId;
+          this.sync();
+        }
       });
       this.track.preload = "auto";
+    }
+    if (this.trackId !== id) {
+      this.track.pause();
+      this.trackGeneration++;
+      this.trackId = id;
+      this.trackEnded = false;
+      this.playBlocked = false;
+      this.playPending = false;
+      this.track.src = TRACK_URLS[id];
+      this.track.loop = id === "no-smoke";
       this.track.load();
     }
     if (this.context && this.music && !this.trackSource) {
-      // iOS ignores HTMLMediaElement.volume; keep the independent music gain.
       this.trackSource = this.context.createMediaElementSource(this.track);
       this.trackSource.connect(this.music);
     }
@@ -119,14 +143,11 @@ export class Soundtrack {
   }
   sync() {
     if (!this.context || !this.music) return;
-    const corruption = this.scene === "corruption";
-    const active = !this.paused && !document.hidden;
-    const menu = this.scene === "menu";
-    this.ambient.gain.value = corruption || menu || !active ? 0 : 1;
-    this.syncMenu(menu && active && this.settings.music > 0);
-    if (corruption) this.prepareTrack();
+    const active = !this.paused && !document.hidden && this.settings.music > 0;
+    this.syncMenu(this.scene === "menu" && active);
+    if (this.desiredTrackId) this.prepareTrack(this.desiredTrackId);
     if (!this.track) return;
-    if (!corruption || !active || !this.settings.music) {
+    if (!this.desiredTrackId || !active) {
       this.track.pause();
       return;
     }
@@ -136,17 +157,20 @@ export class Soundtrack {
       !this.playPending &&
       !this.playBlocked
     ) {
+      const generation = this.trackGeneration;
       this.playPending = true;
       this.track
         .play()
         .catch(() => {
-          // A fresh user gesture retries if the browser refused autoplay.
-          this.playBlocked = true;
+          if (generation === this.trackGeneration) this.playBlocked = true;
         })
         .finally(() => {
+          // An aborted play from the previous file must not block or pause
+          // the newer result/battle track on this shared media element.
+          if (generation !== this.trackGeneration) return;
           this.playPending = false;
           if (
-            this.scene !== "corruption" ||
+            !this.desiredTrackId ||
             this.paused ||
             document.hidden ||
             !this.settings.music
@@ -197,17 +221,5 @@ export class Soundtrack {
       o.disconnect();
       g.disconnect();
     };
-  }
-  playMusic() {
-    if (
-      !this.context ||
-      document.hidden ||
-      this.paused ||
-      ["corruption", "menu", "loading"].includes(this.scene) ||
-      !this.settings.music
-    )
-      return;
-    const notes = [130.81, 196, 261.63, 164.81, 220, 196, 146.83, 196];
-    this.voice(notes[this.note++ % notes.length], 1.2, 0.025, this.ambient);
   }
 }

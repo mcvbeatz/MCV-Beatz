@@ -52,14 +52,12 @@ test("Solace loops at the audio-buffer boundary, with no added silent samples or
       loop: s.menuSource.loop,
       rate: s.menuSource.playbackRate.value,
       error,
-      ambient: s.ambient.gain.value,
     };
   });
   expect(rendered.duration).toBeGreaterThan(117);
   expect(rendered.duration).toBeLessThan(118);
   expect(rendered.loop).toBe(true);
   expect(rendered.rate).toBe(1);
-  expect(rendered.ambient).toBe(0);
   expect(rendered.error).toBeLessThan(0.0001);
   await page.waitForTimeout(400);
   expect(
@@ -121,12 +119,9 @@ test("menu navigation preserves the song; music volume, hiding, and battle trans
     expect(await page.evaluate(() => !!__app.sound.menuSource)).toBe(true);
     await page.locator("#begin-btn").click();
     expect(await page.evaluate(() => __app.sound.menuSource)).toBeNull();
-    if (mode === "corruption")
-      await expect
-        .poll(() => page.evaluate(() => __app.sound.track.currentTime))
-        .toBeGreaterThan(0.1);
-    else
-      expect(await page.evaluate(() => __app.sound.ambient.gain.value)).toBe(1);
+    await expect
+      .poll(() => page.evaluate(() => __app.sound.track.currentTime))
+      .toBeGreaterThan(0.1);
     await page.locator("#leave-btn").click();
     await expect
       .poll(() => page.evaluate(() => !!__app.sound.menuSource))
