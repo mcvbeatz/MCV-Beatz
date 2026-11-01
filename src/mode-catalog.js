@@ -73,7 +73,7 @@ export const MODES = {
       ],
       [
         "Choose your reward",
-        "You have seven seconds between waves to choose a compatible shard, full healing, or a damage and speed boost. Change your selection until time expires; no selection automatically takes the first option.",
+        "You have seven seconds between waves to choose a compatible shard, full healing, or a damage and speed boost. Change your selection until time expires; no selection automatically takes the first option. Then walk through the corridor to the next chamber of the Threefold Bastion.",
         "◇ +",
       ],
       [
@@ -94,7 +94,7 @@ export const MODES = {
       ],
       [
         "Recover between waves",
-        "Felled allies return at half health. You have seven seconds to select or change the team advantage; at zero the selected reward applies, or the first option is automatic.",
+        "Felled allies return at half health. You have seven seconds to select or change the team advantage; at zero the selected reward applies, or the first option is automatic. Follow the corridor to the next chamber. Allies follow you, and the next wave waits for everyone to arrive.",
         "✦",
       ],
       [
@@ -157,7 +157,7 @@ export const MODES = {
       ],
       [
         "Return for healing",
-        "Except for Light, each team receives one health drop at its base every ten seconds. Touch your team's drop to restore 59.8 HP, equal to fully charged Healing. Full-health fighters leave drops for allies.",
+        "Except for Light, each team receives one health drop at its base every seven seconds. Touch your team's drop to restore 59.8 HP, equal to fully charged Healing. Full-health fighters leave drops for allies.",
         "✚",
       ],
       [

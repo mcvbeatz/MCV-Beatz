@@ -1,3 +1,4 @@
+import { walkToNextWave } from "./wave-fixture.js";
 import test from "node:test";
 import assert from "node:assert/strict";
 import { Combat, makeFighter, hasPassive } from "./combat-fixture.js";
@@ -128,12 +129,14 @@ test("Gauntlet progresses through choices and unlocks the final boss on tier III
   assert.equal(g.chooseReward("invalid"), false);
   assert.ok(g.chooseReward("shard:air"));
   g.update(g.rewardRemaining, { x: 0, y: 0 }, false);
+  walkToNextWave(g);
   assert.equal(g.player.element, "spirit");
   assert.equal(g.wave, 2);
   assert.equal(g.intermission, false);
   clearWave(g);
   g.chooseReward("shard:earth");
   g.update(g.rewardRemaining, { x: 0, y: 0 }, false);
+  walkToNextWave(g);
   assert.equal(g.player.element, "divine");
   assert.equal(g.finalWave, true);
   assert.equal(g.fighters.filter((a) => a.team === 1).length, 1);
@@ -149,10 +152,12 @@ test("Gauntlet healing and next-wave upgrades work; losing ends the run", () => 
   clearWave(g);
   g.chooseReward("heal");
   g.update(g.rewardRemaining, { x: 0, y: 0 }, false);
+  walkToNextWave(g);
   assert.equal(g.player.hp, 120);
   clearWave(g);
   g.chooseReward("upgrade");
   g.update(g.rewardRemaining, { x: 0, y: 0 }, false);
+  walkToNextWave(g);
   assert.equal(g.player.waveDamage, 1.25);
   assert.equal(g.player.waveSpeed, 1.15);
   const enemy = g.fighters[1];
@@ -165,6 +170,7 @@ test("Gauntlet healing and next-wave upgrades work; losing ends the run", () => 
   assert.equal(g.player.waveSpeed, 1);
   g.chooseReward("heal");
   g.update(g.rewardRemaining, { x: 0, y: 0 }, false);
+  walkToNextWave(g);
   g.fell(g.player);
   g.checkMatchEnd();
   assert.equal(g.result, "defeat");
@@ -179,6 +185,7 @@ test("Team Gauntlet survives one ally death, restores them between waves, and lo
   assert.equal(g.player.hp, 60);
   g.chooseReward("heal");
   g.update(g.rewardRemaining, { x: 0, y: 0 }, false);
+  walkToNextWave(g);
   assert.ok(
     g.fighters.filter((a) => a.team === 0).every((a) => a.hp === a.maxHp),
   );

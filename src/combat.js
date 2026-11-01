@@ -10,6 +10,7 @@ import {
   rewardChoices,
   chooseReward,
   advanceReward,
+  advanceWaveTravel,
   isGauntlet,
 } from "./advanced-modes.js";
 import { PortalSystem, inWorld, segmentDistance } from "./portals.js";
@@ -120,7 +121,10 @@ export const EXTRA_SKILLS = {
     { name: "Laser beam", form: "sun", kind: "ability" },
     { name: "Speed burst", form: "blaze", kind: "utility" },
   ],
-  terraformer: [{ name: "Rock shield", form: "earth", kind: "utility" }],
+  terraformer: [
+    { name: "Rock shield", form: "earth", kind: "utility" },
+    { name: "Telekinesis", form: "gravity", kind: "ability" },
+  ],
   sanctuary: [{ name: "Rock shield", form: "earth", kind: "utility" }],
   dark: [{ name: "Blindness", form: "blindness", kind: "ability" }],
   mud: [
@@ -151,7 +155,10 @@ export const EXTRA_SKILLS = {
     { name: "Healing", form: "light", kind: "ability" },
     { name: "Shadow step", form: "dark", kind: "utility" },
   ],
-  lightning: [{ name: "Healing", form: "light", kind: "ability" }],
+  lightning: [
+    { name: "Healing", form: "light", kind: "ability" },
+    { name: "Flood", form: "cloud", kind: "utility" },
+  ],
 };
 export const extraSkillsFor = (form) => EXTRA_SKILLS[form] || [];
 const skillForm = (a) => a.executingForm || activeForm(a);
@@ -357,13 +364,15 @@ export class Combat {
     this.mapId =
       mode === "corruption"
         ? "corruption"
-        : (mapId ??
-          MATCH_MAP_IDS[
-            Math.min(
-              MATCH_MAP_IDS.length - 1,
-              Math.floor(random() * MATCH_MAP_IDS.length),
-            )
-          ]);
+        : isGauntlet(this)
+          ? "waves"
+          : (mapId ??
+            MATCH_MAP_IDS[
+              Math.min(
+                MATCH_MAP_IDS.length - 1,
+                Math.floor(random() * MATCH_MAP_IDS.length),
+              )
+            ]);
     this.map =
       this.mapId === "corruption"
         ? createCorruptionMap()
@@ -690,6 +699,7 @@ export class Combat {
   }
   isShocked(a) {
     return (
+      !this.waveTravel &&
       a.alive &&
       inWorld(a) &&
       !hasPassive(a, "divine") &&
@@ -774,7 +784,7 @@ export class Combat {
     this.autoLock(a);
   }
   strike(a, aim = null) {
-    if (this.intermission || this.countingDown) return false;
+    if (this.intermission || this.waveTravel || this.countingDown) return false;
     if (!a.alive || !inWorld(a) || a.attackCd > 0 || a.shield || a.stagger > 0)
       return false;
     if (a.prisonHp > 0) {
@@ -804,7 +814,7 @@ export class Combat {
     return true;
   }
   startCharge(a, form = activeForm(a)) {
-    if (this.intermission || this.countingDown) return false;
+    if (this.intermission || this.waveTravel || this.countingDown) return false;
     if (!canUseSkill(a, form, "ability") || a.charging) return false;
     if (
       !a.alive ||
@@ -1284,7 +1294,13 @@ export class Combat {
     }
   }
   cast(a, p, form = activeForm(a)) {
-    if (this.countingDown || !canUseSkill(a, form, "ability")) return false;
+    if (
+      this.intermission ||
+      this.waveTravel ||
+      this.countingDown ||
+      !canUseSkill(a, form, "ability")
+    )
+      return false;
     return this.executeSkill(a, form, () => this.castSkill(a, p));
   }
   castSkill(a, p) {
@@ -1473,10 +1489,13 @@ export class Combat {
   telekinesis(a, target, dx, dy) {
     const length = Math.hypot(dx, dy);
     if (
+      this.intermission ||
+      this.waveTravel ||
       this.countingDown ||
       !a.alive ||
       !inWorld(a) ||
-      skillForm(a) !== "gravity" ||
+      !["gravity", "terraformer"].includes(skillForm(a)) ||
+      !canUseSkill(a, "gravity", "ability") ||
       a.shield ||
       a.abilityCd > 0 ||
       a.stagger > 0 ||
@@ -1513,7 +1532,8 @@ export class Combat {
     return true;
   }
   utility(a, hold = true, form = activeForm(a)) {
-    if (hold && (this.intermission || this.countingDown)) return false;
+    if (hold && (this.intermission || this.waveTravel || this.countingDown))
+      return false;
     if (hold && !canUseSkill(a, form, "utility")) return false;
     return this.executeSkill(a, form, () => this.utilitySkill(a, hold));
   }
@@ -1654,6 +1674,7 @@ export class Combat {
     if (
       this.countingDown ||
       this.intermission ||
+      this.waveTravel ||
       !a.alive ||
       !inWorld(a) ||
       !canUseSkill(a, "terraformer", "ability") ||
@@ -2577,6 +2598,23 @@ export class Combat {
     ) {
       this.utility(a, true, "blaze");
     }
+    if (
+      !a.echo &&
+      a.element === "terraformer" &&
+      a.abilityCd <= 0 &&
+      d < TELEKINESIS_RANGE &&
+      this.safeAttack(a, target, "ability", "gravity")
+    )
+      this.startCharge(a, "gravity");
+    if (
+      !a.echo &&
+      a.element === "lightning" &&
+      a.utilityCd <= 0 &&
+      d < 250 &&
+      !this.hazards.some((h) => h.kind === "flood" && inWorld(h)) &&
+      this.safeAttack(a, target, "utility", "cloud")
+    )
+      this.utility(a, true, "cloud");
     if (d <= STRIKE_RANGE && this.safeAttack(a, target)) this.strike(a);
     if (a.echo) return;
     // Support waits for a healing opportunity instead of wasting its main skill.
@@ -2868,6 +2906,7 @@ export class Combat {
     this.advanceDeaths(dt);
     if (this.intermission) return advanceReward(this, dt);
     dt = Math.min(dt, 0.05);
+    if (this.waveTravel) return advanceWaveTravel(this, dt, input, runAI);
     if (this.countdown > 0) {
       const wasLocked = this.countingDown;
       this.countdown = Math.max(0, this.countdown - dt);

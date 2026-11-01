@@ -1,11 +1,12 @@
 import { inWorld } from "./portals.js";
 
+export const WAR_DROP_INTERVAL = 7;
 // Healing charges from power 1 to 2.6 and restores 23 HP per power.
 export const WAR_HEAL = 23 * 2.6;
 export function initializeWar(g) {
   if (g.mode !== "war") return;
   g.healthDrops = [];
-  g.nextHealthDropAt = 10;
+  g.nextHealthDropAt = WAR_DROP_INTERVAL;
   g.warBases = [0, 1].map((team) => ({
     team,
     element: g.warElements[team],
@@ -27,7 +28,7 @@ export function updateWar(g, dt) {
   while (g.time + 1e-9 >= g.nextHealthDropAt) {
     for (const base of g.warBases) {
       if (base.element === "light") continue;
-      const index = Math.round(g.nextHealthDropAt / 10) - 1;
+      const index = Math.round(g.nextHealthDropAt / WAR_DROP_INTERVAL) - 1;
       const angle = index * 2.4;
       const position = g.floorPoint({
         x: base.x + Math.cos(angle) * 30,
@@ -39,7 +40,7 @@ export function updateWar(g, dt) {
         bornAt: g.nextHealthDropAt,
       });
     }
-    g.nextHealthDropAt += 10;
+    g.nextHealthDropAt += WAR_DROP_INTERVAL;
   }
   for (const drop of g.healthDrops) {
     const recipient = g.fighters.find(

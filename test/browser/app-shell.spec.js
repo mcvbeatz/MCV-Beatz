@@ -128,6 +128,12 @@ test("Gauntlet reward selection advances waves and tier III starts the final bos
   await expect(page.locator("#wave-reward")).toBeVisible();
   await expect(page.locator("#attack-btn")).toBeDisabled();
   await page.getByRole("button", { name: "Air shard", exact: false }).click();
+  await expect(page.locator("#wave-reward")).toBeHidden({ timeout: 8500 });
+  await page.evaluate(() => {
+    const g = __arena.game;
+    Object.assign(g.player, g.waveRally);
+    g.update(0.02, { x: 0, y: 0 }, false);
+  });
   await expect(page.locator("#objective-score")).toHaveText("WAVE 2", {
     timeout: 8500,
   });
@@ -138,6 +144,12 @@ test("Gauntlet reward selection advances waves and tier III starts the final bos
     g.checkMatchEnd();
   });
   await page.getByRole("button", { name: "Earth shard", exact: false }).click();
+  await expect(page.locator("#wave-reward")).toBeHidden({ timeout: 8500 });
+  await page.evaluate(() => {
+    const g = __arena.game;
+    Object.assign(g.player, g.waveRally);
+    g.update(0.02, { x: 0, y: 0 }, false);
+  });
   await expect(page.locator("#objective-score")).toHaveText("FINAL BOSS", {
     timeout: 8500,
   });

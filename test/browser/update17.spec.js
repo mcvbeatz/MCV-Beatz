@@ -52,7 +52,7 @@ test("Waves selection can change, waits seven seconds and freezes while paused",
       wave: __arena.game.wave,
       form: __arena.game.player.element,
     })),
-  ).toEqual({ wave: 2, form: "mirror" });
+  ).toEqual({ wave: 1, form: "mirror" });
 });
 test("Team Waves auto-selects its first advantage after seven seconds without a click", async ({
   page,
@@ -71,7 +71,8 @@ test("Team Waves auto-selects its first advantage after seven seconds without a 
   await expect(page.locator("#wave-reward")).toBeHidden({ timeout: 8500 });
   const parts = await page.evaluate(() => __arena.game.player.parts);
   expect(parts).toContain(first.split(":")[1]);
-  expect(await page.evaluate(() => __arena.game.wave)).toBe(2);
+  expect(await page.evaluate(() => __arena.game.wave)).toBe(1);
+  expect(await page.evaluate(() => __arena.game.waveTravel)).toBe(true);
 });
 test("advantage timer and choices fit a small phone in either orientation", async ({
   browser,
@@ -180,9 +181,7 @@ test("new fusion sprites match the rendered roster and all three menu portraits 
   await page.locator("#leave-btn").click();
   for (const e of ["phoenix", "terraformer", "sanctuary"]) {
     await page.locator(`[data-element="${e}"]`).click();
-    await expect(page.locator("#profile-name")).toHaveText(
-      new RegExp(e, "i"),
-    );
+    await expect(page.locator("#profile-name")).toHaveText(new RegExp(e, "i"));
   }
   await page.evaluate(() => __app.show("elements"));
   await page.screenshot({ path: "/tmp/v17-character-library.png" });

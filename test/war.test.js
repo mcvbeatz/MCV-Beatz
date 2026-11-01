@@ -65,21 +65,21 @@ test("War random opposition always shares a different origin; only Water/Fire fo
     assert.ok(g.map.lineClear(g.warBases[0], g.warBases[1]));
   }
 });
-test("War drops spawn every ten seconds at both bases, except Light, and freeze during countdown", () => {
+test("War drops spawn every seven seconds at both bases, except Light, and freeze during countdown", () => {
   const g = game({ countdown: true });
   for (let i = 0; i < 40; i++) g.update(0.05, undefined, false);
   assert.equal(g.time, 0);
   assert.equal(g.healthDrops.length, 0);
   g.countdown = 0;
-  g.time = 9.9;
+  g.time = 6.9;
   updateWar(g, 0);
   assert.equal(g.healthDrops.length, 0);
-  g.time = 10;
+  g.time = 7;
   updateWar(g, 0);
   assert.equal(g.healthDrops.length, 2);
   updateWar(g, 0);
   assert.equal(g.healthDrops.length, 2);
-  g.time = 30;
+  g.time = 21;
   updateWar(g, 0);
   assert.equal(g.healthDrops.length, 6);
   for (const d of g.healthDrops) {
@@ -89,14 +89,14 @@ test("War drops spawn every ten seconds at both bases, except Light, and freeze 
     assert.ok(g.walkablePoint(d));
   }
   const light = game({ element: "light" });
-  light.time = 20;
+  light.time = 14;
   updateWar(light, 0);
   assert.equal(light.healthDrops.length, 2);
   assert.ok(light.healthDrops.every((d) => d.team === 1));
 });
 test("Only an injured living teammate consumes a drop on contact, for fully charged Healing", () => {
   const g = game();
-  g.time = 10;
+  g.time = 7;
   updateWar(g, 0);
   const drop = g.healthDrops.find((d) => d.team === 0),
     a = g.player,
@@ -190,7 +190,7 @@ test("War ends on a full-team wipe or scores at three minutes, with ties drawing
 test("Injured War AI returns to an available friendly healing drop", () => {
   const g = game({ mapId: "garden" }),
     a = g.fighters.find((a) => a.team === 0 && a !== g.player);
-  g.time = 10;
+  g.time = 7;
   updateWar(g, 0);
   const drop = g.healthDrops.find((d) => d.team === 0);
   a.hp = 30;

@@ -37,6 +37,9 @@ export function initializeAdvanced(g, { element, size, players }) {
     }
     g.player = g.fighters[0];
     g.wave = 0;
+    g.waveRoom = 0;
+    g.waveDirection = 1;
+    g.waveTravel = false;
     g.intermission = false;
     g.finalWave = false;
     nextWave(g);
@@ -236,8 +239,64 @@ function applyReward(g, id) {
       a.waveDamage = 1.25;
       a.waveSpeed = 1.15;
     }
-  nextWave(g);
+  g.intermission = false;
+  g.rewardRemaining = 0;
+  g.rewardSelection = null;
+  g.waveTravel = true;
+  if (g.waveRoom === 2) g.waveDirection = -1;
+  else if (g.waveRoom === 0) g.waveDirection = 1;
+  g.nextWaveRoom = g.waveRoom + g.waveDirection;
+  const room = g.map.rooms[g.nextWaveRoom];
+  g.waveRally = {
+    x: room.x + (g.waveDirection > 0 ? 155 : room.w - 155),
+    y: 500,
+  };
+  g.map.activeRoom = null;
+  g.map.travelRooms = [g.waveRoom, g.nextWaveRoom].sort((a, b) => a - b);
+  g.fighters = team;
+  clearWaveEffects(g);
   return true;
+}
+function clearWaveEffects(g) {
+  g.tokens = [];
+  g.projectiles = [];
+  g.hazards = [];
+  g.waves = [];
+  g.pending = [];
+  g.effects = [];
+  g.portals.portals = [];
+  g.portals.placing = null;
+}
+export function advanceWaveTravel(g, dt, input, runAI = true) {
+  g.time += dt;
+  const team = g.fighters.filter((a) => a.team === 0 && !a.echo && a.alive);
+  for (const a of team)
+    for (const key of [
+      "boost",
+      "flash",
+      "reflect",
+      "spawnFlash",
+      "reveal",
+      "hurtReveal",
+    ])
+      a[key] = Math.max(0, (a[key] || 0) - dt);
+  g.move(g.player, input.x, input.y, dt);
+  for (const a of team) {
+    if (a === g.player || !runAI) continue;
+    const gap = Math.hypot(a.x - g.player.x, a.y - g.player.y);
+    const playerArrived = g.map.inRoom(g.player, g.nextWaveRoom, 70);
+    // Stay with the player through the corridor, then assemble inside the room.
+    if (playerArrived) g.moveToward(a, g.waveRally, dt);
+    else if (gap > 90) g.moveToward(a, g.player, dt);
+    else g.move(a, 0, 0, dt);
+  }
+  if (team.every((a) => g.map.inRoom(a, g.nextWaveRoom, 70))) {
+    g.waveRoom = g.nextWaveRoom;
+    g.map.activeRoom = g.waveRoom;
+    g.map.travelRooms = null;
+    g.waveTravel = false;
+    nextWave(g);
+  }
 }
 export function nextWave(g) {
   g.intermission = false;
@@ -255,8 +314,10 @@ export function nextWave(g) {
       `wave-${g.wave}-${i}`,
       g.finalWave ? "invincible" : pick(g, pool),
       1,
-      690 + (i % 2) * 65,
-      200 + i * 48,
+      g.map.rooms[g.waveRoom].x +
+        (g.waveDirection > 0 ? 640 : 160) +
+        (i % 2) * 45,
+      500 + (i - (count - 1) / 2) * 65,
     );
     a.hp = a.maxHp = g.finalWave
       ? Math.max(
@@ -268,31 +329,14 @@ export function nextWave(g) {
     a.deaths = 0;
     return a;
   });
-  team.forEach((a, i) =>
-    Object.assign(a, {
-      x: 280,
-      y: 245 + i * 75,
-      vx: 0,
-      vy: 0,
-      knockX: 0,
-      knockY: 0,
-      dimension: null,
-      transit: null,
-      blind: 0,
-      venom: 0,
-      stagger: 0,
-      aiPlan: null,
-    }),
-  );
   g.fighters = [...team, ...enemies];
-  g.placeMapFighters();
-  g.tokens = [];
-  g.projectiles = [];
-  g.hazards = [];
-  g.waves = [];
-  g.pending = [];
-  g.portals.portals = [];
-  g.portals.placing = null;
+  if (g.wave === 1) g.placeMapFighters();
+  for (const a of team) {
+    a.vx = a.vy = 0;
+    a.aiPlan = a.portalRoute = a.lastSeen = a.searchSpot = null;
+    a.spawn = { x: a.x, y: a.y, element: a.element };
+  }
+  clearWaveEffects(g);
 }
 export function advancedEnd(g) {
   if (g.mode === "roulette") {
@@ -318,6 +362,7 @@ export function advancedEnd(g) {
     return g.finish(1, `Run ended at wave ${g.wave}`);
   if (
     g.intermission ||
+    g.waveTravel ||
     g.fighters.some((a) => a.team === 1 && a.alive && !a.echo)
   )
     return false;
@@ -339,6 +384,25 @@ export function advancedEnd(g) {
     a.blink = null;
     a.abilityCd = a.utilityCd = a.attackCd = 0;
     a.dimension = a.transit = null;
+    Object.assign(a, g.map.nearest(a, 24));
+    a.vx = a.vy = a.knockX = a.knockY = 0;
+    for (const key of [
+      "blind",
+      "whiteout",
+      "venom",
+      "venomTint",
+      "burn",
+      "stagger",
+      "prisonHp",
+      "slow",
+      "hitReact",
+      "swing",
+      "clash",
+      "charge",
+    ])
+      a[key] = 0;
+    a.chasmReady = false;
+    a.aiPlan = a.portalRoute = a.lastSeen = a.searchSpot = null;
   }
   g.pending = [];
   return false;

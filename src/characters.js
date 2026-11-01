@@ -141,6 +141,13 @@ runs.push(
     new URL("./assets/tuned-identities.webp", import.meta.url).href,
   ),
 );
+// Divine's revised atlas removes its reptile tail; other tuned identities stay intact.
+atlases.push(
+  loadAtlas(
+    { divine: tuned.divine },
+    new URL("./assets/divine-tailless.png", import.meta.url).href,
+  ),
+);
 const actions = [
   loadAtlas(
     newMotion,

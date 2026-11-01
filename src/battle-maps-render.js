@@ -1,3 +1,4 @@
+import { paintWaveMap } from "./wave-map-render.js";
 import {
   paintVolcanicMap,
   drawVolcanicAmbience,
@@ -9,6 +10,28 @@ export function floorPath(c, map) {
     c.rect(135, 175, 754, 385);
   } else if (map.kind === "corruption") {
     c.arc(map.cx, map.cy, map.radius - map.wallWidth / 2, 0, TAU);
+  } else if (map.kind === "waves") {
+    c.moveTo(100, 175);
+    for (let i = 0; i < 3; i++) {
+      const r = map.rooms[i];
+      c.lineTo(r.x + r.w, r.y);
+      if (i < 2) {
+        c.lineTo(r.x + r.w, 410);
+        c.lineTo(map.rooms[i + 1].x, 410);
+        c.lineTo(map.rooms[i + 1].x, 175);
+      }
+    }
+    c.lineTo(3200, 825);
+    for (let i = 2; i >= 0; i--) {
+      const r = map.rooms[i];
+      c.lineTo(r.x, 825);
+      if (i > 0) {
+        c.lineTo(r.x, 590);
+        c.lineTo(map.rooms[i - 1].x + 800, 590);
+        c.lineTo(map.rooms[i - 1].x + 800, 825);
+      }
+    }
+    c.closePath();
   } else if (map.kind === "volcano") {
     c.arc(map.cx, map.cy, map.shapes[0].r, 0, TAU);
   } else if (map.kind === "garden") {
@@ -78,6 +101,7 @@ function lamp(c, x, y, t = 0) {
   c.fillRect(x - 1, y - 7, 2, 13);
 }
 export function paintBattleMap(c, map) {
+  if (map.kind === "waves") return paintWaveMap(c, map, floorPath);
   if (map.kind === "volcano") return paintVolcanicMap(c, map);
   const garden = map.kind === "garden",
     random = seeded();
@@ -330,12 +354,12 @@ export function drawBattleMinimap(c, game, width, height, portrait) {
     w = Math.min(
       136,
       width * 0.25,
-      portrait ? 136 : (height * 0.22 * 2048) / 1360,
+      portrait ? 136 : (height * 0.22 * map.width) / map.height,
     ),
-    h = (w * 1360) / 2048;
+    h = (w * map.height) / map.width;
   const x = width - w - 10,
     y = portrait ? 10 : 82,
-    scale = w / 2048;
+    scale = w / map.width;
   c.save();
   c.translate(x, y);
   c.fillStyle = "#091321de";
@@ -353,6 +377,12 @@ export function drawBattleMinimap(c, game, width, height, portrait) {
         : "#bdc4dc";
   c.fill();
   c.restore();
+  if (game.waveTravel) {
+    c.strokeStyle = "#a6ffe0";
+    c.beginPath();
+    c.arc(game.waveRally.x * scale, game.waveRally.y * scale, 4, 0, TAU);
+    c.stroke();
+  }
   for (const base of game.warBases || []) {
     c.strokeStyle = base.team === game.player.team ? "#9affd6" : "#ff9a78";
     c.lineWidth = 1.5;

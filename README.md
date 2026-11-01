@@ -1,4 +1,11 @@
-# Elemental — The Colosseum · v0.26.1
+# Elemental — The Colosseum · v0.27.0
+
+## v0.27.0 Threefold Bastion and elemental updates
+
+- War health drops arrive every seven seconds. Light remains excluded; healing strength is unchanged.
+- Solo Waves and Team Waves use the Threefold Bastion: three stone chambers joined by corridors. After the seven-second advantage pick, walk to the next chamber. Allies follow and assemble; the next wave waits for the player and all living allies. Longer runs reverse direction through the chambers. Battle gates keep each wave inside its chamber; health, fusions and rewards carry forward without resetting the team's position.
+- Divine's idle and attack sprites no longer have a reptile tail; its existing tailless hurt, movement and victory poses remain.
+- Terraformer gains Telekinesis (including directional swipes); Lightning gains Flood. Extra skills use their existing main/utility cooldowns, and AI can use them with normal friendly-fire checks.
 
 ## v0.26.1 Flying AI and magma
 

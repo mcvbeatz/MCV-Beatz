@@ -31,7 +31,7 @@ test("each requested fused shortcut executes without changing its selected tab o
     gravity: ["Rock shield"],
     apparition: ["Sonic boom"],
     "multi-dimensional": ["Healing", "Shadow step"],
-    lightning: ["Healing"],
+    lightning: ["Healing", "Flood"],
   };
   for (const [element, names] of Object.entries(expected)) {
     assert.deepEqual(

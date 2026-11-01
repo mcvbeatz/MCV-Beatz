@@ -1,3 +1,4 @@
+import { walkToNextWave } from "./wave-fixture.js";
 import test from "node:test";
 import assert from "node:assert/strict";
 import { Combat, makeFighter, VOG_RADIUS, distance } from "./combat-fixture.js";
@@ -26,6 +27,9 @@ for (const mode of ["gauntlet", "gauntlet-team"]) {
     g.update(0.001, { x: 0, y: 0 }, false);
     assert.equal(g.player.element, "spirit");
     assert.equal(g.player.hp, 65); // The normal shard-fusion bonus heals 30 HP, not a full heal.
+    assert.equal(g.wave, 1);
+    assert.equal(g.waveTravel, true);
+    walkToNextWave(g);
     assert.equal(g.wave, 2);
     assert.equal(g.intermission, false);
     assert.equal(g.chooseReward("heal"), false);
@@ -37,6 +41,9 @@ for (const mode of ["gauntlet", "gauntlet-team"]) {
     const first = g.rewardChoices()[0];
     assert.ok(first.id.startsWith("shard:"));
     g.update(7.2, { x: 0, y: 0 }, false);
+    assert.equal(g.wave, 1);
+    assert.equal(g.waveTravel, true);
+    walkToNextWave(g);
     assert.equal(g.wave, 2);
     assert.ok(g.player.parts.includes(first.id.slice(6)));
     assert.equal(g.intermission, false);
@@ -45,6 +52,7 @@ for (const mode of ["gauntlet", "gauntlet-team"]) {
     assert.equal(g.rewardSelection, null);
     g.chooseReward("upgrade");
     g.update(7, { x: 0, y: 0 }, false);
+    walkToNextWave(g);
     assert.equal(g.wave, 3);
     assert.equal(g.player.waveDamage, 1.25);
   });

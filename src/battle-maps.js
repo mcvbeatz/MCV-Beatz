@@ -6,7 +6,7 @@ export const MATCH_MAP_IDS = ["classic", ...BATTLE_MAP_IDS];
 export function createBattleMap(
   id = BATTLE_MAP_IDS[Math.floor(Math.random() * 2)],
 ) {
-  if (![...BATTLE_MAP_IDS, "volcano"].includes(id))
+  if (![...BATTLE_MAP_IDS, "volcano", "waves"].includes(id))
     throw new Error(`Unknown battle map: ${id}`);
   const garden = id === "garden",
     volcano = id === "volcano";
@@ -41,12 +41,48 @@ export function createBattleMap(
           ],
     portals: [],
   };
+  if (id === "waves") {
+    Object.assign(map, {
+      name: "The Threefold Bastion",
+      width: 3300,
+      height: 1000,
+      cx: 1650,
+      cy: 500,
+      bounds: { left: 0, top: 0, width: 3300, height: 1000 },
+      rooms: [100, 1250, 2400].map((x) => ({ x, y: 175, w: 800, h: 650 })),
+      activeRoom: 0,
+    });
+    map.shapes = [
+      ...map.rooms,
+      { x: 850, y: 410, w: 450, h: 180 },
+      { x: 2000, y: 410, w: 450, h: 180 },
+    ];
+    map.inRoom = (p, index, r = 13) => {
+      const room = map.rooms[index];
+      return (
+        p.x >= room.x + r &&
+        p.x <= room.x + room.w - r &&
+        p.y >= room.y + r &&
+        p.y <= room.y + room.h - r
+      );
+    };
+  }
+  const floorShapes = () =>
+    map.activeRoom != null
+      ? [map.rooms[map.activeRoom]]
+      : map.travelRooms
+        ? map.shapes.filter(
+            (s) =>
+              s.x >= map.rooms[map.travelRooms[0]].x &&
+              s.x + s.w <= map.rooms[map.travelRooms[1]].x + 800,
+          )
+        : map.shapes;
   // A body must fit wholly inside a component. Components overlap generously,
   // so the seams are continuous while bodies cannot clip the re-entrant edges.
   map.walkable = (p, r = 13) =>
     Number.isFinite(p.x) &&
     Number.isFinite(p.y) &&
-    map.shapes.some((s) =>
+    floorShapes().some((s) =>
       s.r
         ? distance(p, s) <= s.r - r
         : p.x >= s.x + r &&
@@ -56,7 +92,7 @@ export function createBattleMap(
     );
   map.nearest = (p, r = 13) => {
     if (map.walkable(p, r)) return { x: p.x, y: p.y };
-    return map.shapes
+    return floorShapes()
       .map((s) => {
         if (!s.r)
           return {
@@ -70,13 +106,14 @@ export function createBattleMap(
       .sort((a, b) => distance(a, p) - distance(b, p))[0];
   };
   map.lineClear = (a, b, r = 13) => {
+    if (!map.walkable(a, r) || !map.walkable(b, r)) return false;
     // Exact segment coverage by the union of the eroded convex components.
     const dx = b.x - a.x,
       dy = b.y - a.y,
       length2 = dx * dx + dy * dy;
     if (!length2) return map.walkable(a, r);
     const intervals = [];
-    for (const s of map.shapes) {
+    for (const s of floorShapes()) {
       let lo = 0,
         hi = 1;
       if (s.r) {
@@ -128,28 +165,34 @@ export function createBattleMap(
     }
     return distance(start, a);
   };
-  const nodes = volcano
-    ? [[1024, 680]]
-    : garden
-      ? [
-          [735, 391],
-          [1313, 391],
-          [735, 969],
-          [1313, 969],
-          [1024, 680],
-        ]
-      : [
-          [760, 680],
-          [1240, 630],
-          [1240, 730],
-          [1490, 630],
-          [1490, 730],
-          [1680, 680],
-        ];
+  const nodes =
+    id === "waves"
+      ? [250, 750, 1400, 1900, 2550, 3050].map((x) => [x, 500])
+      : volcano
+        ? [[1024, 680]]
+        : garden
+          ? [
+              [735, 391],
+              [1313, 391],
+              [735, 969],
+              [1313, 969],
+              [1024, 680],
+            ]
+          : [
+              [760, 680],
+              [1240, 630],
+              [1240, 730],
+              [1490, 630],
+              [1490, 730],
+              [1680, 680],
+            ];
   map.nodes = nodes.map(([x, y]) => ({ x, y }));
+  const initialRoom = map.activeRoom;
+  map.activeRoom = null;
   const edges = map.nodes.map((a) =>
     map.nodes.map((b) => (map.lineClear(a, b, 18) ? distance(a, b) : Infinity)),
   );
+  map.activeRoom = initialRoom;
   map.route = (from, to) => {
     const goal = map.nearest(to, 18);
     if (map.lineClear(from, goal)) return goal;
@@ -253,5 +296,11 @@ export function createBattleMap(
         [1680, 820],
       ];
   map.shardSpots = map.shardSpots.map(([x, y]) => ({ x, y }));
+  if (id === "waves") {
+    map.teamSpawn = (team, i, count) => ({
+      x: map.rooms[map.activeRoom ?? 0].x + (team === 0 ? 150 : 650),
+      y: 500 + (i - (count - 1) / 2) * 65,
+    });
+  }
   return map;
 }

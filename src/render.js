@@ -1,3 +1,4 @@
+import { drawWaveGuidance } from "./wave-map-render.js";
 import { drawWarSupplies } from "./war-render.js";
 import {
   paintBattleMap,
@@ -637,6 +638,7 @@ export class Renderer {
     } else c.drawImage(this.background, 0, 0, 1024, 680);
     const t = idle ? performance.now() / 1000 : game.time;
     if (game.map) drawBattleAmbience(c, game.map, t);
+    drawWaveGuidance(c, game, t);
     drawTerrain(c, game, t);
     drawWarSupplies(c, game, t);
     for (const flag of game.flags) {
