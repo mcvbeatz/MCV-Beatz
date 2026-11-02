@@ -167,7 +167,7 @@ test("Divine crossfades for its owner and opponents without changing targeting v
   }
 });
 
-test("Blaze leans and faces the dash direction across inherited elemental designs", async ({
+test("Speed burst uses directional sprites without warping any elemental", async ({
   page,
 }) => {
   await start(page);
@@ -218,12 +218,12 @@ test("Blaze leans and faces the dash direction across inherited elemental design
         c.fillStyle = "#efe2b4";
         c.font = "12px sans-serif";
         c.fillText(`${element} ${dx},${dy}`, 50 + col * 200, 135 + row * 145);
-        samples.push({ dx, dy, pose, matrices });
+        samples.push({ element, dx, dy, pose, matrices });
       }
     }
     return { samples, image: canvas.toDataURL().split(",")[1] };
   });
-  for (const { dx, dy, pose, matrices } of result.samples) {
+  for (const { element, dx, dy, pose, matrices } of result.samples) {
     expect(pose.dashing).toBe(true);
     expect(pose.dashLean).toBe(1);
     expect(pose.facing).toBe(dx ? 1 : dy < 0 ? 2 : 0);
@@ -235,7 +235,7 @@ test("Blaze leans and faces the dash direction across inherited elemental design
       expect(Math.hypot(m.a, m.b)).toBeCloseTo(1, 8);
       expect(Math.hypot(m.c, m.d)).toBeCloseTo(1, 8);
       expect(m.a * m.c + m.b * m.d).toBeCloseTo(0, 8);
-      if (dx) expect(-m.c * dx).toBeGreaterThan(0);
+      if (dx && element === "smoke") expect(-m.c * dx).toBeGreaterThan(0);
     }
   }
   await writeFile(

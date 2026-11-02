@@ -1,3 +1,7 @@
+import runInbetweensOrigins from "./assets/run-inbetweens-origins.json" with { type: "json" };
+import runInbetweensFusions from "./assets/run-inbetweens-fusions.json" with { type: "json" };
+import runInbetweensOthers from "./assets/run-inbetweens-others.json" with { type: "json" };
+import speedBurst from "./assets/speed-burst.json" with { type: "json" };
 import newFusions from "./assets/new-fusions.json" with { type: "json" };
 import newMotion from "./assets/new-fusions-motion.json" with { type: "json" };
 import newReactions from "./assets/new-fusions-reactions.json" with { type: "json" };
@@ -199,6 +203,29 @@ const hurts = [
     new URL("./assets/hurt-airborne.webp", import.meta.url).href,
   ),
 ];
+const runInbetweens = [
+  loadAtlas(
+    runInbetweensOrigins,
+    new URL("./assets/run-inbetweens-origins.webp", import.meta.url).href,
+  ),
+  loadAtlas(
+    runInbetweensFusions,
+    new URL("./assets/run-inbetweens-fusions.webp", import.meta.url).href,
+  ),
+  loadAtlas(
+    runInbetweensOthers,
+    new URL("./assets/run-inbetweens-others.webp", import.meta.url).href,
+  ),
+];
+const inbetweenByElement = Object.fromEntries(
+  runInbetweens.flatMap((atlas) =>
+    Object.keys(atlas.spec).map((e) => [e, atlas]),
+  ),
+);
+const dashAtlas = loadAtlas(
+  speedBurst,
+  new URL("./assets/speed-burst.webp", import.meta.url).href,
+);
 const actionByElement = Object.fromEntries(
   actions.flatMap((atlas) => Object.keys(atlas.spec).map((e) => [e, atlas])),
 );
@@ -212,7 +239,15 @@ const runByElement = Object.fromEntries(
   runs.flatMap((atlas) => Object.keys(atlas.spec).map((e) => [e, atlas])),
 );
 export const charactersReady = Promise.all(
-  [victory, ...atlases, ...runs, ...actions, ...hurts].map((a) => a.ready),
+  [
+    victory,
+    dashAtlas,
+    ...runInbetweens,
+    ...atlases,
+    ...runs,
+    ...actions,
+    ...hurts,
+  ].map((a) => a.ready),
 ).then((loaded) => loaded.every(Boolean));
 
 export function isRunning(a) {
@@ -263,6 +298,12 @@ export function characterPose(a) {
   const stride = Math.floor(cycle) % 4;
   return {
     dashing,
+    dashFrame: dashing
+      ? facing * 2 + (((Math.floor((0.3 - a.burst) * 24) % 2) + 2) % 2)
+      : null,
+    runInbetween:
+      (running || (sidestepping && !a.parts.includes("air"))) &&
+      stride % 2 === 1,
     dashX: dashing ? fx : 0,
     dashY: dashing ? fy : 0,
     dashLean: dashing
@@ -277,12 +318,7 @@ export function characterPose(a) {
     sidestepping,
     stepFrame: sidestepping ? facing * 2 + (stride < 2 ? 0 : 1) : null,
     hurtFrame: reacting ? facing : null,
-    runFrame:
-      running && ["earth", "mud"].includes(a.element)
-        ? facing * 2 + (stride < 2 ? 0 : 1)
-        : running && stride % 2 === 0
-          ? facing * 2 + (stride === 2 ? 1 : 0)
-          : null,
+    runFrame: running ? facing * 2 + Math.floor(stride / 2) : null,
     bob: running ? Math.abs(Math.sin((cycle * Math.PI) / 2)) * 2 : 0,
   };
 }
@@ -297,15 +333,19 @@ function paintFrame(
   flash = 0,
 ) {
   let atlas =
-    running === "step"
-      ? actionByElement[element]
-      : running === "hurt"
-        ? element === "mud"
-          ? null
-          : hurtByElement[element]
-        : running
-          ? runByElement[element]
-          : byElement[element];
+    running === "dash"
+      ? dashAtlas
+      : running === "inbetween"
+        ? inbetweenByElement[element]
+        : running === "step"
+          ? actionByElement[element]
+          : running === "hurt"
+            ? element === "mud"
+              ? null
+              : hurtByElement[element]
+            : running
+              ? runByElement[element]
+              : byElement[element];
   if (running === "hurt" && !atlas?.loaded) {
     atlas = actionByElement[element];
     frame += 6;
@@ -313,11 +353,23 @@ function paintFrame(
   if (!atlas?.loaded) return false;
   const spec = atlas.spec[element];
   const f = spec.frames[frame];
-  const scale = height / spec.height;
+  const scale = height / (f.height || spec.height);
   c.save();
   c.imageSmoothingEnabled = true;
   c.imageSmoothingQuality = "high";
   if (!!flip !== !!f.mirror) c.scale(-1, 1);
+  // Generated sheets use a tight per-sprite outline to prevent adjacent artwork bleeding into a frame.
+  if (f.clip) {
+    c.beginPath();
+    f.clip.forEach(([x, y], i) => {
+      const px = (x - f.anchorX) * scale,
+        py = (y - f.anchorY) * scale;
+      if (i) c.lineTo(px, py);
+      else c.moveTo(px, py);
+    });
+    c.closePath();
+    c.clip();
+  }
   c.drawImage(
     atlas.image,
     f.x,
@@ -407,7 +459,8 @@ export function drawCharacter(c, a, time) {
         : 6 * Math.sin((p - 0.5) * Math.PI * 2);
   c.save();
   c.translate(a.fx * reach, a.fy * reach);
-  if (pose.dashing) {
+  const dashSprite = pose.dashing && speedBurst[a.element] && dashAtlas.loaded;
+  if (pose.dashing && !dashSprite) {
     // Keep the sprite rigid: lean around the feet without skewing or scaling.
     // Front/back dashes use their directional frame and a small forward shift.
     c.translate(0, pose.dashY * pose.dashLean * 8);
@@ -435,16 +488,26 @@ export function drawCharacter(c, a, time) {
   paintFrame(
     c,
     a.element,
-    hurt
-      ? pose.hurtFrame
-      : sidestepping
-        ? pose.stepFrame
-        : running
-          ? pose.runFrame
-          : pose.frame,
+    dashSprite
+      ? pose.dashFrame
+      : hurt
+        ? pose.hurtFrame
+        : sidestepping
+          ? pose.stepFrame
+          : running
+            ? pose.runFrame
+            : pose.frame,
     pose.flip,
     (running || sidestepping) && ["earth", "mud"].includes(a.element) ? 44 : 64,
-    hurt ? "hurt" : sidestepping ? "step" : running,
+    dashSprite
+      ? "dash"
+      : hurt
+        ? "hurt"
+        : pose.runInbetween && inbetweenByElement[a.element]?.loaded
+          ? "inbetween"
+          : sidestepping
+            ? "step"
+            : running,
     a.spawnFlash > 0 ? 0.35 + Math.abs(Math.sin(a.spawnFlash * 22)) * 0.65 : 0,
   );
   if (a.parts.length === 2) {

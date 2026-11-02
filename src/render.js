@@ -1,3 +1,4 @@
+import { drawTempleTraps } from "./temple-map-render.js";
 import { drawWaveGuidance } from "./wave-map-render.js";
 import { drawWarSupplies } from "./war-render.js";
 import {
@@ -641,6 +642,7 @@ export class Renderer {
     drawWaveGuidance(c, game, t);
     drawTerrain(c, game, t);
     drawWarSupplies(c, game, t);
+    drawTempleTraps(c, game);
     for (const flag of game.flags) {
       const color = flag.team === game.player.team ? "#75d8f3" : "#f18e76";
       c.save();

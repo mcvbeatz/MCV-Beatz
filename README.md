@@ -1,4 +1,13 @@
-# Elemental — The Colosseum · v0.27.0
+# Elemental — The Colosseum · v0.28.0
+
+## v0.28.0 Smoother motion and expanded War
+
+- Add 78 running in-between sprites, covering all 13 grounded elementals in front, side and back views. Four distinct stride poses replace idle/run alternation; quadrupeds stay on all fours. Sprite bounds prevent neighboring artwork from bleeding into frames, and uniform scale preserves proportions.
+- Blaze, Demonic and Phoenix use 18 dedicated directional Speed burst sprites: one fist forward, head raised, body flying forward, feet trailing behind. The body is not sheared or stretched.
+- Magma expires after 15 seconds; Water can still clear it sooner, and flyers still ignore it.
+- War always runs for three minutes, including simultaneous team wipes. Highest team kill score wins, with draws on equal scores. Team Deathmatch retains its existing wipe rule.
+- Each fighter's consecutive-death streak persists across respawns. Every pair of deaths without an enemy kill adds a random origin-compatible, team-only token at home base. Enemy kills reset the streak; respawn still resets all fusion upgrades to the starting elemental.
+- Light versus Dark War uses Moonveil Temple, a moonlit stone courtyard with tiled temple roofs, pines, stone lanterns and vermilion gates. Ten mechanical spike traps deal 18 HP per contact, no more than once per second per fighter, to either army. Dark fighters know all traps; Light fighters individually discover traps by triggering them and remember those positions across respawns. AI respects the same knowledge restrictions. Fast dash crossings trigger traps; teleport paths do not.
 
 ## v0.27.0 Threefold Bastion and elemental updates
 

@@ -153,7 +153,7 @@ test("all thirteen grounded designs run; flight, resting, walls and clashes supp
     a.movingTime = 0.11;
     assert.equal(
       characterPose(a).runFrame,
-      ["earth", "mud"].includes(e) ? 2 : null,
+      2,
     );
     a.clash = 0.2;
     a.clashFx = 1;

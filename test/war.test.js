@@ -159,7 +159,7 @@ test("Volcanic heat drains Water exactly one HP per second, can fell it, and sto
   updateWar(cool, 1);
   assert.equal(cool.player.hp, 120);
 });
-test("War ends on a full-team wipe or scores at three minutes, with ties drawing", () => {
+test("War continues through team wipes and scores at three minutes, with ties drawing", () => {
   for (const scores of [
     [3, 1],
     [1, 3],
@@ -183,8 +183,7 @@ test("War ends on a full-team wipe or scores at three minutes, with ties drawing
   for (const a of g.fighters.filter((a) => a.team === 1))
     g.fell(a, { killer: g.player });
   g.checkMatchEnd();
-  assert.equal(g.finished, true);
-  assert.equal(g.result, "victory");
+  assert.equal(g.finished, false);
   assert.equal(g.scores[0], 3);
 });
 test("Injured War AI returns to an available friendly healing drop", () => {

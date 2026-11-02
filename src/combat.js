@@ -1,4 +1,10 @@
-import { initializeWar, updateWar, warRecoveryTarget } from "./war.js";
+import {
+  initializeWar,
+  updateWar,
+  warRecoveryTarget,
+  recordWarDeath,
+  canSeeWarTrap,
+} from "./war.js";
 import { updateRespawnCamera } from "./camera.js";
 import { createBattleMap, MATCH_MAP_IDS } from "./battle-maps.js";
 import { createCorruptionMap } from "./corruption-map.js";
@@ -360,6 +366,11 @@ export class Combat {
         this.warElements.includes("fire")
       )
         mapId = "volcano";
+      if (
+        this.warElements.includes("light") &&
+        this.warElements.includes("dark")
+      )
+        mapId = "temple";
     }
     this.mapId =
       mode === "corruption"
@@ -877,6 +888,7 @@ export class Combat {
         if (["tdm", "war", "rush"].includes(this.mode))
           this.scores[credited.team]++;
       }
+      recordWarDeath(this, a, credited);
       if (this.respawnDelay) a.respawnAt = this.time + this.respawnDelay;
       for (const flag of this.flags)
         if (flag.carrier === a.id) {
@@ -1615,7 +1627,7 @@ export class Combat {
         knockY: 0,
       });
       this.cue("shatter", target, "#b6ac85");
-    } else if (e === "fire") this.area(a, 1, "magma", 66, Infinity);
+    } else if (e === "fire") this.area(a, 1, "magma", 66, 15);
     else if (e === "light") {
       for (const b of this.fighters)
         if (
@@ -2071,6 +2083,12 @@ export class Combat {
     a.aiPlan = { ...goal, start: { x: a.x, y: a.y }, until: this.time + 4 };
     return a.aiPlan;
   }
+  aiHazards(a) {
+    return [
+      ...this.hazards,
+      ...(this.spikeTraps || []).filter((trap) => canSeeWarTrap(this, a, trap)),
+    ];
+  }
   aiRoute(a, goal) {
     if (this.map?.kind !== "corruption" && this.map)
       goal = this.map.route(a, goal);
@@ -2078,21 +2096,23 @@ export class Combat {
     let best = null,
       score = Infinity;
     const risk = (point) =>
-      this.hazards
+      this.aiHazards(a)
         .filter(
           (h) =>
             inWorld(h) &&
-            (h.kind === "chasm"
-              ? !this.flying(a)
-              : h.kind === "death"
-                ? a.parts.length > 1 && !this.auroraProtected(a)
-                : h.kind === "quicksand"
-                  ? !this.flying(a) && !quicksandImmune(a)
-                  : h.kind === "gravity"
-                    ? h.owner.team !== a.team && !hasPassive(a, "apparition")
-                    : (h.kind === "heatwave" ||
-                        (h.kind === "magma" && !this.flying(a))) &&
-                      !burnImmune(a)),
+            (h.kind === "spike"
+              ? true
+              : h.kind === "chasm"
+                ? !this.flying(a)
+                : h.kind === "death"
+                  ? a.parts.length > 1 && !this.auroraProtected(a)
+                  : h.kind === "quicksand"
+                    ? !this.flying(a) && !quicksandImmune(a)
+                    : h.kind === "gravity"
+                      ? h.owner.team !== a.team && !hasPassive(a, "apparition")
+                      : (h.kind === "heatwave" ||
+                          (h.kind === "magma" && !this.flying(a))) &&
+                        !burnImmune(a)),
         )
         .reduce(
           (sum, h) => sum + Math.max(0, h.r + 12 - distance(point, h)),
@@ -2133,8 +2153,9 @@ export class Combat {
       )
     )
       return false;
-    return !this.hazards.some((h) => {
+    return !this.aiHazards(a).some((h) => {
       if (!inWorld(h) || distance(h, point) > h.r + 12) return false;
+      if (h.kind === "spike") return true;
       if (h.kind === "chasm") return !this.flying(a);
       if (h.kind === "death")
         return a.parts.length > 1 && !this.auroraProtected(a);
@@ -2478,19 +2499,21 @@ export class Combat {
       }
     }
     // Step out of hostile floor effects and incoming attack lanes.
-    for (const h of this.hazards.filter(inWorld)) {
+    for (const h of this.aiHazards(a).filter(inWorld)) {
       const harmful =
-        h.kind === "chasm"
-          ? !this.flying(a)
-          : h.kind === "death"
-            ? a.parts.length > 1 && !this.auroraProtected(a)
-            : h.kind === "gravity"
-              ? h.owner.team !== a.team && !hasPassive(a, "apparition")
-              : h.kind === "quicksand"
-                ? !this.flying(a) && !quicksandImmune(a)
-                : (h.kind === "heatwave" ||
-                    (h.kind === "magma" && !this.flying(a))) &&
-                  !burnImmune(a);
+        h.kind === "spike"
+          ? true
+          : h.kind === "chasm"
+            ? !this.flying(a)
+            : h.kind === "death"
+              ? a.parts.length > 1 && !this.auroraProtected(a)
+              : h.kind === "gravity"
+                ? h.owner.team !== a.team && !hasPassive(a, "apparition")
+                : h.kind === "quicksand"
+                  ? !this.flying(a) && !quicksandImmune(a)
+                  : (h.kind === "heatwave" ||
+                      (h.kind === "magma" && !this.flying(a))) &&
+                    !burnImmune(a);
       const gap = distance(a, h);
       if (harmful && gap < h.r + 25) {
         dx += ((a.x - h.x) / (gap || 1)) * 2;
@@ -3482,7 +3505,7 @@ export class Combat {
       this.fighters.filter((a) => a.alive && !a.echo).map((a) => a.team),
     );
     if (this.mode === "ffa" && teams.size === 0) return false;
-    if (teams.size < 2)
+    if (teams.size < 2 && this.mode !== "war")
       return this.finish(
         teams.size ? [...teams][0] : null,
         ["tdm", "war"].includes(this.mode)

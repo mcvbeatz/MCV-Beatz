@@ -119,7 +119,7 @@ export function createApp(api) {
     setScreen(next);
     const c = $("shell-content");
     if (next === "home")
-      c.innerHTML = `<section class="home-hero"><span class="eyebrow">THE COLOSSEUM · v0.27.0</span><h1>Power is elemental.</h1><p>Choose your arena. Find your next form.</p><div class="home-elements" aria-label="Light, Dark, Water, Air, Earth and Fire">${Object.keys(
+      c.innerHTML = `<section class="home-hero"><span class="eyebrow">THE COLOSSEUM · v0.28.0</span><h1>Power is elemental.</h1><p>Choose your arena. Find your next form.</p><div class="home-elements" aria-label="Light, Dark, Water, Air, Earth and Fire">${Object.keys(
         ELEMENTS,
       )
         .map(
@@ -231,7 +231,7 @@ export function createApp(api) {
   }
   function modeGuide(id) {
     openSlides(
-      MODES[id].slides.map((s) => [...s, `guides/${id}.png`]),
+      MODES[id].slides.map((s) => (s[3] ? s : [...s, `guides/${id}.png`])),
       MODES[id].name.toUpperCase(),
     );
   }

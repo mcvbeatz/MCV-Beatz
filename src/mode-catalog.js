@@ -162,8 +162,19 @@ export const MODES = {
       ],
       [
         "Fight through the heat",
-        "Water versus Fire always takes place in the Ember Caldera. Water loses 1 HP per second there. Most kills at three minutes wins; respawns take ten seconds and a full team wipe ends the match early.",
+        "Water versus Fire always takes place in the Ember Caldera. Water loses 1 HP per second there. Most kills at three minutes wins, even after a full team wipe. Respawns take ten seconds.",
         "♨",
+      ],
+      [
+        "Reinforcements",
+        "Every two consecutive deaths without an enemy kill deliver a random compatible elemental token to your home base. Only your team can collect it. An enemy kill resets your streak. Respawning returns you to your starting element.",
+        "◇",
+      ],
+      [
+        "Moonveil Temple",
+        "Light versus Dark fights in Dark’s moonlit temple courtyard. Spike traps hurt either army for 18 HP, at most once per second per fighter. Dark knows every trap; each Light fighter discovers a trap only by triggering it, and remembers it after respawning.",
+        "☾",
+        "guides/war-temple.png",
       ],
     ],
   },
@@ -408,7 +419,7 @@ export const SKILL_HELP = {
   Flamethrower:
     "Charge and release a directional fire attack. Contact burn only lasts while touching a fire-based fighter.",
   Magma:
-    "Tap to place a permanent lava floor ahead of you. Flyers ignore it; Water clears it.",
+    "Tap to place a lava floor ahead of you for 15 seconds. Flyers ignore it; Water clears it.",
   Quicksand:
     "Charge and release a slowing, damaging floor. Flyers and Earth-bearing fighters, including Mud, are immune.",
   Revival: "Charge and release to restore the nearest recoverable fallen ally.",

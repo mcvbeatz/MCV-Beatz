@@ -6,7 +6,7 @@ export const MATCH_MAP_IDS = ["classic", ...BATTLE_MAP_IDS];
 export function createBattleMap(
   id = BATTLE_MAP_IDS[Math.floor(Math.random() * 2)],
 ) {
-  if (![...BATTLE_MAP_IDS, "volcano", "waves"].includes(id))
+  if (![...BATTLE_MAP_IDS, "volcano", "waves", "temple"].includes(id))
     throw new Error(`Unknown battle map: ${id}`);
   const garden = id === "garden",
     volcano = id === "volcano";
@@ -41,6 +41,11 @@ export function createBattleMap(
           ],
     portals: [],
   };
+  if (id === "temple") {
+    map.name = "The Moonveil Temple";
+    map.bounds = { left: 200, top: 0, width: 1648, height: 1360 };
+    map.shapes = [{ x: 354, y: 230, w: 1340, h: 900 }];
+  }
   if (id === "waves") {
     Object.assign(map, {
       name: "The Threefold Bastion",
@@ -168,7 +173,7 @@ export function createBattleMap(
   const nodes =
     id === "waves"
       ? [250, 750, 1400, 1900, 2550, 3050].map((x) => [x, 500])
-      : volcano
+      : volcano || id === "temple"
         ? [[1024, 680]]
         : garden
           ? [
@@ -296,6 +301,12 @@ export function createBattleMap(
         [1680, 820],
       ];
   map.shardSpots = map.shardSpots.map(([x, y]) => ({ x, y }));
+  if (id === "temple") {
+    map.teamSpawn = (team, i, count) => ({
+      x: team === 0 ? 500 : 1548,
+      y: 680 + (i - (count - 1) / 2) * 56,
+    });
+  }
   if (id === "waves") {
     map.teamSpawn = (team, i, count) => ({
       x: map.rooms[map.activeRoom ?? 0].x + (team === 0 ? 150 : 650),

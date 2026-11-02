@@ -1,4 +1,5 @@
-import { inWorld } from "./portals.js";
+import { ELEMENTS, combination } from "./combat.js";
+import { inWorld, segmentDistance } from "./portals.js";
 
 export const WAR_DROP_INTERVAL = 7;
 // Healing charges from power 1 to 2.6 and restores 23 HP per power.
@@ -6,6 +7,32 @@ export const WAR_HEAL = 23 * 2.6;
 export function initializeWar(g) {
   if (g.mode !== "war") return;
   g.healthDrops = [];
+  g.warDeathStreaks = {};
+  g.spikeTraps =
+    g.mapId === "temple"
+      ? [
+          [700, 470],
+          [1024, 470],
+          [1348, 470],
+          [810, 680],
+          [1190, 680],
+          [700, 890],
+          [1024, 890],
+          [1348, 890],
+          [920, 570],
+          [1130, 790],
+        ].map(([x, y], i) => ({
+          id: i,
+          kind: "spike",
+          x,
+          y,
+          r: 26,
+          knownBy: new Set(),
+          nextHit: new Map(),
+          triggeredAt: -Infinity,
+        }))
+      : [];
+  g.warTrapPositions = new Map();
   g.nextHealthDropAt = WAR_DROP_INTERVAL;
   g.warBases = [0, 1].map((team) => ({
     team,
@@ -25,6 +52,7 @@ export function initializeWar(g) {
 }
 export function updateWar(g, dt) {
   if (g.mode !== "war") return;
+  updateWarTraps(g);
   while (g.time + 1e-9 >= g.nextHealthDropAt) {
     for (const base of g.warBases) {
       if (base.element === "light") continue;
@@ -79,4 +107,66 @@ export function warRecoveryTarget(g, a) {
           Math.hypot(a.x - b.x, a.y - b.y) - Math.hypot(a.x - c.x, a.y - c.y),
       )[0] || null
   );
+}
+
+// Streaks belong to the match, so a fighter's normal respawn reset cannot erase them.
+export function recordWarDeath(g, victim, killer) {
+  if (g.mode !== "war") return;
+  if (killer && killer.team !== victim.team) g.warDeathStreaks[killer.id] = 0;
+  const streak = (g.warDeathStreaks[victim.id] || 0) + 1;
+  g.warDeathStreaks[victim.id] = streak;
+  if (streak % 2 !== 0) return;
+  const base = g.warBases[victim.team];
+  const pool = Object.keys(ELEMENTS).filter((e) =>
+    combination([base.element], [e]),
+  );
+  const part =
+    pool[Math.min(pool.length - 1, Math.floor(g.random() * pool.length))];
+  if (!part) return;
+  g.tokens.push({
+    ...g.floorPoint({ x: base.x, y: base.y + 75 }, 24),
+    team: victim.team,
+    parts: [part],
+    souls: [],
+    warBonus: true,
+    bornAt: g.time,
+    portalCooldown: 0.3,
+  });
+}
+export function canSeeWarTrap(g, fighter, trap) {
+  return (
+    g.warElements?.[fighter.team] === "dark" || trap.knownBy.has(fighter.id)
+  );
+}
+function updateWarTraps(g) {
+  if (!g.spikeTraps.length) return;
+  for (const a of g.fighters) {
+    if (!a.alive || !inWorld(a)) {
+      g.warTrapPositions.delete(a.id);
+      continue;
+    }
+    const previous = g.warTrapPositions.get(a.id) || a;
+    const swept = Math.hypot(previous.x - a.x, previous.y - a.y) <= 80;
+    for (const trap of g.spikeTraps) {
+      const gap = swept
+        ? segmentDistance(trap, previous, a)
+        : Math.hypot(a.x - trap.x, a.y - trap.y);
+      if (gap > trap.r + 8) continue;
+      trap.knownBy.add(a.id);
+      if (g.time < (trap.nextHit.get(a.id) ?? -Infinity)) continue;
+      trap.nextHit.set(a.id, g.time + 1);
+      trap.triggeredAt = g.time;
+      // Neutral mechanical damage affects either army, including fused fighters.
+      a.hp = Math.max(0, a.hp - 18);
+      a.hitReact = 0.24;
+      a.hitDx = 0;
+      a.hitDy = -1;
+      a.hurtReveal = 0.15;
+      if (a.hp <= 0) {
+        g.fell(a);
+        break;
+      }
+    }
+    g.warTrapPositions.set(a.id, { x: a.x, y: a.y });
+  }
 }
