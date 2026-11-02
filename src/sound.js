@@ -1,4 +1,11 @@
 import { BattlePlaylist, TRACK_URLS } from "./music-catalog.js";
+const SCENE_TRACKS = {
+  corruption: "no-escape",
+  war: "dont-let-up",
+  volcano: "no-smoke",
+  victory: "inner-glow",
+  defeat: "from-the-ashes",
+};
 const clamp = (n) => Math.max(0, Math.min(1, Number(n) || 0));
 export class Soundtrack {
   constructor(settings) {
@@ -13,6 +20,8 @@ export class Soundtrack {
     this.trackGeneration = 0;
     this.playlist = new BattlePlaylist();
     this.battleTrackId = null;
+    this.preparedBattleTrackId = null;
+    this.warMapPreload = null;
     this.menuBuffer = null;
     this.menuLoading = null;
     this.menuSource = null;
@@ -40,22 +49,34 @@ export class Soundtrack {
   setScene(mode, paused = false, restart = false) {
     if (!restart && this.scene === mode && this.paused === paused) return;
     if (mode === "battle" && (restart || !this.battleTrackId))
-      this.battleTrackId = this.playlist.next();
+      this.battleTrackId = this.preparedBattleTrackId || this.playlist.next();
+    if (restart && mode === "battle") this.preparedBattleTrackId = null;
     this.scene = mode;
     this.paused = paused;
     this.desiredTrackId =
-      {
-        battle: this.battleTrackId,
-        corruption: "no-escape",
-        volcano: "no-smoke",
-        victory: "inner-glow",
-        defeat: "from-the-ashes",
-      }[mode] || null;
+      mode === "battle" ? this.battleTrackId : SCENE_TRACKS[mode] || null;
     if (restart) {
       this.trackEnded = false;
       if (this.track) this.track.currentTime = 0;
     }
     this.sync();
+  }
+  prepareBattle(mode) {
+    // Reserve the exact shuffled song that Start will play, rather than choosing
+    // another after the countdown is already visible. Loading remains silent.
+    const scene = mode === "corruption" || mode === "war" ? mode : "battle";
+    const id =
+      scene === "battle"
+        ? (this.preparedBattleTrackId ||= this.playlist.next())
+        : SCENE_TRACKS[scene];
+    this.prepareTrack(id);
+    if (mode === "war" && !this.warMapPreload) {
+      // War's opponent/map is rolled at Start; warm the volcanic exception too.
+      // Playback still uses the single user-authorized media element.
+      this.warMapPreload = new Audio(TRACK_URLS["no-smoke"]);
+      this.warMapPreload.preload = "auto";
+      this.warMapPreload.load();
+    }
   }
   prepareTrack(id = "no-escape") {
     if (!this.track) {

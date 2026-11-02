@@ -19,12 +19,12 @@ test("random battle rotation uses all four tracks before repeating, never back t
       assert.notEqual(songs[i], songs[i - 1]);
   }
 });
-test("all modes route battle, map and team outcome music with Survive the Night precedence", () => {
+test("all modes route battle, map and team outcome music with dedicated War music and map precedence", () => {
   for (const mode of Object.keys(MODES)) {
     const game = { mode, mapId: "garden", finished: false };
     assert.equal(
       musicScene("battle", game),
-      mode === "corruption" ? "corruption" : "battle",
+      mode === "corruption" ? "corruption" : mode === "war" ? "war" : "battle",
     );
     game.mapId = "volcano";
     assert.equal(

@@ -1,4 +1,11 @@
-# Elemental — The Colosseum · v0.29.0
+# Elemental — The Colosseum · v0.30.0
+
+## v0.30.0 War soundtrack and countdown music
+
+- War uses **Don't Let Up**, unchanged at native speed (183.192 seconds), from the opening countdown through its three-minute round. Ember Caldera keeps **no smoke**; Survive the Night keeps **No Escape**.
+- All battle modes silently preload their opening recording in setup. Shuffled battles reserve that exact song for Start, and War also preloads its volcanic-map exception. Music starts on the opening 3 and continues across Go without a restart. Practice still begins immediately with its music.
+- Pause/resume, new-match restart, music volume, menu music and team outcome tracks retain their existing behavior. Don't Let Up plays once per War match, without looping or stretching.
+
 
 ## v0.29.0 Planted running steps
 

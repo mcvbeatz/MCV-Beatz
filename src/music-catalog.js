@@ -5,6 +5,8 @@ export const BATTLE_TRACKS = [
   "sick",
 ];
 export const TRACK_URLS = {
+  "dont-let-up": new URL("./assets/music/dont-let-up.mp3", import.meta.url)
+    .href,
   "watch-and-learn": new URL(
     "./assets/music/watch-and-learn.mp3",
     import.meta.url,
@@ -58,5 +60,6 @@ export function musicScene(screen, game) {
         ? "defeat"
         : "draw";
   if (game.mode === "corruption") return "corruption";
-  return game.mapId === "volcano" ? "volcano" : "battle";
+  if (game.mapId === "volcano") return "volcano";
+  return game.mode === "war" ? "war" : "battle";
 }

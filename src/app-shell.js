@@ -119,7 +119,7 @@ export function createApp(api) {
     setScreen(next);
     const c = $("shell-content");
     if (next === "home")
-      c.innerHTML = `<section class="home-hero"><span class="eyebrow">THE COLOSSEUM · v0.29.0</span><h1>Power is elemental.</h1><p>Choose your arena. Find your next form.</p><div class="home-elements" aria-label="Light, Dark, Water, Air, Earth and Fire">${Object.keys(
+      c.innerHTML = `<section class="home-hero"><span class="eyebrow">THE COLOSSEUM · v0.30.0</span><h1>Power is elemental.</h1><p>Choose your arena. Find your next form.</p><div class="home-elements" aria-label="Light, Dark, Water, Air, Earth and Fire">${Object.keys(
         ELEMENTS,
       )
         .map(
@@ -217,8 +217,8 @@ export function createApp(api) {
         ? "team-battles"
         : "solo-battles";
     api.chooseMode(id);
-    if (id === "corruption") sound.prepareTrack();
     setScreen("setup");
+    sound.prepareBattle(id);
     $("setup-mode-title").textContent = MODES[id].name;
     $("setup-how").onclick = () => modeGuide(id);
     $("setup-element-guide").onclick = () => elementSlides(api.selected());
