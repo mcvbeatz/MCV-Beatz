@@ -1,4 +1,13 @@
-# Elemental — The Colosseum · v0.30.0
+# Elemental — The Colosseum · v0.31.0
+
+## v0.31.0 Directional movement and casting
+
+- Replace only the reported running directions with 36 coherent stride sprites: Smoke front, Light side/back, Water side, and Fire side/back. Supporting-foot poses alternate across the cycle; left-facing movement mirrors the side view. Sun's running artwork and cycle are unchanged.
+- Earth uses the same body scale when running and standing instead of the smaller quadruped running scale.
+- All ten flying elementals gain 60 directional travel sprites, with leaning flight poses, fluttering fabric/energy and Phoenix wingbeats distinct from stationary hovering. Existing Speed burst poses retain priority.
+- All 23 elementals gain directional open-hand casting sprites. Successful active casts briefly extend a hand or claw; inherited skills use the current elemental's appearance. Placed Portals and Chasm animate upon placement, and holding Rock shield does not repeat the gesture. Passive abilities, Shadow step, Phase, Gust, Tailwind, Speed burst and Teleport do not trigger casting poses. Damage, melee, dash and death keep their animation priority.
+- Vog erupts from a small burst and expands into its full smoke cloud over 0.55 seconds. Existing gameplay coverage, duration and immunities are unchanged; fire shortening its life does not replay the bloom.
+
 
 ## v0.30.0 War soundtrack and countdown music
 

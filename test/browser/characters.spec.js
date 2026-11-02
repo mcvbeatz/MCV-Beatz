@@ -2,7 +2,7 @@ import { test, expect } from "@playwright/test";
 
 const origins = ["water", "dark", "fire", "air", "earth", "light"];
 
-test("all grounded atlases animate opposing strides while flyers retain their hovering pose", async ({
+test("grounded strides and airborne travel both animate in every direction", async ({
   page,
 }) => {
   await page.goto("/?mode=duel");
@@ -38,7 +38,7 @@ test("all grounded atlases animate opposing strides while flyers retain their ho
           pictures.push(c.toDataURL());
         }
         if (a.parts.includes("air")) {
-          if (pictures[0] === pictures[1]) flying++;
+          if (pictures[0] !== pictures[1]) flying++;
         } else if (pictures[0] !== pictures[1]) grounded++;
       }
     }

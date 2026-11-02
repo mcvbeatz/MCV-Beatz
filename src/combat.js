@@ -314,6 +314,9 @@ export function makeFighter(id, element, team, x, y) {
     reveal: 0,
     hurtReveal: 0,
     hitReact: 0,
+    castTime: 0,
+    castFx: 0,
+    castFy: 1,
     hitDx: 0,
     hitDy: 0,
     blink: null,
@@ -942,6 +945,7 @@ export class Combat {
         swing: 0,
         clash: 0,
         hitReact: 0,
+        castTime: 0,
         lock: null,
         spawnFlash: 1,
         portalCooldown: 1,
@@ -972,7 +976,7 @@ export class Combat {
     a.prisonHp = 0;
     a.chasmReady = false;
     a.hp = 0;
-    a.clash = a.reflect = a.hitReact = 0;
+    a.clash = a.reflect = a.hitReact = a.castTime = 0;
     a.blink = null;
     a.burst = 0;
     a.movingTime = 0;
@@ -1229,6 +1233,7 @@ export class Combat {
       tick: 0,
       ...(kind === "vog"
         ? {
+            createdAt: this.time,
             fireInside: new Set(
               this.fighters
                 .filter(
@@ -1313,6 +1318,13 @@ export class Combat {
       a.executingForm = previous;
     }
   }
+  animateCast(a, dx = a.fx, dy = a.fy) {
+    if (!a.alive || a.ghost) return;
+    const length = Math.hypot(dx, dy) || 1;
+    a.castTime = 0.32;
+    a.castFx = dx / length;
+    a.castFy = dy / length;
+  }
   cast(a, p, form = activeForm(a)) {
     if (
       this.intermission ||
@@ -1321,7 +1333,9 @@ export class Combat {
       !canUseSkill(a, form, "ability")
     )
       return false;
-    return this.executeSkill(a, form, () => this.castSkill(a, p));
+    const used = this.executeSkill(a, form, () => this.castSkill(a, p));
+    if (used && form !== "gravity") this.animateCast(a);
+    return used;
   }
   castSkill(a, p) {
     const e = skillForm(a);
@@ -1540,6 +1554,7 @@ export class Combat {
       target.knockY += (dy / length) * TELEKINESIS_PUSH;
       target.blink = null;
     }
+    this.animateCast(a, target.x - a.x, target.y - a.y);
     this.effects.push({
       kind: "telekinesis",
       x: target.x,
@@ -1555,7 +1570,18 @@ export class Combat {
     if (hold && (this.intermission || this.waveTravel || this.countingDown))
       return false;
     if (hold && !canUseSkill(a, form, "utility")) return false;
-    return this.executeSkill(a, form, () => this.utilitySkill(a, hold));
+    const shieldWasActive = !!a.shield;
+    const used = this.executeSkill(a, form, () => this.utilitySkill(a, hold));
+    if (
+      used &&
+      hold &&
+      !["dark", "apparition", "air", "lightning", "blaze", "spirit"].includes(
+        form,
+      ) &&
+      !(form === "earth" && shieldWasActive)
+    )
+      this.animateCast(a);
+    return used;
   }
   utilitySkill(a, hold) {
     const e = skillForm(a);
@@ -1714,6 +1740,7 @@ export class Combat {
     }
     if (!this.aiGesture(a, "chasm")) return false;
     a.chasmReady = false;
+    this.animateCast(a, x - a.x, y - a.y);
     a.reveal = 0.45;
     a.abilityCd = 8;
     this.hazards.push({
@@ -2996,6 +3023,7 @@ export class Combat {
         "reveal",
         "hurtReveal",
         "hitReact",
+        "castTime",
       ])
         a[key] = Math.max(0, a[key] - dt);
       if (a.life !== undefined && (a.life -= dt) <= 0) {
@@ -3421,7 +3449,7 @@ export class Combat {
     for (const a of this.fighters) {
       a.victory = a.alive && !a.echo && ids.includes(a.id);
       a.charging = false;
-      a.swing = a.clash = a.hitReact = a.burst = a.shield = 0;
+      a.swing = a.clash = a.hitReact = a.castTime = a.burst = a.shield = 0;
       a.vx = a.vy = 0;
       if (a.victory) {
         a.dimension = a.transit = a.blink = null;

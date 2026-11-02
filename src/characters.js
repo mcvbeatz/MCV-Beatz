@@ -1,3 +1,11 @@
+import runRepairA from "./assets/run-repair-a.json" with { type: "json" };
+import runRepairB from "./assets/run-repair-b.json" with { type: "json" };
+import flightA from "./assets/flight-a.json" with { type: "json" };
+import flightB from "./assets/flight-b.json" with { type: "json" };
+import castOrigins from "./assets/cast-origins.json" with { type: "json" };
+import castGrounded from "./assets/cast-grounded.json" with { type: "json" };
+import castAirborne from "./assets/cast-airborne.json" with { type: "json" };
+import castSpecial from "./assets/cast-special.json" with { type: "json" };
 import runContactsOrigins from "./assets/run-contacts-origins.json" with { type: "json" };
 import runContactsFusions from "./assets/run-contacts-fusions.json" with { type: "json" };
 import runContactsOthers from "./assets/run-contacts-others.json" with { type: "json" };
@@ -244,6 +252,47 @@ const contactByElement = Object.fromEntries(
     Object.keys(atlas.spec).map((e) => [e, atlas]),
   ),
 );
+const repairs = [
+  loadAtlas(
+    runRepairA,
+    new URL("./assets/run-repair-a.webp", import.meta.url).href,
+  ),
+  loadAtlas(
+    runRepairB,
+    new URL("./assets/run-repair-b.webp", import.meta.url).href,
+  ),
+];
+const repairsByElement = Object.fromEntries(
+  repairs.flatMap((atlas) => Object.keys(atlas.spec).map((e) => [e, atlas])),
+);
+const flights = [
+  loadAtlas(flightA, new URL("./assets/flight-a.webp", import.meta.url).href),
+  loadAtlas(flightB, new URL("./assets/flight-b.webp", import.meta.url).href),
+];
+const flightsByElement = Object.fromEntries(
+  flights.flatMap((atlas) => Object.keys(atlas.spec).map((e) => [e, atlas])),
+);
+const casts = [
+  loadAtlas(
+    castOrigins,
+    new URL("./assets/cast-origins.webp", import.meta.url).href,
+  ),
+  loadAtlas(
+    castGrounded,
+    new URL("./assets/cast-grounded.webp", import.meta.url).href,
+  ),
+  loadAtlas(
+    castAirborne,
+    new URL("./assets/cast-airborne.webp", import.meta.url).href,
+  ),
+  loadAtlas(
+    castSpecial,
+    new URL("./assets/cast-special.webp", import.meta.url).href,
+  ),
+];
+const castsByElement = Object.fromEntries(
+  casts.flatMap((atlas) => Object.keys(atlas.spec).map((e) => [e, atlas])),
+);
 const dashAtlas = loadAtlas(
   speedBurst,
   new URL("./assets/speed-burst.webp", import.meta.url).href,
@@ -266,6 +315,9 @@ export const charactersReady = Promise.all(
     dashAtlas,
     ...runInbetweens,
     ...runContacts,
+    ...repairs,
+    ...flights,
+    ...casts,
     ...atlases,
     ...runs,
     ...actions,
@@ -288,9 +340,24 @@ export function isRunning(a) {
 export function characterPose(a) {
   const dashing = a.alive && !a.ghost && !a.blink && a.burst > 0;
   const clashing = !dashing && a.clash > 0;
+  const casting =
+    a.alive &&
+    !a.ghost &&
+    !a.blink &&
+    !dashing &&
+    !clashing &&
+    !(a.swing > 0) &&
+    !(a.hitReact > 0) &&
+    a.castTime > 0;
   // Blaze follows its travel vector even when target lock faces another way.
-  const fx = dashing ? a.burstX : clashing ? a.clashFx : a.fx,
-    fy = dashing ? a.burstY : clashing ? a.clashFy : a.fy;
+  const fx = dashing
+      ? a.burstX
+      : clashing
+        ? a.clashFx
+        : casting
+          ? a.castFx
+          : a.fx,
+    fy = dashing ? a.burstY : clashing ? a.clashFy : casting ? a.castFy : a.fy;
   const side = Math.abs(fx) > Math.abs(fy);
   const facing = side ? 1 : fy < 0 ? 2 : 0;
   const progress =
@@ -299,6 +366,7 @@ export function characterPose(a) {
   const contact = progress >= 0.5 && progress < 0.92;
   const reacting = !dashing && a.hitReact > 0 && canReactToHit(a);
   const sidestepping =
+    !casting &&
     !dashing &&
     !!a.lock &&
     a.alive &&
@@ -312,7 +380,12 @@ export function characterPose(a) {
     !clashing &&
     !reacting;
   const running =
-    !dashing && isRunning(a) && progress < 0 && !clashing && !reacting;
+    !casting &&
+    !dashing &&
+    isRunning(a) &&
+    progress < 0 &&
+    !clashing &&
+    !reacting;
   // Two planted steps per 75 world units. Integrating distance keeps footfall
   // phase stable when health, slow effects or joystick strength change speed.
   const traveled = a.gaitDistance ?? a.movingTime * Math.hypot(a.vx, a.vy);
@@ -320,7 +393,27 @@ export function characterPose(a) {
   const groundedMoving = (running || sidestepping) && !a.parts.includes("air");
   const footContact = groundedMoving && [1, 2, 5, 6].includes(gaitFrame);
   const stride = gaitFrame < 4 ? 0 : 1;
+  const flyingMoving =
+    a.alive &&
+    !a.ghost &&
+    a.parts.includes("air") &&
+    !a.blink &&
+    !dashing &&
+    !casting &&
+    !clashing &&
+    !reacting &&
+    !a.charging &&
+    !a.shield &&
+    progress < 0 &&
+    a.movingTime > 0 &&
+    Math.hypot(a.vx, a.vy) > 3;
   return {
+    casting,
+    castFrame: casting ? facing : null,
+    flyingMoving,
+    flightFrame: flyingMoving
+      ? facing * 2 + (Math.floor(a.movingTime * 7) % 2)
+      : null,
     dashing,
     dashFrame: dashing
       ? facing * 2 + (((Math.floor((0.3 - a.burst) * 24) % 2) + 2) % 2)
@@ -361,19 +454,25 @@ function paintFrame(
   let atlas =
     running === "dash"
       ? dashAtlas
-      : running === "contact"
-        ? contactByElement[element]
-        : running === "inbetween"
-          ? inbetweenByElement[element]
-          : running === "step"
-            ? actionByElement[element]
-            : running === "hurt"
-              ? element === "mud"
-                ? null
-                : hurtByElement[element]
-              : running
-                ? runByElement[element]
-                : byElement[element];
+      : running === "repair"
+        ? repairsByElement[element]
+        : running === "flight"
+          ? flightsByElement[element]
+          : running === "cast"
+            ? castsByElement[element]
+            : running === "contact"
+              ? contactByElement[element]
+              : running === "inbetween"
+                ? inbetweenByElement[element]
+                : running === "step"
+                  ? actionByElement[element]
+                  : running === "hurt"
+                    ? element === "mud"
+                      ? null
+                      : hurtByElement[element]
+                    : running
+                      ? runByElement[element]
+                      : byElement[element];
   if (running === "hurt" && !atlas?.loaded) {
     atlas = actionByElement[element];
     frame += 6;
@@ -516,33 +615,45 @@ export function drawCharacter(c, a, time) {
     const shift = pose.groundedMoving ? 0 : Math.sin(a.movingTime * 12) * 2;
     c.translate(-a.fy * shift, a.fx * shift * 0.45);
   }
+  let spriteElement = a.element,
+    spriteFrame = pose.frame,
+    spriteKind = false;
+  const repairKey = `${a.element}:${pose.facing}`;
+  if (dashSprite) {
+    spriteKind = "dash";
+    spriteFrame = pose.dashFrame;
+  } else if (hurt) {
+    spriteKind = "hurt";
+    spriteFrame = pose.hurtFrame;
+  } else if (pose.casting && castsByElement[a.element]?.loaded) {
+    spriteKind = "cast";
+    spriteFrame = pose.castFrame;
+  } else if (pose.flyingMoving && flightsByElement[a.element]?.loaded) {
+    spriteKind = "flight";
+    spriteFrame = pose.flightFrame;
+  } else if (pose.groundedMoving && repairsByElement[repairKey]?.loaded) {
+    spriteKind = "repair";
+    spriteElement = repairKey;
+    spriteFrame = [0, 1, 1, 2, 3, 4, 4, 5][pose.gaitFrame];
+  } else if (contact) {
+    spriteKind = "contact";
+    spriteFrame = pose.contactFrame;
+  } else if (sidestepping || running) {
+    spriteFrame = sidestepping ? pose.stepFrame : pose.runFrame;
+    spriteKind =
+      pose.runInbetween && inbetweenByElement[a.element]?.loaded
+        ? "inbetween"
+        : sidestepping && !running
+          ? "step"
+          : running;
+  }
   paintFrame(
     c,
-    a.element,
-    dashSprite
-      ? pose.dashFrame
-      : hurt
-        ? pose.hurtFrame
-        : contact
-          ? pose.contactFrame
-          : sidestepping
-            ? pose.stepFrame
-            : running
-              ? pose.runFrame
-              : pose.frame,
+    spriteElement,
+    spriteFrame,
     pose.flip,
-    (running || sidestepping) && ["earth", "mud"].includes(a.element) ? 44 : 64,
-    dashSprite
-      ? "dash"
-      : hurt
-        ? "hurt"
-        : contact
-          ? "contact"
-          : pose.runInbetween && inbetweenByElement[a.element]?.loaded
-            ? "inbetween"
-            : sidestepping && !running
-              ? "step"
-              : running,
+    (running || sidestepping) && a.element === "mud" ? 44 : 64,
+    spriteKind,
     a.spawnFlash > 0 ? 0.35 + Math.abs(Math.sin(a.spawnFlash * 22)) * 0.65 : 0,
   );
   if (a.parts.length === 2) {

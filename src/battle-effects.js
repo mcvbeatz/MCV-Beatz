@@ -676,15 +676,33 @@ export function drawPortal(
 
 // Opaque billowing smoke conceals everything within its world-space footprint.
 // Dark-bearing viewers can see through it, regardless of their selected skill tab.
+export function vogBloom(h, time) {
+  const age = Math.max(0, time - (h.createdAt ?? time - 1));
+  const progress = Math.min(1, age / 0.55);
+  return { progress, scale: 0.06 + 0.94 * (1 - (1 - progress) ** 3) };
+}
 export function drawSmoke(c, game, time) {
   for (const h of game.hazards.filter(
     (h) => h.kind === "vog" && inWorld(h) && h.life > 0,
   )) {
+    const bloom = vogBloom(h, time);
     c.save();
+    // A compact eruption rapidly rolls out into the persistent smoke volume.
+    c.translate(h.x, h.y);
+    c.scale(bloom.scale, bloom.scale);
+    c.translate(-h.x, -h.y);
     c.globalAlpha =
       game.player.parts.includes("dark") || game.auroraProtected(game.player)
         ? 0.28
         : 1;
+    c.globalAlpha *= 0.35 + bloom.progress * 0.65;
+    if (bloom.progress < 1) {
+      c.strokeStyle = "#c4bacd";
+      c.lineWidth = 8 * (1 - bloom.progress) + 2;
+      c.beginPath();
+      c.arc(h.x, h.y, h.r * 0.95, 0, TAU);
+      c.stroke();
+    }
     // Soft drifting billows surround the fully concealed core.
     for (let i = 0; i < 36; i++) {
       const angle = (i * TAU) / 36 + Math.sin(time * 0.3 + i) * 0.025;
@@ -705,6 +723,7 @@ export function drawSmoke(c, game, time) {
       game.player.parts.includes("dark") || game.auroraProtected(game.player)
         ? 0.28
         : 1;
+    c.globalAlpha *= 0.35 + bloom.progress * 0.65;
     c.fillStyle = "#292b30";
     c.fillRect(h.x - h.r, h.y - h.r, h.r * 2, h.r * 2);
     for (let i = 0; i < 48; i++) {
