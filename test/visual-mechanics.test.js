@@ -148,7 +148,7 @@ test("all thirteen grounded designs run; flight, resting, walls and clashes supp
     }
     grounded++;
     assert.equal(characterPose(a).runFrame, 2);
-    a.movingTime = 0.21;
+    a.movingTime = 0.26;
     assert.equal(characterPose(a).runFrame, 3);
     a.movingTime = 0.11;
     assert.equal(

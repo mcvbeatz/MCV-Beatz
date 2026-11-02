@@ -163,6 +163,9 @@ test("attack poses enter contact when melee hits and recover on the existing tim
     const g = __arena.game,
       a = g.player,
       b = g.fighters[1];
+    g.countdown = 0;
+    g.map = null;
+    g.ai = () => {};
     const advance = g.update.bind(g);
     g.update = () => {};
     Object.assign(a, { x: 330, y: 340, attackCd: 0, stagger: 0 });

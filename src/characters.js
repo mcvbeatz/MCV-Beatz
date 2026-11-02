@@ -1,3 +1,6 @@
+import runContactsOrigins from "./assets/run-contacts-origins.json" with { type: "json" };
+import runContactsFusions from "./assets/run-contacts-fusions.json" with { type: "json" };
+import runContactsOthers from "./assets/run-contacts-others.json" with { type: "json" };
 import runInbetweensOrigins from "./assets/run-inbetweens-origins.json" with { type: "json" };
 import runInbetweensFusions from "./assets/run-inbetweens-fusions.json" with { type: "json" };
 import runInbetweensOthers from "./assets/run-inbetweens-others.json" with { type: "json" };
@@ -222,6 +225,25 @@ const inbetweenByElement = Object.fromEntries(
     Object.keys(atlas.spec).map((e) => [e, atlas]),
   ),
 );
+const runContacts = [
+  loadAtlas(
+    runContactsOrigins,
+    new URL("./assets/run-contacts-origins.webp", import.meta.url).href,
+  ),
+  loadAtlas(
+    runContactsFusions,
+    new URL("./assets/run-contacts-fusions.webp", import.meta.url).href,
+  ),
+  loadAtlas(
+    runContactsOthers,
+    new URL("./assets/run-contacts-others.webp", import.meta.url).href,
+  ),
+];
+const contactByElement = Object.fromEntries(
+  runContacts.flatMap((atlas) =>
+    Object.keys(atlas.spec).map((e) => [e, atlas]),
+  ),
+);
 const dashAtlas = loadAtlas(
   speedBurst,
   new URL("./assets/speed-burst.webp", import.meta.url).href,
@@ -243,6 +265,7 @@ export const charactersReady = Promise.all(
     victory,
     dashAtlas,
     ...runInbetweens,
+    ...runContacts,
     ...atlases,
     ...runs,
     ...actions,
@@ -290,20 +313,23 @@ export function characterPose(a) {
     !reacting;
   const running =
     !dashing && isRunning(a) && progress < 0 && !clashing && !reacting;
-  // movingTime advances only for actual voluntary movement; a wall, Shock,
-  // a portal or a teleport must not produce a treadmill animation.
-  const cadence =
-    Math.max(0.2, Math.min(1.8, Math.hypot(a.vx, a.vy) / 150)) * 10;
-  const cycle = a.movingTime * cadence;
-  const stride = Math.floor(cycle) % 4;
+  // Two planted steps per 75 world units. Integrating distance keeps footfall
+  // phase stable when health, slow effects or joystick strength change speed.
+  const traveled = a.gaitDistance ?? a.movingTime * Math.hypot(a.vx, a.vy);
+  const gaitFrame = Math.floor((traveled / 75) * 8 + 1e-9) % 8;
+  const groundedMoving = (running || sidestepping) && !a.parts.includes("air");
+  const footContact = groundedMoving && [1, 2, 5, 6].includes(gaitFrame);
+  const stride = gaitFrame < 4 ? 0 : 1;
   return {
     dashing,
     dashFrame: dashing
       ? facing * 2 + (((Math.floor((0.3 - a.burst) * 24) % 2) + 2) % 2)
       : null,
-    runInbetween:
-      (running || (sidestepping && !a.parts.includes("air"))) &&
-      stride % 2 === 1,
+    groundedMoving,
+    gaitFrame,
+    footContact,
+    contactFrame: footContact ? facing * 2 + stride : null,
+    runInbetween: groundedMoving && [3, 7].includes(gaitFrame),
     dashX: dashing ? fx : 0,
     dashY: dashing ? fy : 0,
     dashLean: dashing
@@ -316,10 +342,10 @@ export function characterPose(a) {
     reacting,
     facing,
     sidestepping,
-    stepFrame: sidestepping ? facing * 2 + (stride < 2 ? 0 : 1) : null,
+    stepFrame: sidestepping ? facing * 2 + stride : null,
     hurtFrame: reacting ? facing : null,
-    runFrame: running ? facing * 2 + Math.floor(stride / 2) : null,
-    bob: running ? Math.abs(Math.sin((cycle * Math.PI) / 2)) * 2 : 0,
+    runFrame: running ? facing * 2 + stride : null,
+    bob: groundedMoving ? [2, 0, 0, 1, 2, 0, 0, 1][gaitFrame] : 0,
   };
 }
 
@@ -335,17 +361,19 @@ function paintFrame(
   let atlas =
     running === "dash"
       ? dashAtlas
-      : running === "inbetween"
-        ? inbetweenByElement[element]
-        : running === "step"
-          ? actionByElement[element]
-          : running === "hurt"
-            ? element === "mud"
-              ? null
-              : hurtByElement[element]
-            : running
-              ? runByElement[element]
-              : byElement[element];
+      : running === "contact"
+        ? contactByElement[element]
+        : running === "inbetween"
+          ? inbetweenByElement[element]
+          : running === "step"
+            ? actionByElement[element]
+            : running === "hurt"
+              ? element === "mud"
+                ? null
+                : hurtByElement[element]
+              : running
+                ? runByElement[element]
+                : byElement[element];
   if (running === "hurt" && !atlas?.loaded) {
     atlas = actionByElement[element];
     frame += 6;
@@ -475,14 +503,17 @@ export function drawCharacter(c, a, time) {
     const brace = 3 + Math.sin((0.3 - a.clash) * 45) * 1.5;
     c.translate(a.clashFx * brace, a.clashFy * brace);
   }
-  const running = pose.runFrame !== null && runByElement[a.element]?.loaded;
+  const contact = pose.footContact && contactByElement[a.element]?.loaded;
+  const running =
+    (pose.runFrame !== null || pose.groundedMoving) &&
+    runByElement[a.element]?.loaded;
   const sidestepping = pose.sidestepping && actionByElement[a.element]?.loaded;
   const hurt =
     pose.reacting &&
     (hurtByElement[a.element]?.loaded || actionByElement[a.element]?.loaded);
   if (sidestepping) {
-    // A short lateral weight transfer preserves target-facing and never plays a run cycle.
-    const shift = Math.sin(a.movingTime * 12) * 2;
+    // Grounded feet stay planted; airborne sidesteps retain their lateral sway.
+    const shift = pose.groundedMoving ? 0 : Math.sin(a.movingTime * 12) * 2;
     c.translate(-a.fy * shift, a.fx * shift * 0.45);
   }
   paintFrame(
@@ -492,22 +523,26 @@ export function drawCharacter(c, a, time) {
       ? pose.dashFrame
       : hurt
         ? pose.hurtFrame
-        : sidestepping
-          ? pose.stepFrame
-          : running
-            ? pose.runFrame
-            : pose.frame,
+        : contact
+          ? pose.contactFrame
+          : sidestepping
+            ? pose.stepFrame
+            : running
+              ? pose.runFrame
+              : pose.frame,
     pose.flip,
     (running || sidestepping) && ["earth", "mud"].includes(a.element) ? 44 : 64,
     dashSprite
       ? "dash"
       : hurt
         ? "hurt"
-        : pose.runInbetween && inbetweenByElement[a.element]?.loaded
-          ? "inbetween"
-          : sidestepping
-            ? "step"
-            : running,
+        : contact
+          ? "contact"
+          : pose.runInbetween && inbetweenByElement[a.element]?.loaded
+            ? "inbetween"
+            : sidestepping && !running
+              ? "step"
+              : running,
     a.spawnFlash > 0 ? 0.35 + Math.abs(Math.sin(a.spawnFlash * 22)) * 0.65 : 0,
   );
   if (a.parts.length === 2) {

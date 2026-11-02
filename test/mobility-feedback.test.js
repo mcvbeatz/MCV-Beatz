@@ -118,7 +118,7 @@ test("Earth and Mud keep a quadruped frame throughout each running direction and
       const a = makeFighter("a", e, 0, 400, 340);
       Object.assign(a, { fx, fy, vx: 150 });
       for (let i = 0; i < 4; i++) {
-        a.movingTime = 0.01 + i * 0.1;
+        a.movingTime = 0.01 + i * 0.125;
         assert.equal(characterPose(a).runFrame, base + (i < 2 ? 0 : 1));
       }
       a.vx = 0;

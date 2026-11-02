@@ -66,7 +66,7 @@ for (const element of ["light", "dark"]) {
   });
 }
 
-test("all thirteen running designs render four distinct stride frames, including quadrupeds", async ({
+test("all thirteen running designs render six distinct stride frames, including quadrupeds", async ({
   page,
 }) => {
   await page.goto("/");
@@ -91,7 +91,7 @@ test("all thirteen running designs render four distinct stride frames, including
       "sanctuary",
     ];
     const canvas = document.createElement("canvas");
-    canvas.width = 720;
+    canvas.width = 1080;
     canvas.height = elements.length * 110;
     const c = canvas.getContext("2d");
     c.fillStyle = "#23363d";
@@ -99,13 +99,14 @@ test("all thirteen running designs render four distinct stride frames, including
     const sources = [];
     elements.forEach((element, row) => {
       const frames = [];
-      for (let phase = 0; phase < 4; phase++) {
+      for (const [column, phase] of [0, 1, 3, 4, 5, 7].entries()) {
         const a = makeFighter("runner", element, 0, 0, 0);
         Object.assign(a, {
           vx: 150,
           fx: 1,
           fy: 0,
-          movingTime: 0.01 + phase * 0.1,
+          movingTime: 0.1,
+          gaitDistance: ((phase + 0.1) * 75) / 8,
         });
         const pose = characterPose(a);
         const draw = c.drawImage.bind(c);
@@ -115,7 +116,7 @@ test("all thirteen running designs render four distinct stride frames, including
           draw(...args);
         };
         c.save();
-        c.translate(90 + phase * 170, 80 + row * 110);
+        c.translate(90 + column * 170, 80 + row * 110);
         drawCharacter(c, a, 0);
         c.restore();
         c.drawImage = draw;
@@ -123,21 +124,40 @@ test("all thirteen running designs render four distinct stride frames, including
         c.font = "12px sans-serif";
         c.fillText(
           `${element} · ${phase + 1}`,
-          30 + phase * 170,
+          30 + column * 170,
           102 + row * 110,
         );
-        frames.push({ source, extra: pose.runInbetween });
+        frames.push({
+          source,
+          extra: pose.runInbetween,
+          planted: pose.footContact,
+        });
       }
       sources.push(frames);
     });
     return { sources, image: canvas.toDataURL().split(",")[1] };
   });
   for (const frames of result.sources) {
-    expect(new Set(frames.map((f) => f.source)).size).toBe(4);
-    expect(frames.map((f) => f.extra)).toEqual([false, true, false, true]);
+    expect(new Set(frames.map((f) => f.source)).size).toBe(6);
+    expect(frames.map((f) => f.planted)).toEqual([
+      false,
+      true,
+      false,
+      false,
+      true,
+      false,
+    ]);
+    expect(frames.map((f) => f.extra)).toEqual([
+      false,
+      false,
+      true,
+      false,
+      false,
+      true,
+    ]);
   }
   await writeFile(
-    "/tmp/v28-running-frames.png",
+    "/tmp/v29-running-frames.png",
     Buffer.from(result.image, "base64"),
   );
 });

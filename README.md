@@ -1,4 +1,11 @@
-# Elemental — The Colosseum · v0.28.0
+# Elemental — The Colosseum · v0.29.0
+
+## v0.29.0 Planted running steps
+
+- Add 78 foot-contact sprites for all 13 grounded elementals: front, back and side views with alternating supporting feet or paws. Each running cycle now has six distinct poses across eight phases, including a brief planted-foot hold.
+- Bring grounded soles down to their floor shadows and keep the vertical step motion small. Target-locked movement uses the same planted steps while preserving the fighter's facing. Air-based elementals retain their hover; Speed burst keeps its dedicated dash pose.
+- Advance the gait by actual distance traveled, so slowing, low health and partial joystick input no longer jump between animation phases. Blocked movement and knockback alone cannot play running steps.
+
 
 ## v0.28.0 Smoother motion and expanded War
 

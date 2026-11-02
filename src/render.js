@@ -338,9 +338,14 @@ export class Renderer {
     const scale = 2.35;
     const flying = a.parts.includes("air");
     const pose = characterPose(a);
-    const walking = pose.running;
+    const walking = pose.groundedMoving;
     const step = walking ? Math.sin(time * 12) * 2 : 0;
-    const bob = flying ? Math.sin(time * 3) * 2 - 8 : walking ? -pose.bob : 0;
+    // Grounded soles meet the shadow during contact; only airborne bodies hover.
+    const bob = flying
+      ? Math.sin(time * 3) * 2 - 8
+      : pose.dashing
+        ? 0
+        : 6 - (walking ? pose.bob : 0);
     const color = a.blind > 0 ? shade(fighterColor(a), 0.35) : fighterColor(a);
     c.save();
     c.translate(a.x, a.y);

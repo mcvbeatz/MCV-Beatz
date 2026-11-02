@@ -41,7 +41,7 @@ test("every elemental uses distinct directional sidestep and damaged frames with
         let p = characterPose(a);
         if (!p.sidestepping || p.running || p.runFrame !== null)
           errors.push(`${e}: step state`);
-        a.movingTime = 0.21;
+        a.movingTime = 0.26;
         const stepB = snapshot(a);
         if (stepA === stepB || stepA === idle) errors.push(`${e}: step frames`);
         a.hitReact = 0.12;
@@ -116,6 +116,9 @@ test("white portals animate opening and closing while keeping transport timing",
     const { drawPortal } = await import("/src/battle-effects.js");
     const g = __arena.game;
     g.update = () => {};
+    g.map = null;
+    g.time = 0;
+    g.fighters.forEach((a) => Object.assign(a, { x: 700, y: 500 }));
     const canvas = document.createElement("canvas");
     canvas.width = canvas.height = 180;
     const c = canvas.getContext("2d");

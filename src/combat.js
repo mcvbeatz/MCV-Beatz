@@ -318,6 +318,7 @@ export function makeFighter(id, element, team, x, y) {
     hitDy: 0,
     blink: null,
     movingTime: 0,
+    gaitDistance: null,
     burn: 0,
     venom: 0,
     venomTint: 0,
@@ -730,6 +731,7 @@ export class Combat {
     if (a.blink && Math.hypot(a.knockX, a.knockY) > 1) a.blink = null;
     if (a.prisonHp > 0 || a.blink || this.isShocked(a)) {
       a.vx = a.vy = a.knockX = a.knockY = a.burst = a.movingTime = 0;
+      a.gaitDistance = 0;
       return;
     }
     const old = { x: a.x, y: a.y };
@@ -787,6 +789,12 @@ export class Combat {
     a.movingTime =
       (length || a.burst > 0) && distance(old, a) > 0.05
         ? a.movingTime + dt
+        : 0;
+    // Accumulate only voluntary ground travel, not knockback, blocked input or dashes.
+    const moved = distance(old, a);
+    a.gaitDistance =
+      length && moved > 0.05 && a.burst <= 0
+        ? ((a.gaitDistance || 0) + Math.min(moved, speed * magnitude * dt)) % 75
         : 0;
     if (length) {
       a.fx = dx;
