@@ -3,8 +3,8 @@ const SCENE_TRACKS = {
   corruption: "no-escape",
   war: "dont-let-up",
   volcano: "no-smoke",
-  victory: "inner-glow",
-  defeat: "from-the-ashes",
+  victory: "a-win-is-a-win",
+  defeat: "downcast",
 };
 const clamp = (n) => Math.max(0, Math.min(1, Number(n) || 0));
 export class Soundtrack {

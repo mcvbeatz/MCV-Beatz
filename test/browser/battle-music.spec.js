@@ -98,7 +98,7 @@ test("Ember Caldera plays only no smoke, and team victory replaces it even if th
   });
   await expect
     .poll(() => page.evaluate(() => __app.sound.trackId))
-    .toBe("inner-glow");
+    .toBe("a-win-is-a-win");
   await expect
     .poll(() => page.evaluate(() => __app.sound.track.currentTime))
     .toBeGreaterThan(0.1);
@@ -120,7 +120,7 @@ test("Ember Caldera plays only no smoke, and team victory replaces it even if th
     .poll(() => page.evaluate(() => !!__app.sound.menuSource))
     .toBe(true);
 });
-test("team defeat plays From the Ashes once, respects volume and visibility, and draws play neither outcome", async ({
+test("team defeat plays Downcast once, respects volume and visibility, and draws play neither outcome", async ({
   page,
 }) => {
   await ready(page);
@@ -128,7 +128,7 @@ test("team defeat plays From the Ashes once, respects volume and visibility, and
   await page.evaluate(() => __arena.game.finish(1, "Team loses"));
   await expect
     .poll(() => page.evaluate(() => __app.sound.trackId))
-    .toBe("from-the-ashes");
+    .toBe("downcast");
   await expect
     .poll(() => page.evaluate(() => __app.sound.track.currentTime))
     .toBeGreaterThan(0.1);
@@ -246,7 +246,7 @@ test("War pauses, resumes and restarts Don't Let Up, then uses the team outcome 
   await page.evaluate(() => __arena.game.finish(1, "Team loses"));
   await expect
     .poll(() => page.evaluate(() => __app.sound.trackId))
-    .toBe("from-the-ashes");
+    .toBe("downcast");
   await expect
     .poll(() => page.evaluate(() => __app.sound.track.paused))
     .toBe(false);

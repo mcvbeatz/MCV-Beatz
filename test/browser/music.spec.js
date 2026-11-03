@@ -105,7 +105,7 @@ test("The original No Escape recording plays once at native speed only for Survi
   await page.evaluate(() => __arena.game.finish(0, "Test end"));
   await expect
     .poll(() => page.evaluate(() => __app.sound.trackId))
-    .toBe("inner-glow");
+    .toBe("a-win-is-a-win");
   await expect
     .poll(() => page.evaluate(() => __app.sound.track.paused))
     .toBe(false);

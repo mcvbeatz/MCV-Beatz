@@ -1,4 +1,9 @@
-# Elemental — The Colosseum · v0.31.0
+# Elemental — The Colosseum · v0.31.1
+
+## v0.31.1 New result music
+
+Victory now plays **A Win is a Win** and defeat plays **Downcast**, replacing the previous result recordings. Both uploaded MP3s are used unchanged at native speed and play once. Team outcome selection, draws, pause/visibility behavior, volume controls and battle/menu music are unchanged.
+
 
 ## v0.31.0 Directional movement and casting
 

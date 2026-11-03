@@ -18,11 +18,11 @@ export const TRACK_URLS = {
   "none-other": new URL("./assets/music/none-other.mp3", import.meta.url).href,
   sick: new URL("./assets/music/sick.mp3", import.meta.url).href,
   "no-smoke": new URL("./assets/music/no-smoke.mp3", import.meta.url).href,
-  "inner-glow": new URL("./assets/music/inner-glow.mp3", import.meta.url).href,
-  "from-the-ashes": new URL(
-    "./assets/music/from-the-ashes.mp3",
+  "a-win-is-a-win": new URL(
+    "./assets/music/a-win-is-a-win.mp3",
     import.meta.url,
   ).href,
+  downcast: new URL("./assets/music/downcast.mp3", import.meta.url).href,
   "no-escape": new URL("./assets/music/no-escape.mp3", import.meta.url).href,
 };
 export class BattlePlaylist {
