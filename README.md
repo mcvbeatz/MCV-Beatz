@@ -1,4 +1,11 @@
-# Elemental — The Colosseum · v0.31.1
+# Elemental — The Colosseum · v0.31.2
+
+## v0.31.2 Movement identity corrections
+
+- Water, Fire, Light and Multi-Dimensional use complete directional running cycles based on their current standing designs. Water retains its cyan palette and standing scale; Fire keeps its large flaming hands; Light keeps brown clothing and boots; Multi-Dimensional keeps its purple scarf, coat and original gold details through each footfall.
+- Lightning flight retains its bright eyes, gold crown, golden hair and navy/gold armor from the revised standing design.
+- Sanctuary, Terraformer and Phoenix are uniformly enlarged (1.3×, 1.4× and 1.5×) to bring their head sizes in line with Lightning. The same scale applies to movement, casts, damage, death and victory; status tint buffers and overhead indicators accommodate the larger artwork.
+- Wind glides sideways with steady arms while retaining its hover and vertical flight animation.
 
 ## v0.31.1 New result music
 

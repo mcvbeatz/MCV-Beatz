@@ -1,5 +1,9 @@
 import runRepairA from "./assets/run-repair-a.json" with { type: "json" };
-import runRepairB from "./assets/run-repair-b.json" with { type: "json" };
+import waterRunIdentity from "./assets/run-repair-water.json" with { type: "json" };
+import fireRunIdentity from "./assets/run-repair-fire.json" with { type: "json" };
+import lightRunIdentity from "./assets/run-repair-light.json" with { type: "json" };
+import dimensionalRunIdentity from "./assets/run-repair-multi-dimensional.json" with { type: "json" };
+import lightningFlightIdentity from "./assets/flight-lightning.json" with { type: "json" };
 import flightA from "./assets/flight-a.json" with { type: "json" };
 import flightB from "./assets/flight-b.json" with { type: "json" };
 import castOrigins from "./assets/cast-origins.json" with { type: "json" };
@@ -258,8 +262,20 @@ const repairs = [
     new URL("./assets/run-repair-a.webp", import.meta.url).href,
   ),
   loadAtlas(
-    runRepairB,
-    new URL("./assets/run-repair-b.webp", import.meta.url).href,
+    waterRunIdentity,
+    new URL("./assets/run-repair-water.webp", import.meta.url).href,
+  ),
+  loadAtlas(
+    fireRunIdentity,
+    new URL("./assets/run-repair-fire.webp", import.meta.url).href,
+  ),
+  loadAtlas(
+    lightRunIdentity,
+    new URL("./assets/run-repair-light.webp", import.meta.url).href,
+  ),
+  loadAtlas(
+    dimensionalRunIdentity,
+    new URL("./assets/run-repair-multi-dimensional.webp", import.meta.url).href,
   ),
 ];
 const repairsByElement = Object.fromEntries(
@@ -268,6 +284,10 @@ const repairsByElement = Object.fromEntries(
 const flights = [
   loadAtlas(flightA, new URL("./assets/flight-a.webp", import.meta.url).href),
   loadAtlas(flightB, new URL("./assets/flight-b.webp", import.meta.url).href),
+  loadAtlas(
+    lightningFlightIdentity,
+    new URL("./assets/flight-lightning.webp", import.meta.url).href,
+  ),
 ];
 const flightsByElement = Object.fromEntries(
   flights.flatMap((atlas) => Object.keys(atlas.spec).map((e) => [e, atlas])),
@@ -412,7 +432,9 @@ export function characterPose(a) {
     castFrame: casting ? facing : null,
     flyingMoving,
     flightFrame: flyingMoving
-      ? facing * 2 + (Math.floor(a.movingTime * 7) % 2)
+      ? // Wind glides sideways with steady arms; the renderer still supplies hover.
+        facing * 2 +
+        (a.element === "air" && side ? 0 : Math.floor(a.movingTime * 7) % 2)
       : null,
     dashing,
     dashFrame: dashing
@@ -536,8 +558,25 @@ function paintFrame(
   return true;
 }
 
+// Uniform visual scale: match level-III heads to Lightning without stretching
+// bodies or changing combat radii. Portraits continue to fit their UI canvases.
+const BODY_SCALE = { phoenix: 1.5, terraformer: 1.4, sanctuary: 1.3 };
+export function characterScale(element) {
+  return BODY_SCALE[element] || 1;
+}
+
 // All coordinates are visual only: facing and hit timing come from Combat.
 export function drawCharacter(c, a, time) {
+  c.save();
+  const scale = characterScale(a.element);
+  c.scale(scale, scale);
+  try {
+    return drawCharacterSprite(c, a, time);
+  } finally {
+    c.restore();
+  }
+}
+function drawCharacterSprite(c, a, time) {
   if (a.victory && newReactions[a.element] && fusionVictory.loaded) {
     const spec = newReactions[a.element],
       f = spec.frames[3];
@@ -687,6 +726,8 @@ export function drawFallenCharacter(c, death, color = "#e1d8b5") {
   const facing = side ? 1 : a.fy < 0 ? 2 : 0;
   c.save();
   c.globalAlpha *= pose.opacity;
+  const scale = characterScale(a.element);
+  c.scale(scale, scale);
   c.fillStyle = "#10172266";
   c.beginPath();
   c.ellipse(0, 7, 21, 6, 0, 0, Math.PI * 2);

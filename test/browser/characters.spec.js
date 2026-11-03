@@ -45,7 +45,8 @@ test("grounded strides and airborne travel both animate in every direction", asy
     return { grounded, flying };
   });
   expect(result.grounded).toBe(39);
-  expect(result.flying).toBe(30);
+  // Wind's sideways glide intentionally holds its arms steady.
+  expect(result.flying).toBe(29);
 });
 
 test("an unavailable sprite atlas leaves combat playable with the procedural avatar", async ({

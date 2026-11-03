@@ -14,6 +14,7 @@ import {
   drawFallenCharacter,
   drawCharacterStrike,
   characterPose,
+  characterScale,
 } from "./characters.js";
 import {
   drawTerrain,
@@ -36,6 +37,10 @@ const PALETTE = {
   earth: "#92633f",
   fire: "#ca493a",
 };
+// Room for enlarged level-III wings, capes and recoil when compositing status tints.
+const BODY_BUFFER = 224,
+  BODY_CENTER = 112,
+  BODY_BASELINE = 180;
 export function fighterColor(a) {
   if (["earth", "water", "light"].every((p) => a.parts.includes(p)))
     return "#66c989";
@@ -84,12 +89,12 @@ export class Renderer {
     this.background = document.createElement("canvas");
     this.distortion = document.createElement("canvas");
     this.bodySprite = document.createElement("canvas");
-    this.bodySprite.width = this.bodySprite.height = 160;
+    this.bodySprite.width = this.bodySprite.height = BODY_BUFFER;
     this.outlineSprite = document.createElement("canvas");
     this.outlineEdge = document.createElement("canvas");
     for (const c of [this.outlineSprite, this.outlineEdge]) {
-      c.width = 160;
-      c.height = 160;
+      c.width = BODY_BUFFER;
+      c.height = BODY_BUFFER;
     }
     this.background.width = 2048;
     this.background.height = 1360;
@@ -273,22 +278,22 @@ export class Renderer {
     // Canvas compositing works in iOS WebViews without Canvas.filter support.
     const sprite = this.bodySprite,
       sc = sprite.getContext("2d");
-    sc.clearRect(0, 0, 160, 160);
+    sc.clearRect(0, 0, BODY_BUFFER, BODY_BUFFER);
     sc.save();
-    sc.translate(80, 130);
+    sc.translate(BODY_CENTER, BODY_BASELINE);
     const drawn = drawCharacter(sc, a, time);
     sc.restore();
     sc.globalCompositeOperation = "source-atop";
     if (a.blind > 0) {
       sc.fillStyle = "rgba(0,0,0,0.65)";
-      sc.fillRect(0, 0, 160, 160);
+      sc.fillRect(0, 0, BODY_BUFFER, BODY_BUFFER);
     }
     if (a.venomTint > 0) {
       sc.fillStyle = `rgba(142,65,201,${0.48 + Math.sin(time * 16) * 0.08})`;
-      sc.fillRect(0, 0, 160, 160);
+      sc.fillRect(0, 0, BODY_BUFFER, BODY_BUFFER);
     }
     sc.globalCompositeOperation = "source-over";
-    c.drawImage(sprite, -80, -130);
+    c.drawImage(sprite, -BODY_CENTER, -BODY_BASELINE);
     return drawn;
   }
   outline(c, a, time) {
@@ -296,9 +301,9 @@ export class Renderer {
       edge = this.outlineEdge;
     const sc = sprite.getContext("2d", { willReadFrequently: true }),
       ec = edge.getContext("2d");
-    sc.clearRect(0, 0, 160, 160);
+    sc.clearRect(0, 0, BODY_BUFFER, BODY_BUFFER);
     sc.save();
-    sc.translate(80, 130);
+    sc.translate(BODY_CENTER, BODY_BASELINE);
     if (a.parts.includes("air")) sc.translate(0, Math.sin(time * 3) * 2 - 8);
     if (!drawCharacter(sc, a, time)) {
       sc.fillStyle = "white";
@@ -313,11 +318,11 @@ export class Renderer {
     sc.restore();
     // Asset alpha can be 254 even inside a solid body. Build a binary silhouette
     // so subtracting it leaves only a contour, with no translucent interior.
-    const mask = sc.getImageData(0, 0, 160, 160);
+    const mask = sc.getImageData(0, 0, BODY_BUFFER, BODY_BUFFER);
     for (let i = 3; i < mask.data.length; i += 4)
       mask.data[i] = mask.data[i] > 32 ? 255 : 0;
     sc.putImageData(mask, 0, 0);
-    ec.clearRect(0, 0, 160, 160);
+    ec.clearRect(0, 0, BODY_BUFFER, BODY_BUFFER);
     ec.globalCompositeOperation = "source-over";
     for (const [x, y] of [
       [-2, 0],
@@ -330,9 +335,9 @@ export class Renderer {
     ec.drawImage(sprite, 0, 0);
     ec.globalCompositeOperation = "source-in";
     ec.fillStyle = "#e7f2ed";
-    ec.fillRect(0, 0, 160, 160);
+    ec.fillRect(0, 0, BODY_BUFFER, BODY_BUFFER);
     ec.globalCompositeOperation = "source-over";
-    c.drawImage(edge, a.x - 80, a.y - 130);
+    c.drawImage(edge, a.x - BODY_CENTER, a.y - BODY_BASELINE);
   }
   avatar(c, a, time, immersion = 0) {
     const scale = 2.35;
@@ -351,7 +356,15 @@ export class Renderer {
     c.translate(a.x, a.y);
     c.fillStyle = "#162b2466";
     c.beginPath();
-    c.ellipse(0, 7, 21, flying ? 8 : 6, 0, 0, Math.PI * 2);
+    c.ellipse(
+      0,
+      7,
+      21 * characterScale(a.element),
+      (flying ? 8 : 6) * characterScale(a.element),
+      0,
+      0,
+      Math.PI * 2,
+    );
     if (!immersion) c.fill();
     if (a.parts.length >= 3) {
       c.shadowColor = color;
@@ -536,7 +549,7 @@ export class Renderer {
       }
     }
     // Leave room above the taller crowns and Air's floating silhouette.
-    c.translate(0, -10);
+    c.translate(0, -10 - 64 * (characterScale(a.element) - 1));
     if (a.id !== "player") {
       c.fillStyle = "#23332b";
       c.fillRect(-22, -70, 44, 5);
