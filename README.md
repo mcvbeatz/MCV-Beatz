@@ -1,4 +1,10 @@
-# Elemental — The Colosseum · v0.31.2
+# Elemental — The Colosseum · v0.32.0
+
+## v0.32.0 Skybreak Keep and terrain deaths
+
+- War always sends Air versus Earth or Fire to **Skybreak Keep**, a castle rooftop above the clouds. Eight scattered chasms leave navigable lanes and clear bases. Grounded fighters die within ten units of an opening; movement checks catch dashes and knockback across holes. Flyers cross safely. Grounded AI avoids chasms during combat and while returning for healing.
+- Chasm ability and rooftop deaths shrink and drop the fighter into the opening. Lethal quicksand pulls the body beneath a rippling sand surface. Death records preserve terrain geometry after timed effects expire; normal death fades, scoring, respawns and existing immunities remain intact.
+- Mud now has brown scales, a four-legged idle stance and matching directional runs at one shared sprite scale. Melee, casting, damage, death and victory sprites use the same brown identity, retaining its blue/gold clothing and muddy mane.
 
 ## v0.31.2 Movement identity corrections
 

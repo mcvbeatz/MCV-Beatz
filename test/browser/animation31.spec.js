@@ -115,7 +115,10 @@ test("every flyer has moving frames and every elemental has a directional castin
         [0, -1],
       ].forEach(([fx, fy], i) => {
         Object.assign(a, { castTime: 0.25, castFx: fx, castFy: fy });
-        if (!render(i + 3).includes("cast-") || idle.includes("cast-"))
+        if (
+          !render(i + 3).includes(e === "mud" ? "mud-core" : "cast-") ||
+          idle.includes("cast-")
+        )
           errors.push(e + " cast");
       });
       c.fillStyle = "#fff";

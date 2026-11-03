@@ -1,4 +1,6 @@
 import runRepairA from "./assets/run-repair-a.json" with { type: "json" };
+import mudCore from "./assets/mud-core.json" with { type: "json" };
+import mudRun from "./assets/run-repair-mud.json" with { type: "json" };
 import waterRunIdentity from "./assets/run-repair-water.json" with { type: "json" };
 import fireRunIdentity from "./assets/run-repair-fire.json" with { type: "json" };
 import lightRunIdentity from "./assets/run-repair-light.json" with { type: "json" };
@@ -51,6 +53,10 @@ const frames = {
   ...revised,
   ...tuned,
   ...newFusions,
+  mud: {
+    ...mudCore.mud,
+    frames: [0, 6, 12, 2, 8, 14].map((i) => mudCore.mud.frames[i]),
+  },
 };
 export const CHARACTERS = Object.keys(frames);
 export const ATTACK_NAMES = {
@@ -102,6 +108,10 @@ function loadAtlas(spec, url) {
 const victory = loadAtlas(
   victoryFrames,
   new URL("./assets/victory.png", import.meta.url).href,
+);
+const mudAtlas = loadAtlas(
+  mudCore,
+  new URL("./assets/mud-core.webp", import.meta.url).href,
 );
 const fusionVictory = loadAtlas(
   newReactions,
@@ -258,6 +268,10 @@ const contactByElement = Object.fromEntries(
 );
 const repairs = [
   loadAtlas(
+    mudRun,
+    new URL("./assets/run-repair-mud.webp", import.meta.url).href,
+  ),
+  loadAtlas(
     runRepairA,
     new URL("./assets/run-repair-a.webp", import.meta.url).href,
   ),
@@ -332,6 +346,7 @@ const runByElement = Object.fromEntries(
 export const charactersReady = Promise.all(
   [
     victory,
+    mudAtlas,
     dashAtlas,
     ...runInbetweens,
     ...runContacts,
@@ -495,6 +510,28 @@ function paintFrame(
                     : running
                       ? runByElement[element]
                       : byElement[element];
+  if (element === "mud" && running !== "repair" && mudAtlas.loaded) {
+    atlas = mudAtlas;
+    const facing =
+      running === "cast" || running === "hurt"
+        ? frame
+        : running === "step" || running === true
+          ? Math.floor(frame / 2)
+          : frame % 3;
+    const action =
+      running === "victory"
+        ? 5
+        : running === "cast"
+          ? 4
+          : running === "hurt"
+            ? 3
+            : running === "step" || running === true
+              ? 1
+              : frame >= 3
+                ? 2
+                : 0;
+    frame = facing * 6 + action;
+  }
   if (running === "hurt" && !atlas?.loaded) {
     atlas = actionByElement[element];
     frame += 6;
@@ -577,6 +614,8 @@ export function drawCharacter(c, a, time) {
   }
 }
 function drawCharacterSprite(c, a, time) {
+  if (a.victory && a.element === "mud" && mudAtlas.loaded)
+    return paintFrame(c, "mud", 0, false, 76, "victory");
   if (a.victory && newReactions[a.element] && fusionVictory.loaded) {
     const spec = newReactions[a.element],
       f = spec.frames[3];
@@ -691,7 +730,7 @@ function drawCharacterSprite(c, a, time) {
     spriteElement,
     spriteFrame,
     pose.flip,
-    (running || sidestepping) && a.element === "mud" ? 44 : 64,
+    64,
     spriteKind,
     a.spawnFlash > 0 ? 0.35 + Math.abs(Math.sin(a.spawnFlash * 22)) * 0.65 : 0,
   );
@@ -710,6 +749,26 @@ function drawCharacterSprite(c, a, time) {
 // Keep the directional hurt silhouette upright while it fades away.
 export function deathPose(death) {
   const p = Math.max(0, Math.min(1, death.elapsed / death.duration));
+  if (death.terrain?.kind === "chasm") {
+    const pull = Math.min(1, p * 3);
+    return {
+      progress: p,
+      opacity: p < 0.92 ? 1 : (1 - p) / 0.08,
+      rotation: 0,
+      scale: 1 - p * 0.9,
+      x: (death.terrain.x - death.fighter.x) * pull,
+      y: (death.terrain.y - death.fighter.y) * pull + 100 * p * p,
+    };
+  }
+  if (death.terrain?.kind === "quicksand")
+    return {
+      progress: p,
+      opacity: 1,
+      rotation: 0,
+      scale: 1,
+      x: 0,
+      y: 8 + 112 * p * p * characterScale(death.fighter.element),
+    };
   return {
     progress: p,
     opacity: Math.min(1, (1 - p) / 0.6),
@@ -722,6 +781,7 @@ export function drawFallenCharacter(c, death, color = "#e1d8b5") {
   const a = death.fighter,
     pose = deathPose(death);
   if (pose.opacity <= 0) return false;
+  if (death.terrain) return drawTerrainDeath(c, death, pose);
   const side = Math.abs(a.fx) > Math.abs(a.fy);
   const facing = side ? 1 : a.fy < 0 ? 2 : 0;
   c.save();
@@ -753,6 +813,57 @@ export function drawFallenCharacter(c, death, color = "#e1d8b5") {
         Math.PI * 2,
       );
       c.fill();
+    }
+  }
+  c.restore();
+  return drawn;
+}
+
+function drawTerrainDeath(c, death, pose) {
+  const a = death.fighter,
+    hole = death.terrain;
+  const sand = hole.kind === "quicksand";
+  const dx = sand ? 0 : hole.x - a.x,
+    dy = sand ? 0 : hole.y - a.y;
+  const radius = sand ? 31 * characterScale(a.element) : hole.r;
+  c.save();
+  // Keep a mouth beneath the body even if the original timed ability expires.
+  c.fillStyle = sand ? "#80603e" : "#100f19";
+  c.beginPath();
+  c.ellipse(dx, dy, radius, radius * (sand ? 0.3 : 0.7), 0, 0, Math.PI * 2);
+  c.fill();
+  c.save();
+  c.beginPath();
+  c.rect(-400, -500, 800, 500 + dy + 5);
+  c.clip();
+  c.translate(pose.x, pose.y);
+  const scale = characterScale(a.element) * pose.scale;
+  c.scale(scale, scale);
+  c.globalAlpha *= pose.opacity;
+  const side = Math.abs(a.fx) > Math.abs(a.fy),
+    facing = side ? 1 : a.fy < 0 ? 2 : 0;
+  const drawn =
+    paintFrame(c, a.element, facing, side && a.fx < 0, 64, "hurt") ||
+    paintFrame(c, a.element, facing, side && a.fx < 0, 64);
+  c.restore();
+  // The near lip passes in front of the sinking body, not a whole-body fade.
+  c.strokeStyle = sand ? "#c4a16c" : "#83798a";
+  c.lineWidth = sand ? 5 : 3;
+  c.beginPath();
+  c.ellipse(dx, dy + 3, radius, radius * (sand ? 0.3 : 0.7), 0, 0, Math.PI);
+  c.stroke();
+  if (sand) {
+    c.fillStyle = "#98754b";
+    c.beginPath();
+    c.ellipse(0, 7, radius * 0.8, 6, 0, 0, Math.PI * 2);
+    c.fill();
+    for (let i = 0; i < 3; i++) {
+      const r = radius * (0.3 + ((pose.progress * 1.7 + i / 3) % 1) * 0.7);
+      c.strokeStyle = "#d0b17d88";
+      c.lineWidth = 1.5;
+      c.beginPath();
+      c.ellipse(0, 7, r, r * 0.24, 0, 0, Math.PI * 2);
+      c.stroke();
     }
   }
   c.restore();

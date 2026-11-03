@@ -1,4 +1,5 @@
 import { drawTempleTraps } from "./temple-map-render.js";
+import { drawSkykeepChasms } from "./skykeep-map-render.js";
 import { drawWaveGuidance } from "./wave-map-render.js";
 import { drawWarSupplies } from "./war-render.js";
 import {
@@ -659,6 +660,7 @@ export class Renderer {
     if (game.map) drawBattleAmbience(c, game.map, t);
     drawWaveGuidance(c, game, t);
     drawTerrain(c, game, t);
+    if (game.map?.kind === "skykeep") drawSkykeepChasms(c, game.map);
     drawWarSupplies(c, game, t);
     drawTempleTraps(c, game);
     for (const flag of game.flags) {

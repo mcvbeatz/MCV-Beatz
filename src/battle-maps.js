@@ -6,7 +6,9 @@ export const MATCH_MAP_IDS = ["classic", ...BATTLE_MAP_IDS];
 export function createBattleMap(
   id = BATTLE_MAP_IDS[Math.floor(Math.random() * 2)],
 ) {
-  if (![...BATTLE_MAP_IDS, "volcano", "waves", "temple"].includes(id))
+  if (
+    ![...BATTLE_MAP_IDS, "volcano", "waves", "temple", "skykeep"].includes(id)
+  )
     throw new Error(`Unknown battle map: ${id}`);
   const garden = id === "garden",
     volcano = id === "volcano";
@@ -45,6 +47,23 @@ export function createBattleMap(
     map.name = "The Moonveil Temple";
     map.bounds = { left: 200, top: 0, width: 1648, height: 1360 };
     map.shapes = [{ x: 354, y: 230, w: 1340, h: 900 }];
+  }
+  if (id === "skykeep") {
+    map.name = "The Skybreak Keep";
+    map.bounds = { left: 160, top: 0, width: 1728, height: 1360 };
+    map.shapes = [{ x: 324, y: 210, w: 1400, h: 940 }];
+    // The floor admits bodies into holes so grounded fighters can fall.
+    // Chasms are hazards, not collision walls; broad lanes remain between them.
+    map.chasms = [
+      [750, 440, 64],
+      [1060, 380, 60],
+      [1350, 465, 72],
+      [850, 690, 70],
+      [1210, 730, 66],
+      [710, 945, 65],
+      [1030, 1000, 62],
+      [1390, 945, 68],
+    ].map(([x, y, r], id) => ({ id, kind: "chasm", x, y, r, field: true }));
   }
   if (id === "waves") {
     Object.assign(map, {
@@ -173,7 +192,7 @@ export function createBattleMap(
   const nodes =
     id === "waves"
       ? [250, 750, 1400, 1900, 2550, 3050].map((x) => [x, 500])
-      : volcano || id === "temple"
+      : volcano || id === "temple" || id === "skykeep"
         ? [[1024, 680]]
         : garden
           ? [
@@ -301,7 +320,7 @@ export function createBattleMap(
         [1680, 820],
       ];
   map.shardSpots = map.shardSpots.map(([x, y]) => ({ x, y }));
-  if (id === "temple") {
+  if (id === "temple" || id === "skykeep") {
     map.teamSpawn = (team, i, count) => ({
       x: team === 0 ? 500 : 1548,
       y: 680 + (i - (count - 1) / 2) * 56,

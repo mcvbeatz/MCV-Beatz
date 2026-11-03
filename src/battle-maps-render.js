@@ -1,4 +1,5 @@
 import { paintTempleMap } from "./temple-map-render.js";
+import { paintSkykeepMap } from "./skykeep-map-render.js";
 import { paintWaveMap } from "./wave-map-render.js";
 import {
   paintVolcanicMap,
@@ -11,9 +12,13 @@ export function floorPath(c, map) {
     c.rect(135, 175, 754, 385);
   } else if (map.kind === "corruption") {
     c.arc(map.cx, map.cy, map.radius - map.wallWidth / 2, 0, TAU);
-  } else if (map.kind === "temple") {
+  } else if (map.kind === "temple" || map.kind === "skykeep") {
     const r = map.shapes[0];
     c.rect(r.x, r.y, r.w, r.h);
+    for (const h of map.chasms || []) {
+      c.moveTo(h.x + h.r, h.y);
+      c.arc(h.x, h.y, h.r, 0, TAU, true);
+    }
   } else if (map.kind === "waves") {
     c.moveTo(100, 175);
     for (let i = 0; i < 3; i++) {
@@ -105,6 +110,7 @@ function lamp(c, x, y, t = 0) {
   c.fillRect(x - 1, y - 7, 2, 13);
 }
 export function paintBattleMap(c, map) {
+  if (map.kind === "skykeep") return paintSkykeepMap(c, map, floorPath);
   if (map.kind === "temple") return paintTempleMap(c, map);
   if (map.kind === "waves") return paintWaveMap(c, map, floorPath);
   if (map.kind === "volcano") return paintVolcanicMap(c, map);

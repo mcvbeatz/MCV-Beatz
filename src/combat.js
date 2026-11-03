@@ -4,6 +4,7 @@ import {
   warRecoveryTarget,
   recordWarDeath,
   canSeeWarTrap,
+  checkWarChasms,
 } from "./war.js";
 import { updateRespawnCamera } from "./camera.js";
 import { createBattleMap, MATCH_MAP_IDS } from "./battle-maps.js";
@@ -375,6 +376,11 @@ export class Combat {
         this.warElements.includes("dark")
       )
         mapId = "temple";
+      if (
+        this.warElements.includes("air") &&
+        this.warElements.some((e) => e === "earth" || e === "fire")
+      )
+        mapId = "skykeep";
     }
     this.mapId =
       mode === "corruption"
@@ -803,6 +809,7 @@ export class Combat {
       a.fx = dx;
       a.fy = dy;
     }
+    if (checkWarChasms(this, a, old)) return;
     this.autoLock(a);
   }
   strike(a, aim = null) {
@@ -884,7 +891,7 @@ export class Combat {
       a.abilityCd = 4.5;
     a.chargeForm = null;
   }
-  fell(a, { lost = false, killer = null } = {}) {
+  fell(a, { lost = false, killer = null, terrain = null } = {}) {
     if (!a.alive && !a.ghost) return;
     const wasAlive = a.alive;
     if (wasAlive && !a.echo) {
@@ -971,6 +978,9 @@ export class Combat {
         elapsed: 0,
         duration: 1.5,
         lost,
+        terrain: terrain
+          ? { kind: terrain.kind, x: terrain.x, y: terrain.y, r: terrain.r }
+          : null,
       });
     }
     a.prisonHp = 0;
@@ -1025,6 +1035,7 @@ export class Combat {
     sourceElement = ability ? skillForm(a) : a.element,
     reflectable = true,
     ignoreFriendlyFire = false,
+    deathTerrain = null,
   ) {
     if (
       !b.alive ||
@@ -1104,7 +1115,7 @@ export class Combat {
         if (hit >= 0.5 && !hasPassive(b, "divine"))
           this.cue("interrupt", b, "#e9cc91");
       }
-      if (b.hp <= 0) this.fell(b, { killer: a });
+      if (b.hp <= 0) this.fell(b, { killer: a, terrain: deathTerrain });
     }
     return hit;
   }
@@ -2121,6 +2132,7 @@ export class Combat {
   aiHazards(a) {
     return [
       ...this.hazards,
+      ...(this.map?.chasms || []),
       ...(this.spikeTraps || []).filter((trap) => canSeeWarTrap(this, a, trap)),
     ];
   }
@@ -2429,7 +2441,8 @@ export class Combat {
     a.aiControlled = true;
     const recovery = warRecoveryTarget(this, a);
     if (recovery) {
-      this.moveToward(a, recovery, dt);
+      const route = this.aiRoute(a, recovery);
+      this.move(a, route.x, route.y, dt);
       return;
     }
     this.aiProgress(a);
@@ -2871,7 +2884,7 @@ export class Combat {
               (this.friendlyFire || b.team !== h.owner.team) &&
               distance(h, b) <= h.r
             )
-              this.fell(b, { killer: h.owner });
+              this.fell(b, { killer: h.owner, terrain: h });
           }
         continue;
       }
@@ -2933,7 +2946,17 @@ export class Combat {
           !quicksandImmune(b)
         ) {
           b.slow = 0.5;
-          this.damage(h.owner, b, 2 * h.power, true, false, h.element, false);
+          this.damage(
+            h.owner,
+            b,
+            2 * h.power,
+            true,
+            false,
+            h.element,
+            false,
+            false,
+            h,
+          );
         } else if (
           h.kind === "heatwave" ||
           (h.kind === "magma" && !flying && !flooded)

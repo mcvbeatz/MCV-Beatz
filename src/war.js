@@ -52,6 +52,7 @@ export function initializeWar(g) {
 }
 export function updateWar(g, dt) {
   if (g.mode !== "war") return;
+  for (const a of g.fighters) checkWarChasms(g, a);
   updateWarTraps(g);
   while (g.time + 1e-9 >= g.nextHealthDropAt) {
     for (const base of g.warBases) {
@@ -95,6 +96,38 @@ export function updateWar(g, dt) {
       if (a.hp <= 0) g.fell(a);
     }
   }
+}
+export function checkWarChasms(g, a, previous = a) {
+  if (
+    g.mode !== "war" ||
+    !a.alive ||
+    !inWorld(a) ||
+    g.flying(a) ||
+    g.countingDown
+  )
+    return false;
+  const hole = g.map?.chasms?.find(
+    (h) => segmentDistance(h, previous, a) <= h.r + 10,
+  );
+  if (!hole) return false;
+  // Keep the recorded fall on the swept path beside this opening.
+  // This also catches fast dashes and knockback that cross the entire hole.
+  const dx = a.x - previous.x,
+    dy = a.y - previous.y;
+  const length2 = dx * dx + dy * dy;
+  const t = length2
+    ? Math.max(
+        0,
+        Math.min(
+          1,
+          ((hole.x - previous.x) * dx + (hole.y - previous.y) * dy) / length2,
+        ),
+      )
+    : 0;
+  a.x = previous.x + dx * t;
+  a.y = previous.y + dy * t;
+  g.fell(a, { terrain: hole });
+  return !a.alive;
 }
 export function warRecoveryTarget(g, a) {
   if (g.mode !== "war" || !a.alive || a.ghost || a.hp >= a.maxHp * 0.65)

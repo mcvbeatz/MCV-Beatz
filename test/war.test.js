@@ -187,7 +187,7 @@ test("War continues through team wipes and scores at three minutes, with ties dr
   assert.equal(g.scores[0], 3);
 });
 test("Injured War AI returns to an available friendly healing drop", () => {
-  const g = game({ mapId: "garden" }),
+  const g = game({ mapId: "garden", enemyElement: "water" }),
     a = g.fighters.find((a) => a.team === 0 && a !== g.player);
   g.time = 7;
   updateWar(g, 0);
