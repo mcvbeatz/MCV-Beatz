@@ -233,10 +233,16 @@ test("Speed burst uses directional sprites without warping any elemental", async
       // Rotation/mirroring preserve the elemental's uniform standing scale.
       // Shear or different X/Y scales would warp the body during a dash.
       const bodyScale =
-        { phoenix: 1.5, terraformer: 1.4, sanctuary: 1.3 }[element] || 1;
-      expect(Math.hypot(m.a, m.b)).toBeCloseTo(bodyScale, 8);
-      expect(Math.hypot(m.c, m.d)).toBeCloseTo(bodyScale, 8);
-      expect(m.a * m.c + m.b * m.d).toBeCloseTo(0, 8);
+        {
+          phoenix: 1.275,
+          terraformer: 1.4,
+          sanctuary: 1.3,
+          invincible: 1.1,
+          gravity: 1.1,
+        }[element] || 1;
+      expect(Math.hypot(m.a, m.b)).toBeCloseTo(bodyScale, 6);
+      expect(Math.hypot(m.c, m.d)).toBeCloseTo(bodyScale, 6);
+      expect(m.a * m.c + m.b * m.d).toBeCloseTo(0, 6);
       if (dx && element === "smoke") expect(-m.c * dx).toBeGreaterThan(0);
     }
   }

@@ -169,7 +169,7 @@ test("Flood lightning strikes caster, allies, concealed Divine and flyers regard
   g.hazards.push({ kind: "flood", x: 850, y: 550, r: 10, life: 5, owner: a });
   assert.equal(visibility(b), 0);
   assert.ok(g.startCharge(a));
-  near(a.hp, 73.2);
+  near(a.hp, 83.6);
   near(b.hp, 96.6);
   near(ally.hp, 68);
   assert.ok(b.reflect > 0);

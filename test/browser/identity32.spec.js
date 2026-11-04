@@ -129,11 +129,11 @@ test("level-III bodies retain uniform scale through actions, death and status ti
     const { makeFighter } = await import("/src/combat.js");
     await charactersReady;
     const canvas = document.createElement("canvas");
-    canvas.width = 1000;
+    canvas.width = 1500;
     canvas.height = 700;
     const c = canvas.getContext("2d");
     c.fillStyle = "#34464a";
-    c.fillRect(0, 0, 1000, 700);
+    c.fillRect(0, 0, 1500, 700);
     const renderer = new Renderer(document.createElement("canvas"));
     const checks = [];
     for (const [col, element] of [
@@ -141,6 +141,8 @@ test("level-III bodies retain uniform scale through actions, death and status ti
       "sanctuary",
       "terraformer",
       "phoenix",
+      "invincible",
+      "gravity",
     ].entries()) {
       const a = makeFighter("preview", element, 0, 0, 0);
       a.fx = 0;
@@ -210,7 +212,9 @@ test("level-III bodies retain uniform scale through actions, death and status ti
     lightning: 1,
     sanctuary: 1.3,
     terraformer: 1.4,
-    phoenix: 1.5,
+    phoenix: 1.275,
+    invincible: 1.1,
+    gravity: 1.1,
   };
   for (const check of result.checks) {
     if (check.coverage !== undefined)

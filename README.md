@@ -1,4 +1,13 @@
-# Elemental — The Colosseum · v0.32.0
+# Elemental — The Colosseum · v0.33.0
+
+## v0.33.0 Combat audio and character polish
+
+- Felled players in Boss can pan the field with the movement stick while allies continue fighting.
+- Phoenix is 15% smaller than its previous size; Invincible and Gravity are 10% larger. Uniform transforms cover movement, abilities, reactions and death without changing collision sizes.
+- Sanctuary has six alternating stepping frames in each direction. Mirror carries a reflective shield through idle, movement, attacks, casting, damage and celebration. Divine's concealed owner silhouette follows its body, excluding its aura, with a soft glow.
+- Lightning retains 50% resistance to direct Lightning strikes and now receives the same resistance against reflected strikes. Flood discharges use the same protection.
+- A Win is a Win and Downcast repeat until leaving the result screen. Battle-song selection and countdown starts remain unchanged.
+- Original synthesized swings, weapon slices, blunt impacts, clashes and low electric token chimes use the SFX slider. Small pitch/gain variations, distance attenuation, per-effect rate limits, an eight-voice cap and compression moderate busy combat. Pausing, hiding the page or leaving battle stops combat effects.
 
 ## v0.32.0 Skybreak Keep and terrain deaths
 

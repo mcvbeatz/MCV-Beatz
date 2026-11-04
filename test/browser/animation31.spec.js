@@ -116,7 +116,9 @@ test("every flyer has moving frames and every elemental has a directional castin
       ].forEach(([fx, fy], i) => {
         Object.assign(a, { castTime: 0.25, castFx: fx, castFy: fy });
         if (
-          !render(i + 3).includes(e === "mud" ? "mud-core" : "cast-") ||
+          !render(i + 3).includes(
+            ["mud", "mirror"].includes(e) ? `${e}-core` : "cast-",
+          ) ||
           idle.includes("cast-")
         )
           errors.push(e + " cast");

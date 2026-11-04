@@ -156,7 +156,7 @@ export function recordWarDeath(g, victim, killer) {
   const part =
     pool[Math.min(pool.length - 1, Math.floor(g.random() * pool.length))];
   if (!part) return;
-  g.tokens.push({
+  g.dropToken({
     ...g.floorPoint({ x: base.x, y: base.y + 75 }, 24),
     team: victim.team,
     parts: [part],

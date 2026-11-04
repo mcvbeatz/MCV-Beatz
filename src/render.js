@@ -12,6 +12,7 @@ import { cameraView } from "./camera.js";
 import { inWorld, visibility, viewerVisibility } from "./combat.js";
 import {
   drawCharacter,
+  drawDivineOutlineBody,
   drawFallenCharacter,
   drawCharacterStrike,
   characterPose,
@@ -94,8 +95,8 @@ export class Renderer {
     this.outlineSprite = document.createElement("canvas");
     this.outlineEdge = document.createElement("canvas");
     for (const c of [this.outlineSprite, this.outlineEdge]) {
-      c.width = BODY_BUFFER;
-      c.height = BODY_BUFFER;
+      c.width = BODY_BUFFER * 2;
+      c.height = BODY_BUFFER * 2;
     }
     this.background.width = 2048;
     this.background.height = 1360;
@@ -299,46 +300,73 @@ export class Renderer {
   }
   outline(c, a, time) {
     const sprite = this.outlineSprite,
-      edge = this.outlineEdge;
-    const sc = sprite.getContext("2d", { willReadFrequently: true }),
-      ec = edge.getContext("2d");
-    sc.clearRect(0, 0, BODY_BUFFER, BODY_BUFFER);
-    sc.save();
-    sc.translate(BODY_CENTER, BODY_BASELINE);
-    if (a.parts.includes("air")) sc.translate(0, Math.sin(time * 3) * 2 - 8);
-    if (!drawCharacter(sc, a, time)) {
-      sc.fillStyle = "white";
-      sc.beginPath();
-      sc.moveTo(-12, -55);
-      sc.lineTo(12, -55);
-      sc.lineTo(21, 0);
-      sc.lineTo(-21, 0);
-      sc.closePath();
-      sc.fill();
+      edge = this.outlineEdge,
+      size = BODY_BUFFER * 2;
+    const pose = characterPose(a);
+    const key = [
+      a.element,
+      pose.facing,
+      pose.flip,
+      pose.flyingMoving,
+      pose.flightFrame,
+      pose.frame,
+      pose.hurtFrame,
+      pose.castFrame,
+    ].join(":");
+    if (this.outlineKey !== key) {
+      const sc = sprite.getContext("2d", { willReadFrequently: true }),
+        ec = edge.getContext("2d");
+      sc.clearRect(0, 0, size, size);
+      sc.save();
+      sc.scale(2, 2);
+      sc.translate(BODY_CENTER, BODY_BASELINE);
+      const loaded =
+        a.element === "divine"
+          ? drawDivineOutlineBody(sc, a)
+          : drawCharacter(sc, a, time);
+      sc.restore();
+      if (!loaded) return;
+      this.outlineKey = key;
+      const mask = sc.getImageData(0, 0, size, size);
+      for (let i = 3; i < mask.data.length; i += 4)
+        mask.data[i] = mask.data[i] > 150 ? 255 : 0;
+      sc.putImageData(mask, 0, 0);
+      ec.clearRect(0, 0, size, size);
+      ec.globalCompositeOperation = "source-over";
+      for (const [x, y] of [
+        [-2, 0],
+        [2, 0],
+        [0, -2],
+        [0, 2],
+        [-1.4, -1.4],
+        [1.4, -1.4],
+        [-1.4, 1.4],
+        [1.4, 1.4],
+      ])
+        ec.drawImage(sprite, x, y);
+      ec.globalCompositeOperation = "destination-out";
+      ec.drawImage(sprite, 0, 0);
+      ec.globalCompositeOperation = "source-in";
+      ec.fillStyle = "#eafff8";
+      ec.fillRect(0, 0, size, size);
+      ec.globalCompositeOperation = "source-over";
     }
-    sc.restore();
-    // Asset alpha can be 254 even inside a solid body. Build a binary silhouette
-    // so subtracting it leaves only a contour, with no translucent interior.
-    const mask = sc.getImageData(0, 0, BODY_BUFFER, BODY_BUFFER);
-    for (let i = 3; i < mask.data.length; i += 4)
-      mask.data[i] = mask.data[i] > 32 ? 255 : 0;
-    sc.putImageData(mask, 0, 0);
-    ec.clearRect(0, 0, BODY_BUFFER, BODY_BUFFER);
-    ec.globalCompositeOperation = "source-over";
-    for (const [x, y] of [
-      [-2, 0],
-      [2, 0],
-      [0, -2],
-      [0, 2],
-    ])
-      ec.drawImage(sprite, x, y);
-    ec.globalCompositeOperation = "destination-out";
-    ec.drawImage(sprite, 0, 0);
-    ec.globalCompositeOperation = "source-in";
-    ec.fillStyle = "#e7f2ed";
-    ec.fillRect(0, 0, BODY_BUFFER, BODY_BUFFER);
-    ec.globalCompositeOperation = "source-over";
-    c.drawImage(edge, a.x - BODY_CENTER, a.y - BODY_BASELINE);
+    c.save();
+    c.shadowColor = "#c9fff0aa";
+    c.shadowBlur = 4;
+    const bob = a.parts.includes("air") ? Math.sin(time * 3) * 2 - 8 : 0;
+    c.drawImage(
+      edge,
+      0,
+      0,
+      size,
+      size,
+      a.x - BODY_CENTER,
+      a.y - BODY_BASELINE + bob,
+      BODY_BUFFER,
+      BODY_BUFFER,
+    );
+    c.restore();
   }
   avatar(c, a, time, immersion = 0) {
     const scale = 2.35;

@@ -94,10 +94,10 @@ test("Divine owner outline has transparent interior and smoke conceals enemies f
     r.draw(g, false);
     const original = r.outlineSprite
       .getContext("2d")
-      .getImageData(0, 0, 160, 160).data;
+      .getImageData(0, 0, r.outlineSprite.width, r.outlineSprite.height).data;
     const edge = r.outlineEdge
       .getContext("2d")
-      .getImageData(0, 0, 160, 160).data;
+      .getImageData(0, 0, r.outlineSprite.width, r.outlineSprite.height).data;
     let solid = 0,
       edgePixels = 0,
       filled = 0;

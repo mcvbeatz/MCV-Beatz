@@ -1,3 +1,7 @@
+import phoenixFlight from "./assets/flight-phoenix.json" with { type: "json" };
+import sanctuaryRun from "./assets/run-repair-sanctuary.json" with { type: "json" };
+import mirrorCore from "./assets/mirror-core.json" with { type: "json" };
+import mirrorRun from "./assets/run-repair-mirror.json" with { type: "json" };
 import runRepairA from "./assets/run-repair-a.json" with { type: "json" };
 import mudCore from "./assets/mud-core.json" with { type: "json" };
 import mudRun from "./assets/run-repair-mud.json" with { type: "json" };
@@ -53,6 +57,10 @@ const frames = {
   ...revised,
   ...tuned,
   ...newFusions,
+  mirror: {
+    ...mirrorCore.mirror,
+    frames: [0, 6, 12, 2, 8, 14].map((i) => mirrorCore.mirror.frames[i]),
+  },
   mud: {
     ...mudCore.mud,
     frames: [0, 6, 12, 2, 8, 14].map((i) => mudCore.mud.frames[i]),
@@ -112,6 +120,15 @@ const victory = loadAtlas(
 const mudAtlas = loadAtlas(
   mudCore,
   new URL("./assets/mud-core.webp", import.meta.url).href,
+);
+const mirrorAtlas = loadAtlas(
+  mirrorCore,
+  new URL("./assets/mirror-core.webp", import.meta.url).href,
+);
+const coreAtlases = { mud: mudAtlas, mirror: mirrorAtlas };
+const divineBodyAtlas = loadAtlas(
+  { divine: tuned.divine },
+  new URL("./assets/divine-body.webp", import.meta.url).href,
 );
 const fusionVictory = loadAtlas(
   newReactions,
@@ -268,6 +285,14 @@ const contactByElement = Object.fromEntries(
 );
 const repairs = [
   loadAtlas(
+    sanctuaryRun,
+    new URL("./assets/run-repair-sanctuary.webp", import.meta.url).href,
+  ),
+  loadAtlas(
+    mirrorRun,
+    new URL("./assets/run-repair-mirror.webp", import.meta.url).href,
+  ),
+  loadAtlas(
     mudRun,
     new URL("./assets/run-repair-mud.webp", import.meta.url).href,
   ),
@@ -298,6 +323,10 @@ const repairsByElement = Object.fromEntries(
 const flights = [
   loadAtlas(flightA, new URL("./assets/flight-a.webp", import.meta.url).href),
   loadAtlas(flightB, new URL("./assets/flight-b.webp", import.meta.url).href),
+  loadAtlas(
+    phoenixFlight,
+    new URL("./assets/flight-phoenix.webp", import.meta.url).href,
+  ),
   loadAtlas(
     lightningFlightIdentity,
     new URL("./assets/flight-lightning.webp", import.meta.url).href,
@@ -347,6 +376,8 @@ export const charactersReady = Promise.all(
   [
     victory,
     mudAtlas,
+    mirrorAtlas,
+    divineBodyAtlas,
     dashAtlas,
     ...runInbetweens,
     ...runContacts,
@@ -489,29 +520,31 @@ function paintFrame(
   flash = 0,
 ) {
   let atlas =
-    running === "dash"
-      ? dashAtlas
-      : running === "repair"
-        ? repairsByElement[element]
-        : running === "flight"
-          ? flightsByElement[element]
-          : running === "cast"
-            ? castsByElement[element]
-            : running === "contact"
-              ? contactByElement[element]
-              : running === "inbetween"
-                ? inbetweenByElement[element]
-                : running === "step"
-                  ? actionByElement[element]
-                  : running === "hurt"
-                    ? element === "mud"
-                      ? null
-                      : hurtByElement[element]
-                    : running
-                      ? runByElement[element]
-                      : byElement[element];
-  if (element === "mud" && running !== "repair" && mudAtlas.loaded) {
-    atlas = mudAtlas;
+    running === "outline"
+      ? divineBodyAtlas
+      : running === "dash"
+        ? dashAtlas
+        : running === "repair"
+          ? repairsByElement[element]
+          : running === "flight"
+            ? flightsByElement[element]
+            : running === "cast"
+              ? castsByElement[element]
+              : running === "contact"
+                ? contactByElement[element]
+                : running === "inbetween"
+                  ? inbetweenByElement[element]
+                  : running === "step"
+                    ? actionByElement[element]
+                    : running === "hurt"
+                      ? element === "mud"
+                        ? null
+                        : hurtByElement[element]
+                      : running
+                        ? runByElement[element]
+                        : byElement[element];
+  if (coreAtlases[element]?.loaded && running !== "repair") {
+    atlas = coreAtlases[element];
     const facing =
       running === "cast" || running === "hurt"
         ? frame
@@ -597,12 +630,24 @@ function paintFrame(
 
 // Uniform visual scale: match level-III heads to Lightning without stretching
 // bodies or changing combat radii. Portraits continue to fit their UI canvases.
-const BODY_SCALE = { phoenix: 1.5, terraformer: 1.4, sanctuary: 1.3 };
+const BODY_SCALE = {
+  phoenix: 1.275,
+  terraformer: 1.4,
+  sanctuary: 1.3,
+  invincible: 1.1,
+  gravity: 1.1,
+};
 export function characterScale(element) {
   return BODY_SCALE[element] || 1;
 }
 
 // All coordinates are visual only: facing and hit timing come from Combat.
+// The body-only atlas preserves the original Divine coordinates, without emissive aura.
+export function drawDivineOutlineBody(c, a) {
+  const pose = characterPose(a);
+  return paintFrame(c, "divine", pose.frame, pose.flip, 64, "outline");
+}
+
 export function drawCharacter(c, a, time) {
   c.save();
   const scale = characterScale(a.element);
@@ -614,8 +659,15 @@ export function drawCharacter(c, a, time) {
   }
 }
 function drawCharacterSprite(c, a, time) {
-  if (a.victory && a.element === "mud" && mudAtlas.loaded)
-    return paintFrame(c, "mud", 0, false, 76, "victory");
+  if (a.victory && coreAtlases[a.element]?.loaded)
+    return paintFrame(
+      c,
+      a.element,
+      0,
+      false,
+      a.element === "mud" ? 76 : 64,
+      "victory",
+    );
   if (a.victory && newReactions[a.element] && fusionVictory.loaded) {
     const spec = newReactions[a.element],
       f = spec.frames[3];

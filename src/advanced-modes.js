@@ -69,7 +69,7 @@ export function spawnShard(g) {
     g.tokens.every((t) => Math.hypot(t.x - p.x, t.y - p.y) > 45),
   );
   if (!clear.length) return;
-  g.tokens.push({
+  g.dropToken({
     ...pick(g, clear),
     parts,
     neutral: true,

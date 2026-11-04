@@ -1,4 +1,5 @@
 import { BattlePlaylist, TRACK_URLS } from "./music-catalog.js";
+import { CombatSfx } from "./combat-sfx.js";
 const SCENE_TRACKS = {
   corruption: "no-escape",
   war: "dont-let-up",
@@ -42,6 +43,7 @@ export class Soundtrack {
         this.music.connect(this.context.destination);
         this.music.gain.value = this.settings.music;
       }
+      this.sfx ||= new CombatSfx(this.context, this.settings.sfx);
       this.playBlocked = false;
       this.sync();
     } catch {}
@@ -105,7 +107,7 @@ export class Soundtrack {
       this.playBlocked = false;
       this.playPending = false;
       this.track.src = TRACK_URLS[id];
-      this.track.loop = id === "no-smoke";
+      this.track.loop = ["no-smoke", "a-win-is-a-win", "downcast"].includes(id);
       this.track.load();
     }
     if (this.context && this.music && !this.trackSource) {
@@ -163,6 +165,13 @@ export class Soundtrack {
     source.start(0, this.menuOffset);
   }
   sync() {
+    if (
+      this.paused ||
+      document.hidden ||
+      !this.settings.sfx ||
+      this.scene === "menu"
+    )
+      this.sfx?.stop();
     if (!this.context || !this.music) return;
     const active = !this.paused && !document.hidden && this.settings.music > 0;
     this.syncMenu(this.scene === "menu" && active);
@@ -202,6 +211,7 @@ export class Soundtrack {
   }
   volume(kind, value) {
     this.settings[kind] = clamp(value);
+    if (kind === "sfx") this.sfx?.volume(this.settings.sfx);
     if (kind === "music" && this.music)
       this.music.gain.setTargetAtTime(
         this.settings.music,
@@ -209,6 +219,29 @@ export class Soundtrack {
         0.1,
       );
     this.sync();
+  }
+  combat(game, active) {
+    const events = game.audioEvents?.splice(0) || [];
+    if (!active || document.hidden || !this.settings.sfx) {
+      this.sfx?.stop();
+      return;
+    }
+    const listener = game.spectatorFocus || game.player;
+    for (const event of events) {
+      if (
+        event.kind === "token" &&
+        !event.neutral &&
+        game.mode !== "ffa" &&
+        event.team !== game.player.team
+      )
+        continue;
+      const distance = Math.hypot(event.x - listener.x, event.y - listener.y);
+      if (distance > 650) continue;
+      this.sfx?.play(event.kind, {
+        gain: 1 - distance / 800,
+        pan: (event.x - listener.x) / 700,
+      });
+    }
   }
   tone(frequency = 180) {
     if (!this.settings.sfx) return;

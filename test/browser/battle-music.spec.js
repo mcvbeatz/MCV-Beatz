@@ -105,22 +105,21 @@ test("Ember Caldera plays only no smoke, and team victory replaces it even if th
   expect(
     await page.evaluate(() => __app.sound.track === window.authorizedTrack),
   ).toBe(true);
-  expect(await page.evaluate(() => __app.sound.track.loop)).toBe(false);
+  expect(await page.evaluate(() => __app.sound.track.loop)).toBe(true);
   await page.evaluate(() => {
     const t = __app.sound.track;
     t.currentTime = t.duration - 0.12;
   });
   await expect
-    .poll(() => page.evaluate(() => __app.sound.trackEnded))
-    .toBe(true);
-  await page.mouse.click(10, 10);
-  expect(await page.evaluate(() => __app.sound.track.paused)).toBe(true);
+    .poll(() => page.evaluate(() => __app.sound.track.currentTime))
+    .toBeLessThan(2);
+  expect(await page.evaluate(() => __app.sound.track.paused)).toBe(false);
   await page.locator("#leave-btn").click();
   await expect
     .poll(() => page.evaluate(() => !!__app.sound.menuSource))
     .toBe(true);
 });
-test("team defeat plays Downcast once, respects volume and visibility, and draws play neither outcome", async ({
+test("team defeat loops Downcast, respects volume and visibility, and draws play neither outcome", async ({
   page,
 }) => {
   await ready(page);
@@ -132,7 +131,14 @@ test("team defeat plays Downcast once, respects volume and visibility, and draws
   await expect
     .poll(() => page.evaluate(() => __app.sound.track.currentTime))
     .toBeGreaterThan(0.1);
-  expect(await page.evaluate(() => __app.sound.track.loop)).toBe(false);
+  expect(await page.evaluate(() => __app.sound.track.loop)).toBe(true);
+  await page.evaluate(() => {
+    const t = __app.sound.track;
+    t.currentTime = t.duration - 0.12;
+  });
+  await expect
+    .poll(() => page.evaluate(() => __app.sound.track.currentTime))
+    .toBeLessThan(2);
   await page.evaluate(() => __app.sound.volume("music", 0));
   expect(await page.evaluate(() => __app.sound.track.paused)).toBe(true);
   await page.evaluate(() => __app.sound.volume("music", 0.6));

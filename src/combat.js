@@ -7,6 +7,7 @@ import {
   checkWarChasms,
 } from "./war.js";
 import { updateRespawnCamera } from "./camera.js";
+import { contactSound } from "./combat-sfx.js";
 import { createBattleMap, MATCH_MAP_IDS } from "./battle-maps.js";
 import { createCorruptionMap } from "./corruption-map.js";
 import {
@@ -352,6 +353,7 @@ export class Combat {
   } = {}) {
     this.random = random;
     this.time = 0;
+    this.audioEvents = [];
     this.countdown =
       countdown && !["duel", "fused", "fused3", "team"].includes(mode) ? 4 : 0;
     this.mode = mode;
@@ -827,6 +829,7 @@ export class Combat {
             (hasPassive(a, "invincible") ? 2 : a.element === "light" ? 0.9 : 1),
       );
       this.cue("shatter", a, "#c4af79");
+      this.emitSound("impact", a);
       return true;
     }
     if (!this.aiGesture(a, "strike")) return false;
@@ -840,7 +843,22 @@ export class Combat {
       at: this.time + 0.11,
       aim: aim ? { ...aim } : null,
     });
+    this.emitSound("swing", a);
     return true;
+  }
+  emitSound(kind, subject) {
+    this.audioEvents.push({
+      kind,
+      x: subject.x,
+      y: subject.y,
+      team: subject.team,
+      neutral: subject.neutral,
+    });
+    if (this.audioEvents.length > 64) this.audioEvents.shift();
+  }
+  dropToken(token) {
+    this.tokens.push(token);
+    this.emitSound("token", token);
   }
   startCharge(a, form = activeForm(a)) {
     if (this.intermission || this.waveTravel || this.countingDown) return false;
@@ -1013,7 +1031,7 @@ export class Combat {
       }
       this.cue("lost", { x: a.x, y: a.y }, "#cbb4e7");
     } else if (!a.echo && this.fusionEnabled) {
-      this.tokens.push({
+      this.dropToken({
         x: a.x,
         y: a.y,
         parts: [...a.parts],
@@ -1065,6 +1083,16 @@ export class Combat {
       reflectable = false;
     }
     if (!reflected) hit *= a.waveDamage || 1;
+    // Same-element strikes already receive 50% resistance via multiplier().
+    // Reflected lightning skips that matchup calculation, so apply the
+    // receiving Lightning elemental's resistance once here as well.
+    if (
+      reflected &&
+      ability &&
+      sourceElement === "lightning" &&
+      b.element === "lightning"
+    )
+      hit *= 0.5;
     if (
       ability &&
       reflectable &&
@@ -1178,6 +1206,10 @@ export class Combat {
           (!this.map || this.map.lineClear(a, q.who)),
       );
       if (clash) {
+        this.emitSound("clash", {
+          x: (a.x + clash.who.x) / 2,
+          y: (a.y + clash.who.y) / 2,
+        });
         if (this.mode === "corruption") {
           // Both simultaneous hits land. Apply the Light hit before conversion
           // changes the health cap, even if that hit fells the Dark attacker.
@@ -1204,8 +1236,10 @@ export class Combat {
         }
       } else
         for (const b of this.fighters)
-          if (canHit(a, b) && (!this.map || this.map.lineClear(a, b)))
-            this.meleeDamage(a, b, 14);
+          if (canHit(a, b) && (!this.map || this.map.lineClear(a, b))) {
+            const hit = this.meleeDamage(a, b, 14);
+            if (hit > 0) this.emitSound(contactSound(a.element), b);
+          }
       remove.add(p.id);
     }
     this.pending = this.pending.filter((p) => !remove.has(p.id));

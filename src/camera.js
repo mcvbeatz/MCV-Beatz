@@ -70,7 +70,8 @@ export function cameraView(
 // Camera-only movement: never move a corpse, token, flag or respawn location.
 export function updateRespawnCamera(game, dt, input) {
   const a = game.player;
-  if (game.finished || a.alive || a.ghost || !(a.respawnAt > game.time)) {
+  const canSpectate = a.respawnAt > game.time || game.mode === "boss";
+  if (game.finished || a.alive || a.ghost || !canSpectate) {
     game.spectatorFocus = null;
     return;
   }
