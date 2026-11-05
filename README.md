@@ -1,4 +1,12 @@
-# Elemental — The Colosseum · v0.33.0
+# Elemental — The Colosseum · v0.34.0
+
+## v0.34.0 The Drowned Vault
+
+- Dungeon joins Solo Battles: explore six flooded stone chambers and connecting bridges, with animated alligator, snake and wolf monsters. Defeated monsters leave 32-HP pickups collected on contact.
+- Defeat Water to open the upper wing, then Apparition to obtain the vault key. Each mini-boss pauses the action for a compatible elemental-token choice; collect the selected token to fuse. Find the locked vault and defeat Terraformer to win. There is no time limit; being felled ends the run.
+- Sealed wings block movement, teleport destinations and damage until unlocked. Enemies roam locally and pursue nearby players without abandoning their area. The minimap points toward the next objective.
+- Multi-Dimensional's ability poses retain its original hood, scarf, tunic and trousers. Felled Team Waves players can pan with the move stick; the camera returns to their elemental on revival.
+- Account schema accepts Dungeon results when account services are configured.
 
 ## v0.33.0 Combat audio and character polish
 

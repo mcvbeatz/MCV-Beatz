@@ -1,3 +1,4 @@
+import { drawDungeon } from "./dungeon-render.js";
 import { drawTempleTraps } from "./temple-map-render.js";
 import { drawSkykeepChasms } from "./skykeep-map-render.js";
 import { drawWaveGuidance } from "./wave-map-render.js";
@@ -44,6 +45,10 @@ const BODY_BUFFER = 224,
   BODY_CENTER = 112,
   BODY_BASELINE = 180;
 export function fighterColor(a) {
+  if (a.monsterKind)
+    return { alligator: "#609e8a", snake: "#8a6bbe", wolf: "#9caeba" }[
+      a.monsterKind
+    ];
   if (["earth", "water", "light"].every((p) => a.parts.includes(p)))
     return "#66c989";
   if (["fire", "air", "light"].every((p) => a.parts.includes(p)))
@@ -673,10 +678,13 @@ export class Renderer {
       if (this.mazeSource !== game.map) {
         this.mazeSource = game.map;
         this.mazeBackground = document.createElement("canvas");
-        this.mazeBackground.width = game.map.width * 2;
-        this.mazeBackground.height = game.map.height * 2;
+        const backgroundScale = game.map.kind === "dungeon" ? 1.25 : 2;
+        this.mazeBackground.width = Math.ceil(game.map.width * backgroundScale);
+        this.mazeBackground.height = Math.ceil(
+          game.map.height * backgroundScale,
+        );
         const backgroundContext = this.mazeBackground.getContext("2d");
-        backgroundContext.scale(2, 2);
+        backgroundContext.scale(backgroundScale, backgroundScale);
         (game.map.kind === "corruption" ? paintCorruptionMap : paintBattleMap)(
           backgroundContext,
           game.map,
@@ -689,6 +697,7 @@ export class Renderer {
     drawWaveGuidance(c, game, t);
     drawTerrain(c, game, t);
     if (game.map?.kind === "skykeep") drawSkykeepChasms(c, game.map);
+    drawDungeon(c, game, t);
     drawWarSupplies(c, game, t);
     drawTempleTraps(c, game);
     for (const flag of game.flags) {

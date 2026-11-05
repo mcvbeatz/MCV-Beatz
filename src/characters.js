@@ -1,3 +1,5 @@
+import { drawDungeonMonster, monstersReady } from "./dungeon-monsters.js";
+import dimensionalCast from "./assets/cast-multi-dimensional.json" with { type: "json" };
 import phoenixFlight from "./assets/flight-phoenix.json" with { type: "json" };
 import sanctuaryRun from "./assets/run-repair-sanctuary.json" with { type: "json" };
 import mirrorCore from "./assets/mirror-core.json" with { type: "json" };
@@ -353,6 +355,12 @@ const casts = [
     new URL("./assets/cast-special.webp", import.meta.url).href,
   ),
 ];
+casts.push(
+  loadAtlas(
+    dimensionalCast,
+    new URL("./assets/cast-multi-dimensional.webp", import.meta.url).href,
+  ),
+);
 const castsByElement = Object.fromEntries(
   casts.flatMap((atlas) => Object.keys(atlas.spec).map((e) => [e, atlas])),
 );
@@ -388,7 +396,9 @@ export const charactersReady = Promise.all(
     ...runs,
     ...actions,
     ...hurts,
-  ].map((a) => a.ready),
+  ]
+    .map((a) => a.ready)
+    .concat(monstersReady),
 ).then((loaded) => loaded.every(Boolean));
 
 export function isRunning(a) {
@@ -659,6 +669,7 @@ export function drawCharacter(c, a, time) {
   }
 }
 function drawCharacterSprite(c, a, time) {
+  if (a.monsterKind) return drawDungeonMonster(c, a, time);
   if (a.victory && coreAtlases[a.element]?.loaded)
     return paintFrame(
       c,
@@ -847,6 +858,7 @@ export function drawFallenCharacter(c, death, color = "#e1d8b5") {
   c.save();
   c.translate(pose.x, pose.y);
   const drawn =
+    (a.monsterKind && drawDungeonMonster(c, a, 0)) ||
     paintFrame(c, a.element, facing, side && a.fx < 0, 64, "hurt") ||
     paintFrame(c, a.element, facing, side && a.fx < 0, 64);
   c.restore();
@@ -895,6 +907,7 @@ function drawTerrainDeath(c, death, pose) {
   const side = Math.abs(a.fx) > Math.abs(a.fy),
     facing = side ? 1 : a.fy < 0 ? 2 : 0;
   const drawn =
+    (a.monsterKind && drawDungeonMonster(c, a, 0)) ||
     paintFrame(c, a.element, facing, side && a.fx < 0, 64, "hurt") ||
     paintFrame(c, a.element, facing, side && a.fx < 0, 64);
   c.restore();
@@ -950,6 +963,7 @@ export function portraitMarkup(element, view = 0) {
 }
 
 export function drawCharacterStrike(c, a) {
+  if (a.monsterKind) return true;
   if (!CHARACTERS.includes(a.element)) return false;
   if (a.clash > 0) return true;
   const style = weaponStyle(a.element);

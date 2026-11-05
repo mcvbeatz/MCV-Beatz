@@ -369,6 +369,7 @@ export function advancedEnd(g) {
   if (g.finalWave)
     return g.finish(0, `Final boss defeated · ${g.wave} waves cleared`);
   g.intermission = true;
+  g.spectatorFocus = null;
   g.rewardRemaining = 7;
   g.rewardSelection = null;
   for (const a of team) {

@@ -1,4 +1,28 @@
 export const MODES = {
+  dungeon: {
+    name: "Dungeon",
+    tag: "Solo exploration · Three bosses",
+    slides: [
+      [
+        "Enter the Drowned Vault",
+        "Choose an origin and explore flooded stone chambers. Alligator, snake and wolf monsters roam the passages. Defeated monsters leave healing drops; touch one to restore 32 HP.",
+        "♜",
+        "guides/dungeon.svg",
+      ],
+      [
+        "Break the tidal seal",
+        "Defeat the Water mini-boss to open the upper wing. Choose a compatible elemental token, then collect it where the boss fell. There is no time limit on your choice.",
+        "◇",
+        "guides/dungeon.svg",
+      ],
+      [
+        "Claim the key",
+        "Defeat Apparition for your second token choice and the vault key. Collect the key, approach the locked door, and defeat Terraformer inside. Your death ends the run.",
+        "⚿",
+        "guides/dungeon.svg",
+      ],
+    ],
+  },
   boss: {
     name: "Boss",
     tag: "1 vs 3–7",
@@ -331,7 +355,13 @@ export const TEAM_MODES = [
   "gauntlet-team",
   "ctf",
 ];
-export const SOLO_MODES = ["ffa", "roulette", "gauntlet", "corruption"];
+export const SOLO_MODES = [
+  "ffa",
+  "roulette",
+  "gauntlet",
+  "dungeon",
+  "corruption",
+];
 export const PLAY_MODES = [...TEAM_MODES, ...SOLO_MODES];
 export const PRACTICE_LIST = ["duel", "fused", "fused3", "team"];
 export const CONTROL_SLIDES = [

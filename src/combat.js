@@ -1,4 +1,14 @@
 import {
+  initializeDungeon,
+  dungeonActorAvailable,
+  dungeonFelled,
+  dungeonRewards,
+  chooseDungeonReward,
+  updateDungeon,
+  dungeonEnd,
+  dungeonAI,
+} from "./dungeon.js";
+import {
   initializeWar,
   updateWar,
   warRecoveryTarget,
@@ -385,17 +395,19 @@ export class Combat {
         mapId = "skykeep";
     }
     this.mapId =
-      mode === "corruption"
-        ? "corruption"
-        : isGauntlet(this)
-          ? "waves"
-          : (mapId ??
-            MATCH_MAP_IDS[
-              Math.min(
-                MATCH_MAP_IDS.length - 1,
-                Math.floor(random() * MATCH_MAP_IDS.length),
-              )
-            ]);
+      mode === "dungeon"
+        ? "dungeon"
+        : mode === "corruption"
+          ? "corruption"
+          : isGauntlet(this)
+            ? "waves"
+            : (mapId ??
+              MATCH_MAP_IDS[
+                Math.min(
+                  MATCH_MAP_IDS.length - 1,
+                  Math.floor(random() * MATCH_MAP_IDS.length),
+                )
+              ]);
     this.map =
       this.mapId === "corruption"
         ? createCorruptionMap()
@@ -408,7 +420,12 @@ export class Combat {
     this.deathUsed = new Set();
     this.rebirthUsed = new Set();
     this.springUsed = new Set();
-    this.friendlyFire = !["corruption", "boss", "domination"].includes(mode);
+    this.friendlyFire = ![
+      "corruption",
+      "boss",
+      "domination",
+      "dungeon",
+    ].includes(mode);
     this.fusionEnabled = !["ctf", "corruption", "boss", "roulette"].includes(
       mode,
     );
@@ -583,6 +600,7 @@ export class Combat {
       size,
       players,
     });
+    initializeDungeon(this, element);
   }
   placeMapFighters() {
     if (!this.map || this.map.kind === "corruption") return;
@@ -624,10 +642,12 @@ export class Combat {
     this.move(a, waypoint.x - a.x, waypoint.y - a.y, dt);
   }
   rewardChoices() {
-    return rewardChoices(this);
+    return this.mode === "dungeon" ? dungeonRewards(this) : rewardChoices(this);
   }
   chooseReward(id) {
-    return chooseReward(this, id);
+    return this.mode === "dungeon"
+      ? chooseDungeonReward(this, id)
+      : chooseReward(this, id);
   }
   cue(cue, subject, color = "#e9cc91") {
     this.effects.push({
@@ -815,7 +835,13 @@ export class Combat {
     this.autoLock(a);
   }
   strike(a, aim = null) {
-    if (this.intermission || this.waveTravel || this.countingDown) return false;
+    if (
+      this.dungeon?.reward ||
+      this.intermission ||
+      this.waveTravel ||
+      this.countingDown
+    )
+      return false;
     if (!a.alive || !inWorld(a) || a.attackCd > 0 || a.shield || a.stagger > 0)
       return false;
     if (a.prisonHp > 0) {
@@ -861,7 +887,13 @@ export class Combat {
     this.emitSound("token", token);
   }
   startCharge(a, form = activeForm(a)) {
-    if (this.intermission || this.waveTravel || this.countingDown) return false;
+    if (
+      this.dungeon?.reward ||
+      this.intermission ||
+      this.waveTravel ||
+      this.countingDown
+    )
+      return false;
     if (!canUseSkill(a, form, "ability") || a.charging) return false;
     if (
       !a.alive ||
@@ -1021,6 +1053,10 @@ export class Combat {
     a.vx = a.vy = 0;
     if (this.portals.placing === a.id) this.portals.placing = null;
     this.tokens = this.tokens.filter((t) => t.owner !== a.id);
+    if (this.mode === "dungeon") {
+      dungeonFelled(this, a);
+      return;
+    }
     if (lost) {
       for (const soul of a.absorbed || []) {
         const f = this.fighters.find((b) => b.id === soul.owner);
@@ -1057,6 +1093,7 @@ export class Combat {
   ) {
     if (
       !b.alive ||
+      !dungeonActorAvailable(this, b) ||
       !inWorld(b) ||
       (!ignoreFriendlyFire && !this.friendlyFire && a.team === b.team)
     )
@@ -1612,7 +1649,13 @@ export class Combat {
     return true;
   }
   utility(a, hold = true, form = activeForm(a)) {
-    if (hold && (this.intermission || this.waveTravel || this.countingDown))
+    if (
+      hold &&
+      (this.dungeon?.reward ||
+        this.intermission ||
+        this.waveTravel ||
+        this.countingDown)
+    )
       return false;
     if (hold && !canUseSkill(a, form, "utility")) return false;
     const shieldWasActive = !!a.shield;
@@ -1899,6 +1942,7 @@ export class Combat {
     return true;
   }
   touchTokens(a) {
+    if (this.mode === "dungeon" && a.id !== "player") return false;
     if (!this.fusionEnabled || !a.alive || !inWorld(a) || a.echo) return false;
     const token = this.tokens.find(
       (t) =>
@@ -1940,7 +1984,8 @@ export class Combat {
     return true;
   }
   teleport(a, x, y) {
-    if (a.prisonHp > 0 || this.countingDown) return false;
+    if (a.prisonHp > 0 || this.countingDown || this.dungeon?.reward)
+      return false;
     if (
       !a.alive ||
       !inWorld(a) ||
@@ -2436,6 +2481,7 @@ export class Combat {
     return true;
   }
   ai(a, dt) {
+    if (dungeonAI(this, a, dt)) return;
     if (a.prisonHp > 0) {
       a.aiControlled = true;
       this.strike(a);
@@ -3019,6 +3065,7 @@ export class Combat {
   update(dt, input = { x: 0, y: 0 }, runAI = true) {
     if (this.finished) return;
     this.advanceDeaths(dt);
+    if (this.dungeon?.reward) return;
     if (this.intermission) return advanceReward(this, dt);
     dt = Math.min(dt, 0.05);
     if (this.waveTravel) return advanceWaveTravel(this, dt, input, runAI);
@@ -3058,6 +3105,7 @@ export class Combat {
     this.portals.update();
     for (const a of this.fighters) {
       if (!a.alive && !a.ghost) continue;
+      if (!dungeonActorAvailable(this, a)) continue;
       if (this.portals.tick(a, dt, a.id === "player" ? input : undefined))
         continue;
       for (const key of [
@@ -3171,6 +3219,7 @@ export class Combat {
     this.updateFlags();
     this.updateDomination(dt);
     updateWar(this, dt);
+    updateDungeon(this);
     this.checkMatchEnd();
   }
   corruptionHit(source, target) {
@@ -3541,6 +3590,8 @@ export class Combat {
   }
   checkMatchEnd() {
     if (this.finished) return true;
+    const dungeon = dungeonEnd(this);
+    if (dungeon !== null) return dungeon;
     const advanced = advancedEnd(this);
     if (advanced !== null) return advanced;
     if (this.mode === "corruption") {

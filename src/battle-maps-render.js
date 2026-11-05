@@ -1,3 +1,4 @@
+import { paintDungeonMap } from "./dungeon-render.js";
 import { paintTempleMap } from "./temple-map-render.js";
 import { paintSkykeepMap } from "./skykeep-map-render.js";
 import { paintWaveMap } from "./wave-map-render.js";
@@ -19,6 +20,8 @@ export function floorPath(c, map) {
       c.moveTo(h.x + h.r, h.y);
       c.arc(h.x, h.y, h.r, 0, TAU, true);
     }
+  } else if (map.kind === "dungeon") {
+    for (const s of map.shapes) c.rect(s.x, s.y, s.w, s.h);
   } else if (map.kind === "waves") {
     c.moveTo(100, 175);
     for (let i = 0; i < 3; i++) {
@@ -110,6 +113,7 @@ function lamp(c, x, y, t = 0) {
   c.fillRect(x - 1, y - 7, 2, 13);
 }
 export function paintBattleMap(c, map) {
+  if (map.kind === "dungeon") return paintDungeonMap(c, map, floorPath);
   if (map.kind === "skykeep") return paintSkykeepMap(c, map, floorPath);
   if (map.kind === "temple") return paintTempleMap(c, map);
   if (map.kind === "waves") return paintWaveMap(c, map, floorPath);
@@ -388,6 +392,22 @@ export function drawBattleMinimap(c, game, width, height, portrait) {
         : "#bdc4dc";
   c.fill();
   c.restore();
+  if (game.mode === "dungeon") {
+    const target = game.dungeon.hasKey
+      ? { x: map.gates[1].x, y: map.gates[1].y + 85 }
+      : game.dungeon.key && !game.dungeon.key.collected
+        ? game.dungeon.key
+        : game.fighters.find(
+            (a) =>
+              a.dungeonRole &&
+              a.alive &&
+              (!a.dungeonSection || a.dungeonSection <= map.dungeonStage),
+          );
+    if (target) {
+      c.fillStyle = "#f7d67e";
+      c.fillRect(target.x * scale - 2, target.y * scale - 2, 4, 4);
+    }
+  }
   if (game.waveTravel) {
     c.strokeStyle = "#a6ffe0";
     c.beginPath();

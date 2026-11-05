@@ -1,3 +1,4 @@
+import { configureDungeonMap } from "./dungeon-map.js";
 // Shared floor geometry for rendering, placement, collision and AI navigation.
 const clamp = (n, a, b) => Math.max(a, Math.min(b, n));
 const distance = (a, b) => Math.hypot(a.x - b.x, a.y - b.y);
@@ -7,7 +8,14 @@ export function createBattleMap(
   id = BATTLE_MAP_IDS[Math.floor(Math.random() * 2)],
 ) {
   if (
-    ![...BATTLE_MAP_IDS, "volcano", "waves", "temple", "skykeep"].includes(id)
+    ![
+      ...BATTLE_MAP_IDS,
+      "volcano",
+      "waves",
+      "temple",
+      "skykeep",
+      "dungeon",
+    ].includes(id)
   )
     throw new Error(`Unknown battle map: ${id}`);
   const garden = id === "garden",
@@ -91,16 +99,19 @@ export function createBattleMap(
       );
     };
   }
+  if (id === "dungeon") configureDungeonMap(map);
   const floorShapes = () =>
-    map.activeRoom != null
-      ? [map.rooms[map.activeRoom]]
-      : map.travelRooms
-        ? map.shapes.filter(
-            (s) =>
-              s.x >= map.rooms[map.travelRooms[0]].x &&
-              s.x + s.w <= map.rooms[map.travelRooms[1]].x + 800,
-          )
-        : map.shapes;
+    id === "dungeon"
+      ? map.shapes.filter((s) => !s.section || s.section <= map.dungeonStage)
+      : map.activeRoom != null
+        ? [map.rooms[map.activeRoom]]
+        : map.travelRooms
+          ? map.shapes.filter(
+              (s) =>
+                s.x >= map.rooms[map.travelRooms[0]].x &&
+                s.x + s.w <= map.rooms[map.travelRooms[1]].x + 800,
+            )
+          : map.shapes;
   // A body must fit wholly inside a component. Components overlap generously,
   // so the seams are continuous while bodies cannot clip the re-entrant edges.
   map.walkable = (p, r = 13) =>
@@ -190,36 +201,54 @@ export function createBattleMap(
     return distance(start, a);
   };
   const nodes =
-    id === "waves"
-      ? [250, 750, 1400, 1900, 2550, 3050].map((x) => [x, 500])
-      : volcano || id === "temple" || id === "skykeep"
-        ? [[1024, 680]]
-        : garden
-          ? [
-              [735, 391],
-              [1313, 391],
-              [735, 969],
-              [1313, 969],
-              [1024, 680],
-            ]
-          : [
-              [760, 680],
-              [1240, 630],
-              [1240, 730],
-              [1490, 630],
-              [1490, 730],
-              [1680, 680],
-            ];
+    id === "dungeon"
+      ? map.navigation
+      : id === "waves"
+        ? [250, 750, 1400, 1900, 2550, 3050].map((x) => [x, 500])
+        : volcano || id === "temple" || id === "skykeep"
+          ? [[1024, 680]]
+          : garden
+            ? [
+                [735, 391],
+                [1313, 391],
+                [735, 969],
+                [1313, 969],
+                [1024, 680],
+              ]
+            : [
+                [760, 680],
+                [1240, 630],
+                [1240, 730],
+                [1490, 630],
+                [1490, 730],
+                [1680, 680],
+              ];
   map.nodes = nodes.map(([x, y]) => ({ x, y }));
   const initialRoom = map.activeRoom;
+  const initialStage = map.dungeonStage;
+  if (id === "dungeon") map.dungeonStage = 2;
   map.activeRoom = null;
   const edges = map.nodes.map((a) =>
     map.nodes.map((b) => (map.lineClear(a, b, 18) ? distance(a, b) : Infinity)),
   );
   map.activeRoom = initialRoom;
+  map.dungeonStage = initialStage;
+  let dungeonEdges, edgeStage;
   map.route = (from, to) => {
     const goal = map.nearest(to, 18);
     if (map.lineClear(from, goal)) return goal;
+    // Door changes invalidate the graph once, not on every enemy movement frame.
+    if (id === "dungeon" && edgeStage !== map.dungeonStage) {
+      edgeStage = map.dungeonStage;
+      dungeonEdges = map.nodes.map((a, i) =>
+        map.nodes.map((b, j) =>
+          Number.isFinite(edges[i][j]) && map.lineClear(a, b, 18)
+            ? edges[i][j]
+            : Infinity,
+        ),
+      );
+    }
+    const routeEdges = id === "dungeon" ? dungeonEdges : edges;
     const costs = map.nodes.map((n) =>
       map.lineClear(from, n) ? distance(from, n) : Infinity,
     );
@@ -239,7 +268,7 @@ export function createBattleMap(
         result = map.nodes[first[i]];
       }
       for (let j = 0; j < nodes.length; j++) {
-        const cost = costs[i] + edges[i][j];
+        const cost = costs[i] + routeEdges[i][j];
         if (cost < costs[j]) {
           costs[j] = cost;
           first[j] = first[i];
@@ -332,5 +361,6 @@ export function createBattleMap(
       y: 500 + (i - (count - 1) / 2) * 65,
     });
   }
+  if (id === "dungeon") map.teamSpawn = () => ({ ...map.entry });
   return map;
 }

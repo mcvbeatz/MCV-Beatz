@@ -119,7 +119,7 @@ export function createApp(api) {
     setScreen(next);
     const c = $("shell-content");
     if (next === "home")
-      c.innerHTML = `<section class="home-hero"><span class="eyebrow">THE COLOSSEUM · v0.33.0</span><h1>Power is elemental.</h1><p>Choose your arena. Find your next form.</p><div class="home-elements" aria-label="Light, Dark, Water, Air, Earth and Fire">${Object.keys(
+      c.innerHTML = `<section class="home-hero"><span class="eyebrow">THE COLOSSEUM · v0.34.0</span><h1>Power is elemental.</h1><p>Choose your arena. Find your next form.</p><div class="home-elements" aria-label="Light, Dark, Water, Air, Earth and Fire">${Object.keys(
         ELEMENTS,
       )
         .map(
@@ -565,13 +565,21 @@ export function createApp(api) {
       musicScene(screen, g),
       screen === "loading" || (screen === "battle" && api.paused()),
     );
-    if (g.intermission && screen === "battle") {
+    if ((g.intermission || g.dungeon?.reward) && screen === "battle") {
       reward.hidden = false;
-      if (lastReward !== g.wave) {
+      const rewardKey = g.dungeon?.reward?.boss || g.wave;
+      if (lastReward !== rewardKey) {
         api.releaseInput();
-        lastReward = g.wave;
-        $("wave-reward-caption").textContent =
-          `Wave ${g.wave} complete${g.player.parts.length >= 3 ? " · Final boss next" : ""}`;
+        lastReward = rewardKey;
+        reward.querySelector(".eyebrow").textContent = g.dungeon?.reward
+          ? "MINI-BOSS DEFEATED"
+          : "WAVE CLEARED";
+        reward.querySelector("h2").textContent = g.dungeon?.reward
+          ? "Choose your elemental token."
+          : "Choose your next advantage.";
+        $("wave-reward-caption").textContent = g.dungeon?.reward
+          ? `${nameOf(g.dungeon.reward.boss)} defeated · Choose a token`
+          : `Wave ${g.wave} complete${g.player.parts.length >= 3 ? " · Final boss next" : ""}`;
         $("reward-options").replaceChildren(
           ...g.rewardChoices().map((choice) => {
             const b = document.createElement("button");
@@ -590,7 +598,9 @@ export function createApp(api) {
       const selected = g
         .rewardChoices()
         .find((r) => r.id === g.rewardSelection);
-      const message = `${Math.ceil(g.rewardRemaining)}s · ${selected ? `${selected.title} selected — you can change it` : "Choose an advantage; the first option is automatic if you wait"}`;
+      const message = g.dungeon?.reward
+        ? "Choose your token, then collect it where the mini-boss fell."
+        : `${Math.ceil(g.rewardRemaining)}s · ${selected ? `${selected.title} selected — you can change it` : "Choose an advantage; the first option is automatic if you wait"}`;
       if ($("wave-reward-timer").textContent !== message)
         $("wave-reward-timer").textContent = message;
       for (const b of $("reward-options").children)
@@ -600,7 +610,7 @@ export function createApp(api) {
         );
     } else {
       reward.hidden = true;
-      if (!g.intermission) lastReward = null;
+      if (!g.intermission && !g.dungeon?.reward) lastReward = null;
     }
     if (g.finished && matchTicket && !matchTicket.saved && !statsBusy) {
       if (!matchTicket.userId || matchTicket.practice) {
