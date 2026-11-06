@@ -882,6 +882,16 @@ export class Combat {
     });
     if (this.audioEvents.length > 64) this.audioEvents.shift();
   }
+  restoreHealth(a, amount, continuous = false) {
+    if (!a.alive || amount <= 0 || a.hp >= a.maxHp) return 0;
+    const restored = Math.min(amount, a.maxHp - a.hp);
+    a.hp += restored;
+    if (!continuous || this.time >= (a.nextHealingSoundAt ?? -Infinity)) {
+      this.emitSound("heal", a);
+      a.nextHealingSoundAt = this.time + 2.6;
+    }
+    return restored;
+  }
   dropToken(token) {
     this.tokens.push(token);
     this.emitSound("token", token);
@@ -1349,6 +1359,7 @@ export class Combat {
       this.respawn(fallen);
       fallen.hp = Math.min(fallen.maxHp, 50 * power);
       this.cue("revive", fallen, "#bee9bf");
+      this.emitSound("revival", fallen);
       return true;
     }
     // A reclaimed soul cannot also remain inside a fused fighter. Detach it from
@@ -1388,6 +1399,7 @@ export class Combat {
     fallen.blind = fallen.venom = fallen.burn = 0;
     fallen.spawnFlash = 0.65;
     this.cue("revive", fallen, "#bee9bf");
+    this.emitSound("revival", fallen);
     return true;
   }
   // Borrow an ability's implementation and damage type without changing tabs.
@@ -1417,6 +1429,9 @@ export class Combat {
       return false;
     const used = this.executeSkill(a, form, () => this.castSkill(a, p));
     if (used && form !== "gravity") this.animateCast(a);
+    if (used && ["fire", "water", "air", "cloud", "smoke"].includes(form))
+      this.emitSound("fireball", a);
+    if (used && form === "lightning") this.emitSound("lightning", a);
     return used;
   }
   castSkill(a, p) {
@@ -1498,7 +1513,7 @@ export class Combat {
           : [this.healingTarget(a)].filter(Boolean);
       if (!recipients.length) return false;
       for (const recipient of recipients) {
-        recipient.hp = Math.min(recipient.maxHp, recipient.hp + 23 * p);
+        this.restoreHealth(recipient, 23 * p);
         this.effects.push({
           kind: "ring",
           x: recipient.x,
@@ -1721,6 +1736,7 @@ export class Combat {
       a.charging = false;
       a.shield = 1;
       a.shieldTime = 0;
+      this.emitSound("rock", a);
       return true;
     }
     if (a.utilityCd > 0 || (e === "demonic" && this.deathUsed.has(a.id)))
@@ -1749,8 +1765,10 @@ export class Combat {
         knockY: 0,
       });
       this.cue("shatter", target, "#b6ac85");
+      this.emitSound("rock", target);
     } else if (e === "fire") this.area(a, 1, "magma", 66, 15);
     else if (e === "light") {
+      this.emitSound("flash", a);
       for (const b of this.fighters)
         if (
           b.id !== a.id &&
@@ -1828,6 +1846,7 @@ export class Combat {
     }
     if (!this.aiGesture(a, "chasm")) return false;
     a.chasmReady = false;
+    this.emitSound("rock", { x, y, team: a.team });
     this.animateCast(a, x - a.x, y - a.y);
     a.reveal = 0.45;
     a.abilityCd = 8;
@@ -2951,7 +2970,7 @@ export class Combat {
       if (h.kind === "spring") {
         for (const b of this.fighters)
           if (b.alive && inWorld(b) && distance(h, b) <= h.r)
-            b.hp = Math.min(b.maxHp, b.hp + 8 * dt);
+            this.restoreHealth(b, 8 * dt, true);
         continue;
       }
       if (h.kind === "chasm") {

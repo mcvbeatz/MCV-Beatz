@@ -66,6 +66,7 @@ export class PortalSystem {
     };
     owner.reveal = 0.45;
     this.portals.push(p);
+    this.game.emitSound("flash", { x, y, team: owner.team });
     this.game.animateCast?.(owner, x - owner.x, y - owner.y);
     const pair = this.owned(owner);
     if (pair.length === 2 && this.placing === owner.id) this.placing = null;

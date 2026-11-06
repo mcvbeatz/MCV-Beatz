@@ -1,4 +1,9 @@
-# Elemental — The Colosseum · v0.34.0
+# Elemental — The Colosseum · v0.35.0
+
+## v0.35.0 Recorded ability sounds
+
+- The supplied Felled, Fireball, Flash, Heal, Lightning, Revival and Rock formation recordings now play for their requested token drops, abilities and healing pickups, including fused ability shortcuts.
+- Recordings preload into the existing sound-effects mixer with SFX volume, spatial attenuation, subtle variation and limited overlap. Failed actions and full-health healing do not trigger a recording; Sanctuary healing spaces its sound cues. Pausing or leaving combat stops effects. Dungeon key pickup keeps its separate chime.
 
 ## v0.34.0 The Drowned Vault
 

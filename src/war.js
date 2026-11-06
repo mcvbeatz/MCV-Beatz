@@ -82,7 +82,7 @@ export function updateWar(g, dt) {
         Math.hypot(a.x - drop.x, a.y - drop.y) <= 27,
     );
     if (recipient) {
-      recipient.hp = Math.min(recipient.maxHp, recipient.hp + WAR_HEAL);
+      g.restoreHealth(recipient, WAR_HEAL);
       g.cue("heal", recipient, "#c9ebbc");
       drop.consumed = true;
     }

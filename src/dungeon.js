@@ -160,7 +160,7 @@ export function updateDungeon(g) {
   g.healthDrops = g.healthDrops.filter((h) => {
     if (distance(p, h) > 30 || p.hp >= p.maxHp || !g.map.lineClear(p, h, 0))
       return true;
-    p.hp = Math.min(p.maxHp, p.hp + h.heal);
+    g.restoreHealth(p, h.heal);
     g.cue("heal", p, "#92f5c8");
     return false;
   });
@@ -173,7 +173,7 @@ export function updateDungeon(g) {
   ) {
     key.collected = true;
     g.dungeon.hasKey = true;
-    g.emitSound("token", p);
+    g.emitSound("key", p);
   }
   const gate = g.map.gates[1];
   if (

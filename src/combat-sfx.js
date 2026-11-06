@@ -1,4 +1,13 @@
-// Original synthesized effects: reusable short buffers, no network/audio files.
+// Short synthesized melee cues and preloaded recordings share the SFX mixer.
+export const RECORDED_SFX = {
+  token: new URL("./assets/sfx/felled.mp3", import.meta.url).href,
+  fireball: new URL("./assets/sfx/fireball.mp3", import.meta.url).href,
+  flash: new URL("./assets/sfx/flash.mp3", import.meta.url).href,
+  heal: new URL("./assets/sfx/heal.mp3", import.meta.url).href,
+  lightning: new URL("./assets/sfx/lightning.mp3", import.meta.url).href,
+  revival: new URL("./assets/sfx/revival.mp3", import.meta.url).href,
+  rock: new URL("./assets/sfx/rock-formation.mp3", import.meta.url).href,
+};
 export const SFX_KINDS = ["swing", "slice", "impact", "clash", "token"];
 const armed = new Set([
   "dark",
@@ -101,6 +110,25 @@ export class CombatSfx {
       buffer.copyToChannel(data, 0);
       this.buffers.set(kind, buffer);
     }
+    this.buffers.set("key", this.buffers.get("token"));
+    this.ready = this.loadRecordings();
+  }
+  async loadRecordings() {
+    const results = await Promise.allSettled(
+      Object.entries(RECORDED_SFX).map(async ([kind, url]) => {
+        const response = await fetch(url);
+        if (!response.ok)
+          throw new Error(`Sound effect ${kind}: ${response.status}`);
+        const buffer = await this.context.decodeAudioData(
+          await response.arrayBuffer(),
+        );
+        this.buffers.set(kind, buffer);
+      }),
+    );
+    this.loadErrors = results
+      .filter((r) => r.status === "rejected")
+      .map((r) => String(r.reason));
+    return this.loadErrors.length === 0;
   }
   volume(value) {
     this.gain.gain.setTargetAtTime(value, this.context.currentTime, 0.025);
@@ -113,24 +141,43 @@ export class CombatSfx {
     )
       return false;
     const now = this.context.currentTime,
-      interval = kind === "token" ? 0.12 : kind === "clash" ? 0.08 : 0.045;
+      interval =
+        kind === "heal"
+          ? 0.65
+          : RECORDED_SFX[kind]
+            ? 0.15
+            : kind === "clash"
+              ? 0.08
+              : 0.045;
     if (
       now - (this.last.get(kind) ?? -Infinity) < interval ||
-      this.voices.size >= 8 ||
+      (RECORDED_SFX[kind] &&
+        [...this.voices].filter((v) => v.sfxKind === kind).length >= 2) ||
       (kind === "swing" && this.voices.size >= 5)
     )
       return false;
+    if (this.voices.size >= 8) {
+      const replace =
+        RECORDED_SFX[kind] &&
+        [...this.voices].find((v) =>
+          ["swing", "slice", "impact"].includes(v.sfxKind),
+        );
+      if (!replace) return false;
+      replace.stop();
+      this.voices.delete(replace);
+    }
     this.last.set(kind, now);
     const source = this.context.createBufferSource(),
       level = this.context.createGain(),
       panner = this.context.createStereoPanner();
     source.buffer = this.buffers.get(kind);
+    source.sfxKind = kind;
     // Cycling offsets avoid identical rapid hits without touching gameplay RNG.
     const variation = [-0.035, 0.018, -0.012, 0.035, 0][this.serial++ % 5];
     source.playbackRate.value = 1 + variation;
     level.gain.value =
       Math.max(0, Math.min(1, gain)) *
-      (kind === "swing" ? 0.55 : 0.85) *
+      (RECORDED_SFX[kind] ? 0.55 : kind === "swing" ? 0.55 : 0.85) *
       (1 + variation);
     panner.pan.value = Math.max(-0.75, Math.min(0.75, pan));
     source.connect(level);
