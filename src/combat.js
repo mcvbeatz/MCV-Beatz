@@ -1,3 +1,4 @@
+import { PRISON_HOLD, PRISON_COLLAPSE } from "./stone-prison.js";
 import {
   initializeDungeon,
   dungeonActorAvailable,
@@ -2003,8 +2004,7 @@ export class Combat {
     return true;
   }
   teleport(a, x, y) {
-    if (a.prisonHp > 0 || this.countingDown || this.dungeon?.reward)
-      return false;
+    if (this.countingDown || this.dungeon?.reward) return false;
     if (
       !a.alive ||
       !inWorld(a) ||
@@ -2021,6 +2021,7 @@ export class Combat {
       x: a.x + (x - a.x) * scale,
       y: a.y + (y - a.y) * scale,
     };
+    if (a.prisonHp > 0 && distance(a, destination) < 48) return false;
     if (!this.walkablePoint(destination) || !this.aiGesture(a, "teleport"))
       return false;
     if (this.cancelSabotaged(a)) return false;
@@ -2047,6 +2048,11 @@ export class Combat {
     const old = { x: a.x, y: a.y },
       destination = a.blink;
     a.blink = null;
+    if (a.prisonHp > 0) {
+      a.prisonHp = 0;
+      const life = PRISON_HOLD + PRISON_COLLAPSE;
+      this.effects.push({ kind: "empty-prison", ...old, life, max: life });
+    }
     a.x = destination.x;
     a.y = destination.y;
     a.vx = a.vy = a.knockX = a.knockY = 0;
@@ -2500,6 +2506,19 @@ export class Combat {
     return true;
   }
   ai(a, dt) {
+    if (a.prisonHp > 0 && hasPassive(a, "multi-dimensional")) {
+      a.aiControlled = true;
+      if (a.blink) return;
+      for (let i = 0; i < 8; i++) {
+        const angle = Math.atan2(a.fy, a.fx) + (i * Math.PI) / 4;
+        const point = {
+          x: a.x + Math.cos(angle) * 160,
+          y: a.y + Math.sin(angle) * 160,
+        };
+        if (this.mobilitySafe(a, point) && this.teleport(a, point.x, point.y))
+          return;
+      }
+    }
     if (dungeonAI(this, a, dt)) return;
     if (a.prisonHp > 0) {
       a.aiControlled = true;

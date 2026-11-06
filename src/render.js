@@ -1,3 +1,4 @@
+import { drawStoneShell, drawEmptyPrison } from "./stone-prison.js";
 import { drawDungeon } from "./dungeon-render.js";
 import { drawTempleTraps } from "./temple-map-render.js";
 import { drawSkykeepChasms } from "./skykeep-map-render.js";
@@ -480,51 +481,7 @@ export class Renderer {
     drawReflectShield(c, a, time, true);
     if (a.shield || a.prisonHp > 0) {
       const rise = a.prisonHp > 0 ? 1 : Math.min(1, a.shieldTime / 0.16);
-      c.save();
-      c.translate(0, 9);
-      c.scale(1, rise);
-      c.fillStyle = "#3a4231";
-      c.beginPath();
-      c.ellipse(0, -5, 34, 13, 0, 0, Math.PI * 2);
-      c.fill();
-      const rocks = [
-        [-29, -37, 20, 43],
-        [-14, -70, 24, 73],
-        [5, -66, 23, 71],
-        [20, -34, 16, 39],
-        [-20, -19, 24, 28],
-        [1, -22, 24, 31],
-      ];
-      for (let i = 0; i < rocks.length; i++) {
-        const [x, y, w, h] = rocks[i];
-        c.fillStyle = [
-          "#8a8160",
-          "#a79e78",
-          "#8e926e",
-          "#706d50",
-          "#aaa27d",
-          "#8f8b65",
-        ][i];
-        c.strokeStyle = "#4d533b";
-        c.lineWidth = 2;
-        c.beginPath();
-        c.moveTo(x, y + 9);
-        c.lineTo(x + w * 0.3, y);
-        c.lineTo(x + w - 3, y + 3);
-        c.lineTo(x + w, y + h - 6);
-        c.lineTo(x + w * 0.65, y + h);
-        c.lineTo(x, y + h - 3);
-        c.closePath();
-        c.fill();
-        c.stroke();
-        c.strokeStyle = "#d4c69366";
-        c.beginPath();
-        c.moveTo(x + 3, y + 10);
-        c.lineTo(x + w * 0.35, y + 3);
-        c.lineTo(x + w - 5, y + 6);
-        c.stroke();
-      }
-      c.restore();
+      drawStoneShell(c, rise);
       c.fillStyle = "#24382b";
       c.fillRect(-29, 15, 58, 5);
       c.fillStyle = "#d4be8a";
@@ -988,6 +945,11 @@ export class Renderer {
       c.restore();
     }
     for (const e of game.effects) {
+      if (e.kind === "empty-prison") {
+        c.globalAlpha = 1;
+        drawEmptyPrison(c, e);
+        continue;
+      }
       c.globalAlpha = e.life / e.max;
       if (e.kind === "portal-close") {
         drawPortal(c, e, t, e.life / e.max, true);

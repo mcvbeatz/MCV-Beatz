@@ -176,8 +176,8 @@ test("Stone Prison chooses nearest enemy, stops movement and is broken by five o
   g.move(b, 1, 0, 0.1);
   assert.ok(b.x > 450);
 });
-test("Prison blocks dashes, teleport and portal transport, while AI including bosses attacks its cage", () => {
-  for (const form of ["blaze", "multi-dimensional", "invincible"]) {
+test("Prison blocks non-dimensional teleport, dashes and portal transport, while AI attacks its cage", () => {
+  for (const form of ["blaze", "invincible"]) {
     const g = arena("terraformer", form),
       b = g.fighters[1];
     g.utility(g.player);

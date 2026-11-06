@@ -178,6 +178,7 @@ export class CombatSfx {
     level.gain.value =
       Math.max(0, Math.min(1, gain)) *
       (RECORDED_SFX[kind] ? 0.55 : kind === "swing" ? 0.55 : 0.85) *
+      (kind === "heal" ? 0.5 : 1) *
       (1 + variation);
     panner.pan.value = Math.max(-0.75, Math.min(0.75, pan));
     source.connect(level);

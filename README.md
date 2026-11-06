@@ -1,4 +1,9 @@
-# Elemental — The Colosseum · v0.35.0
+# Elemental — The Colosseum · v0.36.0
+
+## v0.36.0 Prison escape and audio balance
+
+- Multi-Dimensional can teleport outside Stone Prison, retaining its normal 200ms wind-up and cancellation rules. The cage clears only on successful arrival. Its empty shell stays at the departure point for two seconds, then collapses into fading rubble and dust over 650ms. AI can use the same escape.
+- Heal plays at half its previous effect level. A Win is a Win plays at 75% of its previous track level while retaining the user's music slider setting and looping behavior.
 
 ## v0.35.0 Recorded ability sounds
 

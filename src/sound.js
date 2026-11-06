@@ -112,8 +112,12 @@ export class Soundtrack {
     }
     if (this.context && this.music && !this.trackSource) {
       this.trackSource = this.context.createMediaElementSource(this.track);
-      this.trackSource.connect(this.music);
+      this.trackGain = this.context.createGain();
+      this.trackSource.connect(this.trackGain);
+      this.trackGain.connect(this.music);
     }
+    if (this.trackGain)
+      this.trackGain.gain.value = id === "a-win-is-a-win" ? 0.75 : 1;
   }
   prepareMenu() {
     if (!this.context || this.menuBuffer || this.menuLoading) return;
