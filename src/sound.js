@@ -118,7 +118,11 @@ export class Soundtrack {
     }
     if (this.trackGain)
       this.trackGain.gain.value =
-        id === "a-win-is-a-win" ? 0.75 * 0.85 : id === "dont-let-up" ? 0.9 : 1;
+        id === "a-win-is-a-win"
+          ? 0.75 * 0.85 * 0.9
+          : id === "dont-let-up"
+            ? 0.9
+            : 1;
   }
   prepareMenu() {
     if (!this.context || this.menuBuffer || this.menuLoading) return;

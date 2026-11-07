@@ -1,4 +1,10 @@
-# Elemental — The Colosseum · v0.38.0
+# Elemental — The Colosseum · v0.39.0
+
+## v0.39.0 Multi-Dimensional teleport steps
+
+- Added twelve dedicated teleport sprites: two entry and two exit steps for front, side and rear movement, with mirrored left-facing steps. The poses retain Multi-Dimensional's ivory hood, purple scarf and gold-trimmed outfit, and play inside a softly glowing dimensional opening.
+- Entry follows the existing 200ms teleport preparation; arrival plays for 280ms without locking movement or adding invulnerability. Cancelled teleports, deaths and results clear the animation; repeated teleports immediately begin the next entry.
+- A Win is a Win is another 10% quieter than v0.38.0 (57.375% of the original track gain). The player's music slider and other track levels are unchanged.
 
 ## v0.38.0 Combat sound timing
 

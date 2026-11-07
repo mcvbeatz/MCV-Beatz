@@ -85,8 +85,8 @@ test("Heal is half the recorded effect level and victory and War use their reduc
   expect(result).toMatchObject({
     war: expect.closeTo(0.9, 6),
     volcano: 1,
-    win: expect.closeTo(0.75 * 0.85, 6),
-    adjusted: expect.closeTo(0.75 * 0.85, 6),
+    win: expect.closeTo(0.75 * 0.85 * 0.9, 6),
+    adjusted: expect.closeTo(0.75 * 0.85 * 0.9, 6),
     setting: 0.8,
     loss: 1,
     battle: 1,

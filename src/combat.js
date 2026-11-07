@@ -1,3 +1,4 @@
+import { TELEPORT_ARRIVAL_TIME } from "./teleport-animation.js";
 import { PRISON_HOLD, PRISON_COLLAPSE } from "./stone-prison.js";
 import {
   initializeDungeon,
@@ -333,6 +334,9 @@ export function makeFighter(id, element, team, x, y) {
     hitDx: 0,
     hitDy: 0,
     blink: null,
+    teleportArrival: 0,
+    teleportFx: 0,
+    teleportFy: 1,
     movingTime: 0,
     gaitDistance: null,
     burn: 0,
@@ -1050,6 +1054,7 @@ export class Combat {
     a.hp = 0;
     a.clash = a.reflect = a.hitReact = a.castTime = 0;
     a.blink = null;
+    a.teleportArrival = 0;
     a.burst = 0;
     a.movingTime = 0;
     a.alive = false;
@@ -2032,6 +2037,7 @@ export class Combat {
     if (!this.walkablePoint(destination) || !this.aiGesture(a, "teleport"))
       return false;
     if (this.cancelSabotaged(a)) return false;
+    a.teleportArrival = 0;
     a.blink = {
       ...destination,
       remaining: 0.2,
@@ -2060,6 +2066,11 @@ export class Combat {
       const life = PRISON_HOLD + PRISON_COLLAPSE;
       this.effects.push({ kind: "empty-prison", ...old, life, max: life });
     }
+    const travel =
+      Math.hypot(destination.x - old.x, destination.y - old.y) || 1;
+    a.teleportFx = (destination.x - old.x) / travel;
+    a.teleportFy = (destination.y - old.y) / travel;
+    a.teleportArrival = TELEPORT_ARRIVAL_TIME;
     a.x = destination.x;
     a.y = destination.y;
     this.emitSound("flash", a);
@@ -3175,6 +3186,7 @@ export class Combat {
         "hurtReveal",
         "hitReact",
         "castTime",
+        "teleportArrival",
       ])
         a[key] = Math.max(0, a[key] - dt);
       if (a.life !== undefined && (a.life -= dt) <= 0) {
@@ -3602,6 +3614,8 @@ export class Combat {
     for (const a of this.fighters) {
       a.victory = a.alive && !a.echo && ids.includes(a.id);
       a.charging = false;
+      a.teleportArrival = 0;
+      a.blink = null;
       a.swing = a.clash = a.hitReact = a.castTime = a.burst = a.shield = 0;
       a.vx = a.vy = 0;
       if (a.victory) {

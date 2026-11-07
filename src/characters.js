@@ -1,3 +1,5 @@
+import teleportSprites from "./assets/teleport-multi-dimensional.json" with { type: "json" };
+import { teleportPose, drawTeleportOpening } from "./teleport-animation.js";
 import { drawDungeonMonster, monstersReady } from "./dungeon-monsters.js";
 import dimensionalCast from "./assets/cast-multi-dimensional.json" with { type: "json" };
 import phoenixFlight from "./assets/flight-phoenix.json" with { type: "json" };
@@ -115,6 +117,10 @@ function loadAtlas(spec, url) {
   });
   return atlas;
 }
+const teleportAtlas = loadAtlas(
+  teleportSprites,
+  new URL("./assets/teleport-multi-dimensional.webp", import.meta.url).href,
+);
 const victory = loadAtlas(
   victoryFrames,
   new URL("./assets/victory.png", import.meta.url).href,
@@ -383,6 +389,7 @@ const runByElement = Object.fromEntries(
 export const charactersReady = Promise.all(
   [
     victory,
+    teleportAtlas,
     mudAtlas,
     mirrorAtlas,
     divineBodyAtlas,
@@ -530,29 +537,31 @@ function paintFrame(
   flash = 0,
 ) {
   let atlas =
-    running === "outline"
-      ? divineBodyAtlas
-      : running === "dash"
-        ? dashAtlas
-        : running === "repair"
-          ? repairsByElement[element]
-          : running === "flight"
-            ? flightsByElement[element]
-            : running === "cast"
-              ? castsByElement[element]
-              : running === "contact"
-                ? contactByElement[element]
-                : running === "inbetween"
-                  ? inbetweenByElement[element]
-                  : running === "step"
-                    ? actionByElement[element]
-                    : running === "hurt"
-                      ? element === "mud"
-                        ? null
-                        : hurtByElement[element]
-                      : running
-                        ? runByElement[element]
-                        : byElement[element];
+    running === "teleport"
+      ? teleportAtlas
+      : running === "outline"
+        ? divineBodyAtlas
+        : running === "dash"
+          ? dashAtlas
+          : running === "repair"
+            ? repairsByElement[element]
+            : running === "flight"
+              ? flightsByElement[element]
+              : running === "cast"
+                ? castsByElement[element]
+                : running === "contact"
+                  ? contactByElement[element]
+                  : running === "inbetween"
+                    ? inbetweenByElement[element]
+                    : running === "step"
+                      ? actionByElement[element]
+                      : running === "hurt"
+                        ? element === "mud"
+                          ? null
+                          : hurtByElement[element]
+                        : running
+                          ? runByElement[element]
+                          : byElement[element];
   if (coreAtlases[element]?.loaded && running !== "repair") {
     atlas = coreAtlases[element];
     const facing =
@@ -714,6 +723,22 @@ function drawCharacterSprite(c, a, time) {
       f.w * scale,
       f.h * scale,
     );
+    return true;
+  }
+  const teleport = teleportPose(a);
+  if (teleport && teleportAtlas.loaded) {
+    c.save();
+    drawTeleportOpening(c, teleport);
+    c.save();
+    const step = teleport.entering ? teleport.progress : teleport.progress - 1;
+    c.translate(teleport.fx * step * 6, teleport.fy * step * 3);
+    c.globalAlpha *= teleport.entering
+      ? 1 - 0.55 * teleport.progress
+      : 0.45 + 0.55 * teleport.progress;
+    paintFrame(c, a.element, teleport.frame, teleport.flip, 64, "teleport");
+    c.restore();
+    drawTeleportOpening(c, teleport, true);
+    c.restore();
     return true;
   }
   if (!byElement[a.element]?.loaded) return false;
