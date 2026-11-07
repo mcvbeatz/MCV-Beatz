@@ -424,7 +424,7 @@ export const SKILL_HELP = {
   Chasm:
     "Tap an arena spot within 400 units. A visible crack opens for one second, then becomes a lethal 56-radius tear for eight seconds. Flyers are safe. Eight-second cooldown; no charge.",
   "Stone Prison":
-    "Tap to cage the closest visible enemy within 245 units in 65 HP of rock. They cannot move, dash or enter portals. Strike to break free; Multi-Dimensional can teleport outside. An escaped cage waits two seconds, then crumbles away. Seven-second cooldown.",
+    "Tap to cage the closest visible enemy within 245 units in 65 HP of rock. They cannot move or enter portals. Strike or use Speed burst to break free; Multi-Dimensional can teleport outside. An escaped cage waits two seconds, then crumbles away. Seven-second cooldown.",
   "Life spring":
     "Tap once per match to place a permanent bright spring at your feet. Any living fighter inside its 85-radius circle regenerates 8 HP per second. It remains after you fall.",
   Healing:
@@ -459,7 +459,7 @@ export const SKILL_HELP = {
     "Charge and release a fast piercing beam in your facing direction.",
   Heatwave: "Tap to create an area that hurts susceptible fighters over time.",
   "Speed burst":
-    "Tap to dash with a flame trail. Collisions deal damage. No cooldown once the dash ends.",
+    "Tap to dash with a flame trail. Collisions deal damage. While trapped, each burst deals 22 damage to Stone Prison; breaking it lets you dash out. No cooldown once the dash ends.",
   Tornado:
     "Charge and release a moving wind funnel. Flying fighters take 15% more damage.",
   Flood:

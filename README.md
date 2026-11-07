@@ -1,4 +1,10 @@
-# Elemental — The Colosseum · v0.39.0
+# Elemental — The Colosseum · v0.40.0
+
+## v0.40.0 Speed burst versus Stone Prison
+
+- Trapped Blaze, Phoenix and Demonic elementals can use Speed burst to deal its normal 22-point impact damage to their cage. Three bursts break a fresh 65-HP prison; the breaking burst carries the elemental out.
+- An intact cage still prevents movement and burst collision damage to nearby fighters. A burst keeps its 300ms duration, so repeated taps during the same burst cannot repeatedly damage the cage. Shock and Sabotage still block activation.
+- Cage impacts show stone fragments and play impact plus burst sounds. AI can use the same escape; the prison hint and ability guide explain it.
 
 ## v0.39.0 Multi-Dimensional teleport steps
 

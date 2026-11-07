@@ -176,14 +176,17 @@ test("Stone Prison chooses nearest enemy, stops movement and is broken by five o
   g.move(b, 1, 0, 0.1);
   assert.ok(b.x > 450);
 });
-test("Prison blocks non-dimensional teleport, dashes and portal transport, while AI attacks its cage", () => {
+test("Prison blocks non-dimensional teleport and portal transport while bursts and AI can break its cage", () => {
   for (const form of ["blaze", "invincible"]) {
     const g = arena("terraformer", form),
       b = g.fighters[1];
     g.utility(g.player);
     b.aiControlled = true;
     assert.equal(g.teleport(b, 600, 350), false);
-    if (form === "blaze") assert.equal(g.utility(b), false);
+    if (form === "blaze") {
+      assert.ok(g.utility(b));
+      assert.equal(b.prisonHp, 43);
+    }
     g.portals.portals = [
       { id: "p", x: 450, y: 350, r: 24, opensAt: 0, owner: "player" },
     ];
@@ -191,6 +194,7 @@ test("Prison blocks non-dimensional teleport, dashes and portal transport, while
     g.mode = "boss";
     for (let i = 0; i < 6; i++) {
       b.attackCd = 0;
+      g.updateBurst(b, { x: b.x, y: b.y }, 0.3);
       g.ai(b, 0.1);
     }
     assert.equal(b.prisonHp, 0);

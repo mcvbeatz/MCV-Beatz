@@ -193,6 +193,7 @@ export const FLASH_RADIUS = VOG_RADIUS * 0.85;
 export const FLOOD_WATER_SPEED = 1.25;
 export const quicksandImmune = (a) => a.parts.includes("earth");
 export const BURST_HIT_RANGE = 28 * 1.3;
+export const BURST_DAMAGE = 22;
 export const CHASM_RADIUS = 56;
 export const CHASM_RANGE = 400;
 export const TELEKINESIS_RANGE = 400;
@@ -765,8 +766,11 @@ export class Combat {
   move(a, dx, dy, dt) {
     if (this.countingDown || (!a.alive && !a.ghost) || !inWorld(a)) return;
     if (a.blink && Math.hypot(a.knockX, a.knockY) > 1) a.blink = null;
-    if (a.prisonHp > 0 || a.blink || this.isShocked(a)) {
-      a.vx = a.vy = a.knockX = a.knockY = a.burst = a.movingTime = 0;
+    const shocked = this.isShocked(a);
+    if (a.prisonHp > 0 || a.blink || shocked) {
+      a.vx = a.vy = a.knockX = a.knockY = a.movingTime = 0;
+      // A trapped burst keeps its animation and action duration, but cannot move.
+      if (a.blink || shocked) a.burst = 0;
       a.gaitDistance = 0;
       return;
     }
@@ -1724,7 +1728,7 @@ export class Combat {
       return false;
     }
     if (e === "blaze") {
-      if (a.prisonHp > 0 || this.isShocked(a)) return false;
+      if (this.isShocked(a)) return false;
       // An active dash finishes before the next one begins; there is no recharge.
       if (a.burst > 0) return true;
       if (!this.aiGesture(a, "utility:blaze")) return false;
@@ -1733,6 +1737,11 @@ export class Combat {
       a.burstY = speed > 15 ? a.vy / speed : a.fy;
       a.burst = 0.3;
       a.burstHits = new Set();
+      if (a.prisonHp > 0) {
+        a.prisonHp = Math.max(0, a.prisonHp - BURST_DAMAGE);
+        this.cue("shatter", a, "#e3bf78");
+        this.emitSound("impact", a);
+      }
       this.emitSound("fireball", a);
       a.reveal = 0.45;
       return true;
@@ -2538,6 +2547,10 @@ export class Combat {
           return;
       }
     }
+    if (a.prisonHp > 0 && canUseSkill(a, "blaze", "utility")) {
+      a.aiControlled = true;
+      if (this.utility(a, true, "blaze")) return;
+    }
     if (dungeonAI(this, a, dt)) return;
     if (a.prisonHp > 0) {
       a.aiControlled = true;
@@ -2862,6 +2875,10 @@ export class Combat {
   }
   updateBurst(a, old, dt) {
     if (a.burst <= 0 || !a.alive) return;
+    if (a.prisonHp > 0) {
+      a.burst = Math.max(0, a.burst - dt);
+      return; // No trail or collision damage through an intact cage.
+    }
     const steps = Math.max(1, Math.ceil(distance(old, a) / 9));
     for (let i = 0; i < steps; i++)
       this.effects.push({
@@ -2882,7 +2899,7 @@ export class Combat {
       )
         continue;
       a.burstHits.add(b.id);
-      this.damage(a, b, 22, true, false, "blaze", false);
+      this.damage(a, b, BURST_DAMAGE, true, false, "blaze", false);
       if (!a.alive) break;
     }
     a.burst = Math.max(0, a.burst - dt);
