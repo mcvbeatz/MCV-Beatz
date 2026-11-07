@@ -117,7 +117,8 @@ export class Soundtrack {
       this.trackGain.connect(this.music);
     }
     if (this.trackGain)
-      this.trackGain.gain.value = id === "a-win-is-a-win" ? 0.75 : 1;
+      this.trackGain.gain.value =
+        id === "a-win-is-a-win" ? 0.75 * 0.85 : id === "dont-let-up" ? 0.9 : 1;
   }
   prepareMenu() {
     if (!this.context || this.menuBuffer || this.menuLoading) return;
@@ -173,7 +174,7 @@ export class Soundtrack {
       this.paused ||
       document.hidden ||
       !this.settings.sfx ||
-      this.scene === "menu"
+      ["menu", "victory", "defeat", "draw"].includes(this.scene)
     )
       this.sfx?.stop();
     if (!this.context || !this.music) return;
@@ -226,7 +227,7 @@ export class Soundtrack {
   }
   combat(game, active) {
     const events = game.audioEvents?.splice(0) || [];
-    if (!active || document.hidden || !this.settings.sfx) {
+    if (!active || game.finished || document.hidden || !this.settings.sfx) {
       this.sfx?.stop();
       return;
     }

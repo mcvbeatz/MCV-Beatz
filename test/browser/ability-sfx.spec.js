@@ -43,7 +43,7 @@ test("all uploaded effects decode and play through the SFX mixer", async ({
     expect(clip.played).toBe(true);
     expect(clip.correct).toBe(true);
     expect(clip.duration).toBeGreaterThan(1);
-    expect(clip.duration).toBeLessThan(12);
+    expect(clip.duration).toBeLessThan(clip.kind === "laser" ? 1.5 : 12);
   }
   expect(result.duplicate).toBe(false);
   expect(result.count).toBe(1);
@@ -87,4 +87,49 @@ test("live ability events reach the recorded mixer and pause clears playing effe
   ]);
   expect(result.played[0].duration).toBeGreaterThan(2);
   expect(result.stopped).toBe(0);
+});
+
+test("deciding a winner stops active battle effects and drains pending sounds during celebration", async ({
+  page,
+}) => {
+  await page.addInitScript(() =>
+    localStorage.setItem(
+      "elemental-settings",
+      JSON.stringify({ music: 0.2, sfx: 0.6, orientation: "landscape" }),
+    ),
+  );
+  await page.goto("/");
+  await page.waitForFunction(() => window.__app?.screen === "home");
+  await page.evaluate(() => __app.chooseMode("tdm"));
+  await page.locator("#begin-btn").click();
+  const result = await page.evaluate(async () => {
+    const s = __app.sound;
+    await s.sfx.ready;
+    const g = __arena.game;
+    g.ai = () => {};
+    g.update = () => {};
+    g.audioEvents = [];
+    s.sfx.stop();
+    s.sfx.play("gravity");
+    const before = s.sfx.voices.size;
+    g.emitSound("laser", g.player);
+    g.finish(g.player.team, "Team wins");
+    s.combat(g, true);
+    const after = s.sfx.voices.size;
+    g.emitSound("flash", g.player);
+    s.combat(g, true);
+    return {
+      before,
+      after,
+      late: s.sfx.voices.size,
+      queue: g.audioEvents.length,
+    };
+  });
+  expect(result).toEqual({ before: 1, after: 0, late: 0, queue: 0 });
+  await expect
+    .poll(() => page.evaluate(() => __app.sound.trackId))
+    .toBe("a-win-is-a-win");
+  await expect
+    .poll(() => page.evaluate(() => __app.sound.track.paused))
+    .toBe(false);
 });

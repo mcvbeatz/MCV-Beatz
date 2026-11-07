@@ -874,6 +874,7 @@ export class Combat {
     return true;
   }
   emitSound(kind, subject) {
+    if (this.finished) return;
     this.audioEvents.push({
       kind,
       x: subject.x,
@@ -1572,6 +1573,7 @@ export class Combat {
         Object.assign(minion, this.floorPoint(minion));
         this.fighters.push(minion);
       }
+      if (existing < limit) this.emitSound("flash", a);
     } else if (e === "spirit") return this.revive(a, p);
     else if (e === "sun")
       this.projectile(a, p, {
@@ -1656,6 +1658,7 @@ export class Combat {
       target.blink = null;
     }
     this.animateCast(a, target.x - a.x, target.y - a.y);
+    this.emitSound("flash", a);
     this.effects.push({
       kind: "telekinesis",
       x: target.x,
@@ -1725,6 +1728,7 @@ export class Combat {
       a.burstY = speed > 15 ? a.vy / speed : a.fy;
       a.burst = 0.3;
       a.burstHits = new Set();
+      this.emitSound("fireball", a);
       a.reveal = 0.45;
       return true;
     }
@@ -2058,6 +2062,7 @@ export class Combat {
     }
     a.x = destination.x;
     a.y = destination.y;
+    this.emitSound("flash", a);
     a.vx = a.vy = a.knockX = a.knockY = 0;
     for (const p of [old, a])
       this.effects.push({
@@ -3581,6 +3586,7 @@ export class Combat {
       : enemy;
   }
   celebrate(ids) {
+    this.audioEvents.length = 0;
     this.spectatorFocus = null;
     this.winnerIds = ids;
     this.celebrationRemaining = this.fighters.some(

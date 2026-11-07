@@ -141,3 +141,64 @@ test("Radiance uses the new Heal cue only for allies whose health increases", ()
   assert.ok(g.cast(g.player, 1));
   assert.deepEqual(sounds(g), ["heal", "heal"]);
 });
+
+test("Speed burst plays Fireball once per new dash, including fused shortcuts", () => {
+  for (const form of ["blaze", "phoenix", "demonic"]) {
+    const g = duel(form);
+    assert.ok(g.utility(g.player, true, "blaze"));
+    assert.deepEqual(sounds(g), ["fireball"]);
+    assert.ok(g.utility(g.player, true, "blaze"));
+    assert.deepEqual(sounds(g), []);
+    g.player.burst = 0;
+    assert.ok(g.utility(g.player, true, "blaze"));
+    assert.deepEqual(sounds(g), ["fireball"]);
+  }
+});
+test("teleport and telekinesis emit Flash only on successful use", () => {
+  const g = duel("multi-dimensional");
+  assert.ok(g.teleport(g.player, 560, 300));
+  assert.deepEqual(sounds(g), []);
+  g.updateTeleport(g.player, 0.2);
+  assert.deepEqual(sounds(g), ["flash"]);
+  g.updateTeleport(g.player, 0.2);
+  assert.deepEqual(sounds(g), []);
+  const h = duel("multi-dimensional");
+  h.teleport(h.player, 560, 300);
+  h.player.knockX = 30;
+  h.updateTeleport(h.player, 0.2);
+  assert.deepEqual(sounds(h), []);
+  for (const form of ["gravity", "terraformer"]) {
+    const k = duel(form);
+    assert.ok(k.telekinesis(k.player, k.fighters[1], 1, 0));
+    assert.deepEqual(sounds(k), ["flash"]);
+    assert.equal(k.telekinesis(k.player, k.fighters[1], 1, 0), false);
+    assert.deepEqual(sounds(k), []);
+  }
+});
+test("Doppelganger and Minions emit one Flash for the summon, not one per copy", () => {
+  for (const form of ["apparition", "demonic"]) {
+    const g = duel(form);
+    assert.ok(g.cast(g.player, 1));
+    assert.deepEqual(sounds(g), ["flash"]);
+    g.cast(g.player, 1);
+    assert.deepEqual(sounds(g), []);
+  }
+});
+test("Laser Beam emits once per charged use, with no repeated cue on release or projectile updates", () => {
+  const g = duel("sun");
+  assert.ok(g.startCharge(g.player));
+  g.releaseCharge(g.player);
+  g.releaseCharge(g.player);
+  for (let i = 0; i < 20; i++) g.updateProjectiles(0.05);
+  assert.deepEqual(sounds(g), ["laser"]);
+});
+test("match results clear queued combat audio and reject late sound events", () => {
+  for (const winner of [0, 1, null]) {
+    const g = duel("fire");
+    g.emitSound("fireball", g.player);
+    g.finish(winner, "Finished");
+    assert.deepEqual(sounds(g), []);
+    g.emitSound("flash", g.player);
+    assert.deepEqual(sounds(g), []);
+  }
+});

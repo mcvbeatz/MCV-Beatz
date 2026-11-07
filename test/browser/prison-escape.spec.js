@@ -39,7 +39,7 @@ test("empty Stone Prison holds, crumbles and vanishes without changing its origi
     Buffer.from(result.image, "base64"),
   );
 });
-test("Heal is half the recorded effect level and victory is 75 percent without reducing other music", async ({
+test("Heal is half the recorded effect level and victory and War use their reduced track levels", async ({
   page,
 }) => {
   await page.goto("/");
@@ -75,12 +75,18 @@ test("Heal is half the recorded effect level and victory is 75 percent without r
     const loss = sound.trackGain.gain.value;
     sound.setScene("battle");
     const battle = sound.trackGain.gain.value;
-    return { ratio, win, adjusted, setting, loss, battle };
+    sound.setScene("war");
+    const war = sound.trackGain.gain.value;
+    sound.setScene("volcano");
+    const volcano = sound.trackGain.gain.value;
+    return { ratio, win, adjusted, setting, loss, battle, war, volcano };
   });
   expect(result.ratio).toBeCloseTo(0.5, 6);
   expect(result).toMatchObject({
-    win: 0.75,
-    adjusted: 0.75,
+    war: expect.closeTo(0.9, 6),
+    volcano: 1,
+    win: expect.closeTo(0.75 * 0.85, 6),
+    adjusted: expect.closeTo(0.75 * 0.85, 6),
     setting: 0.8,
     loss: 1,
     battle: 1,

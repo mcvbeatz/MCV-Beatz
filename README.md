@@ -1,4 +1,11 @@
-# Elemental — The Colosseum · v0.37.0
+# Elemental — The Colosseum · v0.38.0
+
+## v0.38.0 Combat sound timing
+
+- A Win is a Win is 15% quieter than v0.37.0 (63.75% of the original track gain); Don't Let Up is 10% quieter. Ember Caldera's no smoke override and the music slider are preserved.
+- Speed burst plays Fireball once when a new dash starts. Successful teleport, Telekinesis, Doppelgänger and Minions use Flash; a multi-minion summon has one cue.
+- Battle sound effects stop as soon as the match is decided, including during the winner celebration. Pending effects are discarded and late combat cues cannot restart them; the result song continues normally.
+- The supplied Laser Beam recording contained three separated bursts. Its asset now contains only the first burst with a faded tail, and each charged ability use emits one playback event.
 
 ## v0.37.0 Updated ability recordings
 
