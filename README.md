@@ -1,4 +1,10 @@
-# Elemental — The Colosseum · v0.36.0
+# Elemental — The Colosseum · v0.37.0
+
+## v0.37.0 Updated ability recordings
+
+- Updated Heal (Healing and Radiance, also shared healing pickups), Revival, Lightning2 and Fireball recordings; every existing Fireball ability uses the new file. Rock Shield uses the new Rock formation recording, while Chasm and Stone Prison retain their existing one.
+- Death, Gravity x2, Flood, Life spring placement and Laser Beam now have their supplied sound effects. Contested melee attacks use the supplied Contested Attack recording.
+- Existing volume controls, spatial mixing, overlap limits, half-volume healing and the 25% quieter victory track remain in effect. Persistent abilities play once on activation rather than restarting their recording each frame.
 
 ## v0.36.0 Prison escape and audio balance
 

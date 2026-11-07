@@ -40,7 +40,7 @@ test("Rock formation plays once for new shields, prisons and placed chasms", () 
   const g = duel("earth");
   g.utility(g.player);
   g.utility(g.player);
-  assert.deepEqual(sounds(g), ["rock"]);
+  assert.deepEqual(sounds(g), ["rock-shield"]);
   g.utility(g.player, false);
   assert.deepEqual(sounds(g), []);
   const t = duel("terraformer");
@@ -110,4 +110,34 @@ test("revival recording is exclusive to a successful revival, while token drops 
   assert.deepEqual(sounds(g), ["token"]);
   assert.ok(g.revive(g.player));
   assert.deepEqual(sounds(g), ["revival"]);
+});
+
+test("Death, Gravity x2, Flood, Life spring and Laser Beam play once on activation", () => {
+  for (const [form, kind, method] of [
+    ["demonic", "death", "utility"],
+    ["gravity", "gravity", "utility"],
+    ["cloud", "flood", "utility"],
+    ["sanctuary", "spring", "cast"],
+    ["sun", "laser", "cast"],
+  ]) {
+    const g = duel(form);
+    assert.ok(g[method](g.player, 1));
+    assert.deepEqual(sounds(g), [kind]);
+    if (method === "utility" || form === "sanctuary") {
+      assert.equal(g[method](g.player, 1), false);
+      assert.deepEqual(sounds(g), []);
+    }
+  }
+  const g = duel("lightning");
+  assert.ok(g.utility(g.player, true, "cloud"));
+  assert.deepEqual(sounds(g), ["flood"]);
+});
+test("Radiance uses the new Heal cue only for allies whose health increases", () => {
+  const g = duel("divine");
+  g.player.hp = 50;
+  const ally = makeFighter("ally", "water", 0, 430, 300);
+  ally.hp = 50;
+  g.fighters.push(ally);
+  assert.ok(g.cast(g.player, 1));
+  assert.deepEqual(sounds(g), ["heal", "heal"]);
 });

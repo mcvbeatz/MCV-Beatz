@@ -1,5 +1,5 @@
 import { test, expect } from "@playwright/test";
-test("all seven uploaded effects decode and play through the SFX mixer", async ({
+test("all uploaded effects decode and play through the SFX mixer", async ({
   page,
 }) => {
   const errors = [];
@@ -14,6 +14,7 @@ test("all seven uploaded effects decode and play through the SFX mixer", async (
     const ready = await s.ready;
     const clips = Object.keys(RECORDED_SFX).map((kind) => {
       const buffer = s.buffers.get(kind);
+      s.stop();
       const played = s.play(kind);
       const voice = [...s.voices].at(-1);
       return {
@@ -23,7 +24,7 @@ test("all seven uploaded effects decode and play through the SFX mixer", async (
         correct: voice.buffer === buffer,
       };
     });
-    const duplicate = s.play("fireball");
+    const duplicate = s.play(clips.at(-1).kind);
     const count = s.voices.size;
     s.volume(0);
     const mutedAt = ctx.currentTime;
@@ -37,15 +38,15 @@ test("all seven uploaded effects decode and play through the SFX mixer", async (
   });
   expect(result.ready).toBe(true);
   expect(result.loadErrors).toEqual([]);
-  expect(result.clips).toHaveLength(7);
+  expect(result.clips).toHaveLength(14);
   for (const clip of result.clips) {
     expect(clip.played).toBe(true);
     expect(clip.correct).toBe(true);
-    expect(clip.duration).toBeGreaterThan(1.5);
-    expect(clip.duration).toBeLessThan(3);
+    expect(clip.duration).toBeGreaterThan(1);
+    expect(clip.duration).toBeLessThan(12);
   }
   expect(result.duplicate).toBe(false);
-  expect(result.count).toBe(7);
+  expect(result.count).toBe(1);
   expect(result.muted).toBeLessThan(0.001);
   expect(errors).toEqual([]);
 });

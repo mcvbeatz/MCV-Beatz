@@ -1,5 +1,12 @@
 // Short synthesized melee cues and preloaded recordings share the SFX mixer.
 export const RECORDED_SFX = {
+  "rock-shield": new URL("./assets/sfx/rock-shield.mp3", import.meta.url).href,
+  death: new URL("./assets/sfx/death.mp3", import.meta.url).href,
+  gravity: new URL("./assets/sfx/gravity.mp3", import.meta.url).href,
+  flood: new URL("./assets/sfx/flood.mp3", import.meta.url).href,
+  clash: new URL("./assets/sfx/clash.mp3", import.meta.url).href,
+  spring: new URL("./assets/sfx/spring.mp3", import.meta.url).href,
+  laser: new URL("./assets/sfx/laser.mp3", import.meta.url).href,
   token: new URL("./assets/sfx/felled.mp3", import.meta.url).href,
   fireball: new URL("./assets/sfx/fireball.mp3", import.meta.url).href,
   flash: new URL("./assets/sfx/flash.mp3", import.meta.url).href,

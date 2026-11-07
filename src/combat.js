@@ -1314,6 +1314,7 @@ export class Combat {
     });
   }
   area(a, power, kind, r = 90, life = 5) {
+    if (["death", "gravity", "flood"].includes(kind)) this.emitSound(kind, a);
     this.hazards.push({
       owner: a,
       element: skillForm(a),
@@ -1433,6 +1434,8 @@ export class Combat {
     if (used && ["fire", "water", "air", "cloud", "smoke"].includes(form))
       this.emitSound("fireball", a);
     if (used && form === "lightning") this.emitSound("lightning", a);
+    if (used && form === "sanctuary") this.emitSound("spring", a);
+    if (used && form === "sun") this.emitSound("laser", a);
     return used;
   }
   castSkill(a, p) {
@@ -1737,7 +1740,7 @@ export class Combat {
       a.charging = false;
       a.shield = 1;
       a.shieldTime = 0;
-      this.emitSound("rock", a);
+      this.emitSound("rock-shield", a);
       return true;
     }
     if (a.utilityCd > 0 || (e === "demonic" && this.deathUsed.has(a.id)))
