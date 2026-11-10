@@ -198,10 +198,13 @@ export const FLOOD_WATER_SPEED = 1.25;
 export const quicksandImmune = (a) => a.parts.includes("earth");
 export const BURST_HIT_RANGE = 28 * 1.3;
 export const BURST_DAMAGE = 22;
-export const ICICLE_INTERVAL = 0.2;
-export const ICICLE_DPS = 3;
+export const ICICLE_INTERVAL = 0.1;
+export const ICICLE_DPS = 6;
+export const ICICLE_SPEED = 860;
+export const ICICLE_RANGE = 387;
 export const DRAIN_DPS = 3;
-export const VOID_MANTLE_DPS = 5;
+export const VOID_MANTLE_DPS = 10;
+export const VOID_MANTLE_RANGE = 60;
 export const isIcicleForm = (form) => form === "ice" || form === "abyssal";
 export const CHASM_RADIUS = 56;
 export const CHASM_RANGE = 400;
@@ -2959,10 +2962,10 @@ export class Combat {
       this.executeSkill(a, "ice", () =>
         this.projectile(a, 1, {
           kind: "icicle",
-          speed: 430,
+          speed: ICICLE_SPEED,
           r: 5,
           damage: ICICLE_DPS * ICICLE_INTERVAL,
-          life: 0.9,
+          life: ICICLE_RANGE / ICICLE_SPEED,
         }),
       );
       this.animateCast(a);
@@ -3335,11 +3338,11 @@ export class Combat {
           b.id === a.id ||
           !b.alive ||
           !inWorld(b) ||
-          (!this.friendlyFire && b.team === a.team) ||
-          distance(a, b) >= 30
+          (!this.friendlyFire && b.team === a.team)
         )
           continue;
-        if (a.shield && a.shieldKind === "void")
+        const gap = distance(a, b);
+        if (a.shield && a.shieldKind === "void" && gap < VOID_MANTLE_RANGE)
           this.damage(
             a,
             b,
@@ -3349,6 +3352,8 @@ export class Combat {
             "abyssal",
             false,
           );
+        // Drain, venom and burn still require physical contact.
+        if (gap >= 30) continue;
         if (hasPassive(a, "ice") && b.alive) {
           const health = b.hp;
           this.damage(a, b, dt * DRAIN_DPS, true, false, "ice", false);
@@ -3723,6 +3728,7 @@ export class Combat {
     this.effects = [];
     for (const a of this.fighters) {
       a.victory = a.alive && !a.echo && ids.includes(a.id);
+      a.victoryTime = 0;
       a.draining = a.drained = 0;
       a.charging = false;
       a.teleportArrival = 0;
@@ -3742,6 +3748,8 @@ export class Combat {
       (this.celebrationRemaining || 0) - elapsed,
     );
     this.celebrationElapsed = (this.celebrationElapsed || 0) + elapsed;
+    for (const a of this.fighters)
+      if (a.victory) a.victoryTime = (a.victoryTime || 0) + elapsed;
   }
   finish(winner, reason) {
     this.finished = true;

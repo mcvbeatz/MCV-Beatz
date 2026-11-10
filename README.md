@@ -1,4 +1,11 @@
-# Elemental — The Colosseum · v0.43.0
+# Elemental — The Colosseum · v0.44.0
+
+## v0.44.0 Abyssal scale, victory poses and stronger abilities
+
+- Abyssal now uses Terraformer’s 1.4× body scale consistently across its animation states.
+- Ice and Abyssal have dedicated victory sprites: an opening celebration, a full triumph and a settling pose. They animate during the existing four-second win celebration, preserving the new outfits and body proportions.
+- Void Mantle reaches 60 units instead of 30 and deals 10 base HP/s instead of 5. Its larger visual includes faster opposing water currents, brighter cyan-violet edges, twelve orbiting stones and a range ring. Shield HP and recharge are unchanged; Drain and venom still require contact within 30 units.
+- Icicle Burst fires ten icicles per second instead of five, and projectiles travel at 860 units/s instead of 430. Total base damage doubles from 3 to 6 HP/s. Its original projectile reach is preserved, and tapping cannot bypass the firing cadence.
 
 ## v0.43.0 Ice and Abyssal visual redesign
 

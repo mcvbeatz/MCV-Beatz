@@ -1,3 +1,4 @@
+import coldVictory from "./assets/ice-abyssal-victory.json" with { type: "json" };
 import iceCore from "./assets/ice-core.json" with { type: "json" };
 import abyssalCore from "./assets/abyssal-core.json" with { type: "json" };
 import teleportSprites from "./assets/teleport-multi-dimensional.json" with { type: "json" };
@@ -138,6 +139,10 @@ const abyssalAtlas = loadAtlas(
   new URL("./assets/abyssal-core.webp", import.meta.url).href,
 );
 const coldAtlases = { ice: iceAtlas, abyssal: abyssalAtlas };
+const coldVictoryAtlas = loadAtlas(
+  coldVictory,
+  new URL("./assets/ice-abyssal-victory.webp", import.meta.url).href,
+);
 const teleportAtlas = loadAtlas(
   teleportSprites,
   new URL("./assets/teleport-multi-dimensional.webp", import.meta.url).href,
@@ -412,6 +417,7 @@ const runByElement = Object.fromEntries(
 export const charactersReady = Promise.all(
   [
     victory,
+    coldVictoryAtlas,
     teleportAtlas,
     mudAtlas,
     mirrorAtlas,
@@ -560,32 +566,34 @@ function paintFrame(
   flash = 0,
 ) {
   let atlas =
-    running === "teleport"
-      ? teleportAtlas
-      : running === "outline"
-        ? divineBodyAtlas
-        : running === "dash"
-          ? dashAtlas
-          : running === "repair"
-            ? repairsByElement[element]
-            : running === "flight"
-              ? flightsByElement[element]
-              : running === "cast"
-                ? castsByElement[element]
-                : running === "contact"
-                  ? contactByElement[element]
-                  : running === "inbetween"
-                    ? inbetweenByElement[element]
-                    : running === "step"
-                      ? actionByElement[element]
-                      : running === "hurt"
-                        ? element === "mud"
-                          ? null
-                          : hurtByElement[element]
-                        : running
-                          ? runByElement[element]
-                          : byElement[element];
-  if (coldAtlases[element]?.loaded) {
+    running === "cold-victory"
+      ? coldVictoryAtlas
+      : running === "teleport"
+        ? teleportAtlas
+        : running === "outline"
+          ? divineBodyAtlas
+          : running === "dash"
+            ? dashAtlas
+            : running === "repair"
+              ? repairsByElement[element]
+              : running === "flight"
+                ? flightsByElement[element]
+                : running === "cast"
+                  ? castsByElement[element]
+                  : running === "contact"
+                    ? contactByElement[element]
+                    : running === "inbetween"
+                      ? inbetweenByElement[element]
+                      : running === "step"
+                        ? actionByElement[element]
+                        : running === "hurt"
+                          ? element === "mud"
+                            ? null
+                            : hurtByElement[element]
+                          : running
+                            ? runByElement[element]
+                            : byElement[element];
+  if (coldAtlases[element]?.loaded && running !== "cold-victory") {
     atlas = coldAtlases[element];
     if (running !== "cold") {
       const facing =
@@ -685,6 +693,7 @@ function paintFrame(
 const BODY_SCALE = {
   phoenix: 1.275,
   terraformer: 1.4,
+  abyssal: 1.4,
   sanctuary: 1.3,
   invincible: 1.1,
   gravity: 1.1,
@@ -712,6 +721,16 @@ export function drawCharacter(c, a, time) {
 }
 function drawCharacterSprite(c, a, time) {
   if (a.monsterKind) return drawDungeonMonster(c, a, time);
+  if (a.victory && coldVictory[a.element] && coldVictoryAtlas.loaded) {
+    const elapsed = a.victoryTime || 0;
+    const frame =
+      elapsed < 0.25
+        ? 1
+        : elapsed < 1
+          ? 2
+          : 2 + (Math.floor((elapsed - 1) / 0.7) % 2);
+    return paintFrame(c, a.element, frame, false, 64, "cold-victory");
+  }
   if (a.victory && coreAtlases[a.element]?.loaded)
     return paintFrame(
       c,

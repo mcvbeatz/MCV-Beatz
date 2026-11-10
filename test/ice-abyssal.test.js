@@ -40,22 +40,22 @@ test("Ice and both Abyssal recipes fuse through tokens and enter their correct t
     assert.ok(hasPassive(g.player, "ice"));
   }
 });
-test("held Icicle Burst has endless five-shot cadence, 3 base DPS, forward aim and no release shot", () => {
+test("held Icicle Burst has endless ten-shot cadence, 6 base DPS, forward aim and no release shot", () => {
   for (const element of ["ice", "abyssal"]) {
     const g = arena(element),
       a = g.player;
     assert.ok(g.startCharge(a));
     for (let i = 0; i < 1000; i++) g.updateIcicles(a, 0.01);
-    assert.equal(g.projectiles.length, 50);
+    assert.equal(g.projectiles.length, 100);
     near(
       g.projectiles.reduce((n, p) => n + p.damage, 0),
-      30,
+      60,
     );
     assert.ok(
       g.projectiles.every(
         (p) =>
           p.kind === "icicle" &&
-          p.dx > 0 &&
+          p.dx === 860 &&
           p.dy === 0 &&
           p.damage === ICICLE_DPS * ICICLE_INTERVAL,
       ),
@@ -179,7 +179,7 @@ test("Void Mantle is held, absorbs attacks, damages on touch, breaks, and rechar
   assert.equal(a.shieldKind, "void");
   assert.equal(g.startCharge(a), false);
   tick(g, 0.01);
-  near(b.hp, 120 - (5 + 3) * 0.01); // Venom starts ticking on the next frame.
+  near(b.hp, 120 - (10 + 3) * 0.01); // Venom starts ticking on the next frame.
   near(g.damage(b, a, 20), 0);
   near(a.shieldHp, 51.5);
   g.damage(b, a, 100);
@@ -230,9 +230,59 @@ test("rapid release and re-press cannot bypass the icicle firing cadence", () =>
     g.updateIcicles(a, 0.01);
     g.releaseCharge(a);
   }
-  assert.equal(g.projectiles.length, 5);
+  assert.equal(g.projectiles.length, 10);
   g.updateIcicles(a, 0.2);
   g.startCharge(a);
   g.updateIcicles(a, 0.01);
-  assert.equal(g.projectiles.length, 6);
+  assert.equal(g.projectiles.length, 11);
+});
+
+test("Void Mantle damages out to twice the old range without extending Drain or venom", () => {
+  const g = arena("abyssal"),
+    a = g.player,
+    b = g.fighters[1];
+  a.hp = 50;
+  b.x = a.x + 59;
+  g.utility(a);
+  tick(g, 1);
+  near(b.hp, 110);
+  near(a.hp, 50);
+  assert.equal(a.draining, 0);
+  assert.equal(b.venom, 0);
+  b.x = a.x + 60;
+  tick(g, 1);
+  near(b.hp, 110);
+  b.x = a.x + 45;
+  b.team = a.team;
+  g.friendlyFire = false;
+  g.checkMatchEnd = () => false;
+  tick(g, 1);
+  near(b.hp, 110);
+  b.team = 1;
+  g.utility(a, false);
+  tick(g, 1);
+  near(b.hp, 110);
+});
+
+test("icicles travel twice as fast while retaining their original reach", () => {
+  const g = arena(),
+    a = g.player;
+  g.startCharge(a);
+  g.updateIcicles(a, 0.01);
+  const p = g.projectiles[0];
+  near(Math.hypot(p.dx, p.dy), 860);
+  near(p.life, 0.45);
+  near(p.life * Math.hypot(p.dx, p.dy), 387);
+});
+
+test("victory pose timing advances only during celebration", () => {
+  const g = arena("abyssal");
+  g.finish(g.player.team, "Test victory");
+  assert.ok(g.player.victory);
+  assert.equal(g.player.victoryTime, 0);
+  g.advanceCelebration(0.3);
+  near(g.player.victoryTime, 0.3);
+  assert.equal(g.fighters[1].victoryTime, 0);
+  g.advanceCelebration(10);
+  near(g.player.victoryTime, 4);
 });

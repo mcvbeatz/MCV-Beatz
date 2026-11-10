@@ -99,6 +99,9 @@ for (const [element, mode] of [
       await expect
         .poll(() => page.evaluate(() => __arena.game.player.shieldKind))
         .toBe("void");
+      await expect
+        .poll(() => page.evaluate(() => __arena.game.player.shieldTime))
+        .toBeGreaterThan(0.3);
       await page.screenshot({ path: "/tmp/abyssal-battle.png" });
       await page
         .locator("#arena-panel")
@@ -122,7 +125,7 @@ test("new sprite sets render four distinct running steps, casts, attacks and hur
   await page.goto("/?mode=fused");
   await page.waitForFunction(() => window.__app);
   const result = await page.evaluate(async () => {
-    const { drawCharacter, charactersReady } =
+    const { drawCharacter, charactersReady, characterScale } =
       await import("/src/characters.js");
     const { makeFighter } = await import("/src/combat.js");
     await charactersReady;
@@ -167,15 +170,16 @@ test("new sprite sets render four distinct running steps, casts, attacks and hur
           if (pose === 7)
             Object.assign(a, { hitReact: 0.22, hitDx: 0, hitDy: 0 });
           const c = document.createElement("canvas");
-          c.width = c.height = 120;
+          c.width = 140;
+          c.height = 160;
           const ctx = c.getContext("2d");
-          ctx.translate(60, 95);
+          ctx.translate(70, 110);
           drawCharacter(ctx, a, 0);
-          const data = ctx.getImageData(0, 0, 120, 120).data;
+          const data = ctx.getImageData(0, 0, 140, 160).data;
           const rows = [];
-          for (let y = 0; y < 120; y++)
-            for (let x = 0; x < 120; x++)
-              if (data[(y * 120 + x) * 4 + 3] > 100) {
+          for (let y = 0; y < 160; y++)
+            for (let x = 0; x < 140; x++)
+              if (data[(y * 140 + x) * 4 + 3] > 100) {
                 rows.push(y);
                 break;
               }
@@ -192,8 +196,8 @@ test("new sprite sets render four distinct running steps, casts, attacks and hur
                   y <= top + height * to;
                   y++
                 )
-                  for (let x = 0; x < 120; x++)
-                    if (data[(y * 120 + x) * 4 + 3] > 150) {
+                  for (let x = 0; x < 140; x++)
+                    if (data[(y * 140 + x) * 4 + 3] > 150) {
                       sum += x;
                       count++;
                     }
@@ -209,7 +213,9 @@ test("new sprite sets render four distinct running steps, casts, attacks and hur
           element,
           face,
           steps: new Set(frames).size,
-          spread: Math.max(...heights) - Math.min(...heights),
+          spread:
+            (Math.max(...heights) - Math.min(...heights)) /
+            characterScale(element),
           runningLean:
             face === 1
               ? lean.slice(1).reduce((sum, x) => sum + x, 0) / 4 - lean[0]

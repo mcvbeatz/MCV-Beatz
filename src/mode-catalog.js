@@ -422,9 +422,9 @@ export const CONTROL_SLIDES = [
 ];
 export const SKILL_HELP = {
   "Icicle Burst":
-    "Hold to fire an endless stream of icicles in your facing direction, dealing 3 HP per second before defenses. Release to stop. No charge or cooldown; always hold, even with tap charging enabled.",
+    "Hold to fire an endless stream of ten icicles per second in your facing direction at double projectile speed, dealing 6 HP per second before defenses. Release to stop. No charge or cooldown; always hold, even with tap charging enabled.",
   "Void Mantle":
-    "Hold for a swirling dark-water and stone shield with 65 HP. Blocks attacks and deals 5 base damage per second on contact. Release or break it to end; five-second recharge. Cannot fire icicles while shielding.",
+    "Hold for a swirling dark-water and stone shield with 65 HP. Blocks attacks and deals 10 base damage per second within a 60-unit radius, twice its original reach. Release or break it to end; five-second recharge. Cannot fire icicles while shielding.",
   Drain:
     "Passive contact ability. Steals 3 HP per second before defenses and restores only the health actually taken. The drainer glows cyan-violet; the drained fighter darkens. Stops immediately when contact ends. Follows friendly-fire rules.",
   Chasm:
