@@ -397,7 +397,7 @@ export const CONTROL_SLIDES = [
   ],
   [
     "Tap and swipe · Portals",
-    "Activate Portals, then tap two clear arena positions. Tap your portals to close them. Screen taps are mapped to the zoomed camera view too.",
+    "Activate Portals, then tap two clear arena positions. Tap your portals to close them; Divine can also close other players’ portals. Screen taps are mapped to the zoomed camera view too.",
     "↗",
     "guides/control-portals.png",
   ],

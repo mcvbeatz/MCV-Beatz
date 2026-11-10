@@ -1,3 +1,4 @@
+import { drawMinimapFighters } from "./battle-awareness.js";
 const TAU = Math.PI * 2;
 export function paintCorruptionMap(c, map) {
   c.fillStyle = "#080d13";
@@ -168,15 +169,6 @@ export function drawMazeMap(c, game, width, height, portrait) {
       6,
     );
   }
-  c.fillStyle = "#ffe0a4";
-  c.beginPath();
-  c.arc(
-    (game.player.x - map.cx) * scale,
-    (game.player.y - map.cy) * scale,
-    3,
-    0,
-    TAU,
-  );
-  c.fill();
+  drawMinimapFighters(c, game, scale, map.cx, map.cy);
   c.restore();
 }

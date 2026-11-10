@@ -99,9 +99,29 @@ export class PortalSystem {
       ...this.game.hazards,
     ].filter((e) => !e.removed);
   }
+  canClose(owner, portal) {
+    if (!portal || portal.environment) return false;
+    if (portal.owner === owner.id) return true;
+    return (
+      !!portal.owner &&
+      owner.alive &&
+      inWorld(owner) &&
+      ["air", "earth", "light"].every((part) => owner.parts.includes(part))
+    );
+  }
+  closeAt(owner, x, y) {
+    const portal = this.portals
+      .filter(
+        (p) => this.canClose(owner, p) && Math.hypot(x - p.x, y - p.y) < 36,
+      )
+      .sort(
+        (a, b) => Math.hypot(x - a.x, y - a.y) - Math.hypot(x - b.x, y - b.y),
+      )[0];
+    return portal ? this.close(owner, portal.id) : false;
+  }
   close(owner, id) {
     const portal = this.portals.find(
-      (p) => p.id === id && p.owner === owner.id,
+      (p) => p.id === id && this.canClose(owner, p),
     );
     if (!portal) return false;
     owner.reveal = 0.45;

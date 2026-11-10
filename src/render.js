@@ -1,3 +1,4 @@
+import { clearAllyHealth } from "./battle-awareness.js";
 import { drawVoidMantle, drawDrainGlow, drawIcicle } from "./ice-effects.js";
 import { drawStoneShell, drawEmptyPrison } from "./stone-prison.js";
 import { drawDungeon } from "./dungeon-render.js";
@@ -382,7 +383,7 @@ export class Renderer {
     );
     c.restore();
   }
-  avatar(c, a, time, immersion = 0) {
+  avatar(c, a, time, immersion = 0, showHealth = true) {
     const scale = 2.35;
     const flying = a.parts.includes("air");
     const pose = characterPose(a);
@@ -549,14 +550,20 @@ export class Renderer {
         c.fillRect(-13 + i * 13, -height * 0.6, 2, height * 0.6);
       }
     }
+    c.restore();
+    if (showHealth) this.healthIndicator(c, a);
+  }
+  healthIndicator(c, a, viewer = { team: 0 }) {
+    c.save();
+    c.translate(a.x, a.y);
     // Leave room above the taller crowns and Air's floating silhouette.
     c.translate(0, -10 - 64 * (characterScale(a.element) - 1));
     if (a.id !== "player") {
       c.fillStyle = "#23332b";
       c.fillRect(-22, -70, 44, 5);
-      c.fillStyle = a.team === 0 ? "#9cd3bd" : "#d88b70";
+      c.fillStyle = a.team === viewer.team ? "#9cd3bd" : "#d88b70";
       c.fillRect(-22, -70, (44 * a.hp) / a.maxHp, 5);
-      c.fillStyle = a.team === 0 ? "#b5dec8" : "#e4ad8b";
+      c.fillStyle = a.team === viewer.team ? "#b5dec8" : "#e4ad8b";
       c.font = "8px monospace";
       c.textAlign = "center";
       // Small diamonds identify spirits and echoes without status labels.
@@ -832,7 +839,9 @@ export class Renderer {
       }))
       .filter(
         ({ a, alpha }) =>
-          alpha > 0 || (a.id === game.player.id && a.element === "divine"),
+          alpha > 0 ||
+          clearAllyHealth(a, game.player) ||
+          (a.id === game.player.id && a.element === "divine"),
       );
     bodies.push(
       ...(game.fallenAnimations || []).map((death) => ({
@@ -863,9 +872,13 @@ export class Renderer {
         this.outline(c, a, t);
       }
       c.globalAlpha = body.alpha;
-      if (body.alpha > 0) this.avatar(c, a, t, immersion);
+      if (body.alpha > 0) this.avatar(c, a, t, immersion, false);
       drawWaterline(c, a, immersion, t);
       if (game.auroraProtected(a)) drawAurora(c, a, t);
+      c.restore();
+      c.save();
+      c.globalAlpha = clearAllyHealth(a, game.player) ? 1 : body.alpha;
+      this.healthIndicator(c, a, game.player);
       c.restore();
       if (a.ghost) {
         c.save();

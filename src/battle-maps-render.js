@@ -1,3 +1,4 @@
+import { drawMinimapFighters, teamMapColor } from "./battle-awareness.js";
 import { paintDungeonMap } from "./dungeon-render.js";
 import { paintTempleMap } from "./temple-map-render.js";
 import { paintSkykeepMap } from "./skykeep-map-render.js";
@@ -415,14 +416,14 @@ export function drawBattleMinimap(c, game, width, height, portrait) {
     c.stroke();
   }
   for (const base of game.warBases || []) {
-    c.strokeStyle = base.team === game.player.team ? "#9affd6" : "#ff9a78";
+    c.strokeStyle = teamMapColor(base.team, game.player);
     c.lineWidth = 1.5;
     c.beginPath();
     c.arc(base.x * scale, base.y * scale, 4, 0, TAU);
     c.stroke();
   }
   for (const flag of game.flags) {
-    c.fillStyle = flag.team === game.player.team ? "#7ee4ff" : "#ff8b76";
+    c.fillStyle = teamMapColor(flag.team, game.player);
     c.fillRect(flag.x * scale - 2, flag.y * scale - 2, 4, 4);
   }
   for (const p of game.portals.portals) {
@@ -435,11 +436,6 @@ export function drawBattleMinimap(c, game, width, height, portrait) {
     c.lineWidth = 1;
     c.strokeRect(focus.x * scale - 5, focus.y * scale - 4, 10, 8);
   }
-  c.fillStyle = "#ffe098";
-  c.strokeStyle = "#302619";
-  c.beginPath();
-  c.arc(game.player.x * scale, game.player.y * scale, 3, 0, TAU);
-  c.fill();
-  c.stroke();
+  drawMinimapFighters(c, game, scale);
   c.restore();
 }

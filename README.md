@@ -1,4 +1,10 @@
-# Elemental — The Colosseum · v0.41.0
+# Elemental — The Colosseum · v0.42.0
+
+## v0.42.0 Divine allies and battlefield awareness
+
+- Allied Divine fighters retain a fully opaque health bar even while their bodies are invisible or fading. Enemy Divine concealment remains unchanged; health bars use the viewer’s team relationship.
+- Battle and labyrinth minimaps show living allies in green and visible enemies in orange. The player has a pale outline; allied flags and War bases use the same team colors. Dead/off-field fighters and undiscovered dungeon enemies do not appear. Concealed enemy Divine fighters remain hidden.
+- Divine can tap to close any player-created portal, including allies’ and enemies’, from any inherited skill tab. Closure uses the existing animation and crossing/trapped-traveller rules, with kills credited to the Divine who closes it. Other fighters still close only their own portals; fixed labyrinth portals remain open.
 
 ## v0.41.0 Ice and Abyssal
 
