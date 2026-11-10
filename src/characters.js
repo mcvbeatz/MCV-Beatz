@@ -1,3 +1,5 @@
+import iceCore from "./assets/ice-core.json" with { type: "json" };
+import abyssalCore from "./assets/abyssal-core.json" with { type: "json" };
 import teleportSprites from "./assets/teleport-multi-dimensional.json" with { type: "json" };
 import { teleportPose, drawTeleportOpening } from "./teleport-animation.js";
 import { drawDungeonMonster, monstersReady } from "./dungeon-monsters.js";
@@ -55,6 +57,14 @@ import revisedRuns from "./assets/revised-running.json" with { type: "json" };
 
 export const ORIGINS = ["water", "dark", "fire", "air", "earth", "light"];
 const frames = {
+  ice: {
+    ...iceCore.ice,
+    frames: [0, 8, 16, 6, 14, 22].map((i) => iceCore.ice.frames[i]),
+  },
+  abyssal: {
+    ...abyssalCore.abyssal,
+    frames: [0, 8, 16, 6, 14, 22].map((i) => abyssalCore.abyssal.frames[i]),
+  },
   ...origins,
   ...grounded,
   ...airborne,
@@ -72,6 +82,8 @@ const frames = {
 };
 export const CHARACTERS = Object.keys(frames);
 export const ATTACK_NAMES = {
+  ice: "Frost gauntlet",
+  abyssal: "Abyssal fist",
   phoenix: "Solar talon",
   terraformer: "Rift gauntlet",
   sanctuary: "Spring lance",
@@ -117,6 +129,15 @@ function loadAtlas(spec, url) {
   });
   return atlas;
 }
+const iceAtlas = loadAtlas(
+  iceCore,
+  new URL("./assets/ice-core.webp", import.meta.url).href,
+);
+const abyssalAtlas = loadAtlas(
+  abyssalCore,
+  new URL("./assets/abyssal-core.webp", import.meta.url).href,
+);
+const coldAtlases = { ice: iceAtlas, abyssal: abyssalAtlas };
 const teleportAtlas = loadAtlas(
   teleportSprites,
   new URL("./assets/teleport-multi-dimensional.webp", import.meta.url).href,
@@ -143,6 +164,8 @@ const fusionVictory = loadAtlas(
   new URL("./assets/new-fusions-reactions.webp", import.meta.url).href,
 );
 const atlases = [
+  iceAtlas,
+  abyssalAtlas,
   loadAtlas(
     newFusions,
     new URL("./assets/new-fusions.webp", import.meta.url).href,
@@ -562,6 +585,16 @@ function paintFrame(
                         : running
                           ? runByElement[element]
                           : byElement[element];
+  if (coldAtlases[element]?.loaded) {
+    atlas = coldAtlases[element];
+    if (running !== "cold") {
+      const facing =
+        running === "hurt" || running === "cast" ? frame : frame % 3;
+      frame =
+        facing * 8 +
+        (running === "hurt" ? 7 : running === "cast" ? 5 : frame >= 3 ? 6 : 0);
+    }
+  }
   if (coreAtlases[element]?.loaded && running !== "repair") {
     atlas = coreAtlases[element];
     const facing =
@@ -785,7 +818,20 @@ function drawCharacterSprite(c, a, time) {
     spriteFrame = pose.frame,
     spriteKind = false;
   const repairKey = `${a.element}:${pose.facing}`;
-  if (dashSprite) {
+  if (coldAtlases[a.element]?.loaded) {
+    spriteKind = "cold";
+    spriteFrame =
+      pose.facing * 8 +
+      (pose.reacting
+        ? 7
+        : pose.frame >= 3
+          ? 6
+          : pose.casting || a.shield
+            ? 5
+            : pose.groundedMoving
+              ? 1 + Math.floor(pose.gaitFrame / 2)
+              : 0);
+  } else if (dashSprite) {
     spriteKind = "dash";
     spriteFrame = pose.dashFrame;
   } else if (hurt) {

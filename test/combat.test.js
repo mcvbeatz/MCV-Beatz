@@ -219,8 +219,8 @@ test("level-three compatible fusion preserves all origin skill sets", () => {
   assert.ok(g.player.forms.includes("dark"));
   assert.ok(g.player.forms.includes("light"));
 });
-test("all nine level-two elements can start fused mode, with randomized rivals", () => {
-  assert.equal(LEVEL_TWO.length, 9);
+test("all level-two elements can start fused mode, with randomized rivals", () => {
+  assert.equal(LEVEL_TWO.length, 10);
   const rivals = new Set();
   for (let i = 0; i < LEVEL_TWO.length; i++) {
     const g = new Combat({
@@ -232,7 +232,7 @@ test("all nine level-two elements can start fused mode, with randomized rivals",
     assert.equal(g.player.parts.length, 2);
     rivals.add(g.fighters[1].element);
   }
-  assert.equal(rivals.size, 9);
+  assert.equal(rivals.size, LEVEL_TWO.length);
 });
 test("base rivals are randomized across the six origins", () => {
   const rivals = new Set();

@@ -290,7 +290,7 @@ export const MODES = {
     name: "Fused II Duel",
     tag: "Practice · tier II",
     slides: [
-      ["Choose a fusion", "Start with any of the nine level-II forms.", "Ⅱ"],
+      ["Choose a fusion", "Start with any of the ten level-II forms.", "Ⅱ"],
       [
         "Inherited power",
         "Use the top tabs for origin skills. Passives remain active across tabs. Fused shortcuts keep key skills close.",
@@ -309,7 +309,7 @@ export const MODES = {
     slides: [
       [
         "Master the third tier",
-        "Choose any level-III fusion, including Phoenix, Terraformer and Sanctuary.",
+        "Choose any level-III fusion, including Ice’s evolution Abyssal, Phoenix, Terraformer and Sanctuary.",
         "Ⅲ",
       ],
       [
@@ -421,6 +421,12 @@ export const CONTROL_SLIDES = [
   ],
 ];
 export const SKILL_HELP = {
+  "Icicle Burst":
+    "Hold to fire an endless stream of icicles in your facing direction, dealing 3 HP per second before defenses. Release to stop. No charge or cooldown; always hold, even with tap charging enabled.",
+  "Void Mantle":
+    "Hold for a swirling dark-water and stone shield with 65 HP. Blocks attacks and deals 5 base damage per second on contact. Release or break it to end; five-second recharge. Cannot fire icicles while shielding.",
+  Drain:
+    "Passive contact ability. Steals 3 HP per second before defenses and restores only the health actually taken. The drainer glows cyan-violet; the drained fighter darkens. Stops immediately when contact ends. Follows friendly-fire rules.",
   Chasm:
     "Tap an arena spot within 400 units. A visible crack opens for one second, then becomes a lethal 56-radius tear for eight seconds. Flyers are safe. Eight-second cooldown; no charge.",
   "Stone Prison":

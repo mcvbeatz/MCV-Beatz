@@ -42,7 +42,7 @@ for (const mapId of ["classic", "garden", "tower", "corruption"]) {
   });
 }
 test("all elementals keep a frozen death appearance and fade before respawn", () => {
-  assert.equal(CHARACTERS.length, 23);
+  assert.equal(CHARACTERS.length, 25);
   for (const element of CHARACTERS) {
     const g = new Combat({ mode: "roulette", element, mapId: "classic" });
     g.rebirthUsed.add(g.player.id);

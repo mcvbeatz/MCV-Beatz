@@ -31,6 +31,7 @@ test("level III mode accepts every third-tier fusion and randomizes within its o
   assert.deepEqual(
     new Set(LEVEL_THREE),
     new Set([
+      "abyssal",
       "demonic",
       "divine",
       "multi-dimensional",

@@ -1,3 +1,4 @@
+import { drawVoidMantle, drawDrainGlow, drawIcicle } from "./ice-effects.js";
 import { drawStoneShell, drawEmptyPrison } from "./stone-prison.js";
 import { drawDungeon } from "./dungeon-render.js";
 import { drawTempleTraps } from "./temple-map-render.js";
@@ -46,6 +47,8 @@ const BODY_BUFFER = 224,
   BODY_CENTER = 112,
   BODY_BASELINE = 180;
 export function fighterColor(a) {
+  if (a.element === "ice") return "#89d8ee";
+  if (a.element === "abyssal") return "#8e90d4";
   if (a.monsterKind)
     return { alligator: "#609e8a", snake: "#8a6bbe", wolf: "#9caeba" }[
       a.monsterKind
@@ -282,7 +285,8 @@ export class Renderer {
     c.fillRect(0, 636, 1024, 44);
   }
   characterBody(c, a, time) {
-    if (!(a.blind > 0) && !(a.venomTint > 0)) return drawCharacter(c, a, time);
+    if (!(a.blind > 0) && !(a.venomTint > 0) && !(a.drained > 0))
+      return drawCharacter(c, a, time);
     // Canvas compositing works in iOS WebViews without Canvas.filter support.
     const sprite = this.bodySprite,
       sc = sprite.getContext("2d");
@@ -298,6 +302,10 @@ export class Renderer {
     }
     if (a.venomTint > 0) {
       sc.fillStyle = `rgba(142,65,201,${0.48 + Math.sin(time * 16) * 0.08})`;
+      sc.fillRect(0, 0, BODY_BUFFER, BODY_BUFFER);
+    }
+    if (a.drained > 0) {
+      sc.fillStyle = "rgba(15,9,35,0.6)";
       sc.fillRect(0, 0, BODY_BUFFER, BODY_BUFFER);
     }
     sc.globalCompositeOperation = "source-over";
@@ -479,9 +487,11 @@ export class Renderer {
     c.save();
     c.translate(a.x, a.y);
     drawReflectShield(c, a, time, true);
+    drawDrainGlow(c, a, time);
     if (a.shield || a.prisonHp > 0) {
       const rise = a.prisonHp > 0 ? 1 : Math.min(1, a.shieldTime / 0.16);
-      drawStoneShell(c, rise);
+      if (a.shield && a.shieldKind === "void") drawVoidMantle(c, a, time);
+      if (a.prisonHp > 0 || a.shieldKind !== "void") drawStoneShell(c, rise);
       c.fillStyle = "#24382b";
       c.fillRect(-29, 15, 58, 5);
       c.fillStyle = "#d4be8a";
@@ -883,7 +893,9 @@ export class Renderer {
         continue;
       }
       c.rotate(Math.atan2(p.dy, p.dx));
-      if (p.kind === "laser") {
+      if (p.kind === "icicle") {
+        drawIcicle(c, p);
+      } else if (p.kind === "laser") {
         for (const [width, color] of [
           [20, "#ffe3a533"],
           [9, "#ffd37e"],

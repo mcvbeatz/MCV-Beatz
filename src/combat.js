@@ -98,6 +98,8 @@ export const ELEMENTS = {
   },
 };
 export const COMBOS = {
+  "dark+water": "ice",
+  "dark+earth+water": "abyssal",
   "earth+water": "mud",
   "air+light": "spirit",
   "earth+light": "mirror",
@@ -117,6 +119,8 @@ export const COMBOS = {
   "earth+light+water": "sanctuary",
 };
 export const FUSED = {
+  ice: ["Icicle Burst", null],
+  abyssal: ["Icicle Burst", "Void Mantle"],
   mud: ["Quicksand", null],
   spirit: ["Revival", "Portals"],
   mirror: [null, null],
@@ -194,6 +198,11 @@ export const FLOOD_WATER_SPEED = 1.25;
 export const quicksandImmune = (a) => a.parts.includes("earth");
 export const BURST_HIT_RANGE = 28 * 1.3;
 export const BURST_DAMAGE = 22;
+export const ICICLE_INTERVAL = 0.2;
+export const ICICLE_DPS = 3;
+export const DRAIN_DPS = 3;
+export const VOID_MANTLE_DPS = 5;
+export const isIcicleForm = (form) => form === "ice" || form === "abyssal";
 export const CHASM_RADIUS = 56;
 export const CHASM_RANGE = 400;
 export const TELEKINESIS_RANGE = 400;
@@ -322,6 +331,10 @@ export function makeFighter(id, element, team, x, y) {
     shield: 0,
     shieldHp: 65,
     shieldTime: 0,
+    shieldKind: null,
+    icicleTimer: 0,
+    draining: 0,
+    drained: 0,
     dodge: 0,
     boost: 0,
     burst: 0,
@@ -924,6 +937,7 @@ export class Combat {
       !skillsFor(form)[0]
     )
       return false;
+    if (this.finished || (isIcicleForm(form) && a.prisonHp > 0)) return false;
     if (form === "sanctuary" && this.springUsed.has(a.id)) return false;
     if (this.cancelSabotaged(a)) return false;
     if (form === "terraformer") {
@@ -951,6 +965,11 @@ export class Combat {
   releaseCharge(a) {
     if (!a.charging) return;
     a.charging = false;
+    if (isIcicleForm(a.chargeForm)) {
+      a.chargeForm = null;
+      a.charge = 0;
+      return;
+    }
     if (!a.alive || !inWorld(a)) {
       a.charge = 0;
       return;
@@ -1450,7 +1469,7 @@ export class Combat {
   }
   castSkill(a, p) {
     const e = skillForm(a);
-    if (!skillsFor(e)[0]) return false;
+    if (!skillsFor(e)[0] || isIcicleForm(e)) return false;
     if (e === "sanctuary") {
       if (this.springUsed.has(a.id)) return false;
       this.springUsed.add(a.id);
@@ -1697,7 +1716,7 @@ export class Combat {
       !["dark", "apparition", "air", "lightning", "blaze", "spirit"].includes(
         form,
       ) &&
-      !(form === "earth" && shieldWasActive)
+      !(["earth", "abyssal"].includes(form) && shieldWasActive)
     )
       this.animateCast(a);
     return used;
@@ -1715,12 +1734,14 @@ export class Combat {
     if (
       a.sabotaged &&
       !this.auroraProtected(a) &&
-      !(a.shield && e === "earth") &&
+      !(a.shield && ["earth", "abyssal"].includes(e)) &&
       !(a.burst > 0 && e === "blaze") &&
       ((e === "spirit" && this.portals.owned(a).length < 2) ||
         (e === "blaze" && !this.isShocked(a)) ||
-        (e === "earth" && a.utilityCd <= 0 && a.shieldHp > 0) ||
-        (!["earth", "blaze", "spirit"].includes(e) &&
+        (["earth", "abyssal"].includes(e) &&
+          a.utilityCd <= 0 &&
+          a.shieldHp > 0) ||
+        (!["earth", "abyssal", "blaze", "spirit"].includes(e) &&
           a.utilityCd <= 0 &&
           !(e === "demonic" && this.deathUsed.has(a.id))))
     ) {
@@ -1751,12 +1772,13 @@ export class Combat {
       if (begun) a.reveal = 0.45;
       return begun;
     }
-    if (e === "earth") {
+    if (e === "earth" || e === "abyssal") {
       if (a.utilityCd > 0 || a.shieldHp <= 0) return false;
       if (a.shield) return true;
       if (!this.aiGesture(a, "utility:earth")) return false;
       a.charging = false;
       a.shield = 1;
+      a.shieldKind = e === "abyssal" ? "void" : "stone";
       a.shieldTime = 0;
       this.emitSound("rock-shield", a);
       return true;
@@ -2757,6 +2779,21 @@ export class Combat {
     if (a.charging) {
       const form = a.chargeForm || activeForm(a),
         support = ["light", "divine", "spirit"].includes(form);
+      if (isIcicleForm(form)) {
+        if (
+          !target ||
+          distance(a, target) > 380 ||
+          !this.safeAttack(a, target, "ability", form)
+        )
+          this.releaseCharge(a);
+        else if (
+          a.element === "abyssal" &&
+          distance(a, target) < 65 &&
+          a.utilityCd <= 0
+        )
+          this.utility(a, true, "abyssal");
+        return;
+      }
       if (a.charge >= (support && patient?.hp < 45 ? 0.25 : 0.7)) {
         if (support || this.safeAttack(a, target, "ability"))
           this.releaseCharge(a);
@@ -2903,6 +2940,35 @@ export class Combat {
       if (!a.alive) break;
     }
     a.burst = Math.max(0, a.burst - dt);
+  }
+  updateIcicles(a, dt) {
+    a.icicleTimer = Math.max(0, (a.icicleTimer || 0) - dt);
+    if (!a.charging || !isIcicleForm(a.chargeForm)) return;
+    if (
+      !a.alive ||
+      !inWorld(a) ||
+      a.shield ||
+      a.prisonHp > 0 ||
+      !canUseSkill(a, a.chargeForm, "ability")
+    ) {
+      this.releaseCharge(a);
+      return;
+    }
+    if (a.stagger > 0) return;
+    if (a.icicleTimer <= 1e-9) {
+      this.executeSkill(a, "ice", () =>
+        this.projectile(a, 1, {
+          kind: "icicle",
+          speed: 430,
+          r: 5,
+          damage: ICICLE_DPS * ICICLE_INTERVAL,
+          life: 0.9,
+        }),
+      );
+      this.animateCast(a);
+      a.reveal = 0.3;
+      a.icicleTimer = ICICLE_INTERVAL;
+    }
   }
   updateProjectiles(dt) {
     for (const p of this.projectiles) {
@@ -3210,7 +3276,8 @@ export class Combat {
         this.fell(a);
         continue;
       }
-      if (a.charging && a.stagger <= 0) a.charge = Math.min(1.8, a.charge + dt);
+      if (a.charging && a.stagger <= 0 && !isIcicleForm(a.chargeForm))
+        a.charge = Math.min(1.8, a.charge + dt);
       if (a.shield) a.shieldTime += dt;
       else a.shieldHp = Math.min(65, a.shieldHp + dt * 5);
       if (hasPassive(a, "divine") || this.auroraProtected(a))
@@ -3237,6 +3304,7 @@ export class Combat {
       else if (runAI) this.ai(a, dt);
       else this.move(a, 0, 0, dt);
       this.updateBurst(a, old, dt);
+      this.updateIcicles(a, dt);
       if (this.portals.enter(a, old)) continue;
       this.touchTokens(a);
       if (a.alive && a.parts.includes("water"))
@@ -3254,10 +3322,15 @@ export class Combat {
     this.updateProjectiles(dt);
     this.updateWaves(dt);
     this.updateHazards(dt);
-    for (const a of this.fighters) a.burn = 0;
+    for (const a of this.fighters) {
+      a.burn = 0;
+      a.draining = 0;
+      a.drained = 0;
+    }
     for (const a of this.fighters) {
       if (!a.alive || !inWorld(a)) continue;
       for (const b of this.fighters) {
+        if (!a.alive) break;
         if (
           b.id === a.id ||
           !b.alive ||
@@ -3266,6 +3339,26 @@ export class Combat {
           distance(a, b) >= 30
         )
           continue;
+        if (a.shield && a.shieldKind === "void")
+          this.damage(
+            a,
+            b,
+            dt * VOID_MANTLE_DPS,
+            true,
+            false,
+            "abyssal",
+            false,
+          );
+        if (hasPassive(a, "ice") && b.alive) {
+          const health = b.hp;
+          this.damage(a, b, dt * DRAIN_DPS, true, false, "ice", false);
+          const stolen = Math.max(0, health - b.hp);
+          if (stolen > 0 && a.alive) {
+            a.hp = Math.min(a.maxHp, a.hp + stolen);
+            a.draining = 1;
+            b.drained = 1;
+          }
+        }
         if (
           a.parts.includes("fire") &&
           !b.parts.includes("fire") &&
@@ -3630,6 +3723,7 @@ export class Combat {
     this.effects = [];
     for (const a of this.fighters) {
       a.victory = a.alive && !a.echo && ids.includes(a.id);
+      a.draining = a.drained = 0;
       a.charging = false;
       a.teleportArrival = 0;
       a.blink = null;

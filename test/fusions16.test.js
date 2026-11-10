@@ -39,7 +39,7 @@ test("three new level-III recipes and all constituent fusion routes work", () =>
       assert.equal(combination(pair, [parts[i]]), e);
     }
   }
-  assert.equal(LEVEL_THREE.length, 8);
+  assert.equal(LEVEL_THREE.length, 9);
 });
 test("Vog retains cumulative reductions and dash hit width stays 30 percent wider", () => {
   near(VOG_RADIUS, (500 / Math.sqrt(3)) * 0.6 * 0.8);

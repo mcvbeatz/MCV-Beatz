@@ -1,4 +1,12 @@
-# Elemental — The Colosseum · v0.40.0
+# Elemental — The Colosseum · v0.41.0
+
+## v0.41.0 Ice and Abyssal
+
+- Ice is a level-II Water + Dark fusion. Abyssal is level III: Ice + Earth or Mud + Dark. Both appear in their tier’s practice menu and normal token fusion/reward pools.
+- Hold Icicle Burst to fire five directional icicles per second (0.6 base damage each, 3 HP/s before defenses). Release stops the stream immediately; there is no charge, ammo limit, or cooldown. Always uses hold/release, including with tap charging enabled. Damage reactions pause fire; shields, imprisonment, changing forms, death and battle completion cancel it.
+- Abyssal’s held Void Mantle has 65 shield HP, absorbs damage like Rock shield and deals 5 base contact damage per second. It ends on release or break, then shares the five-second shield cooldown. It cannot fire icicles while shielding.
+- Passive Drain transfers 3 base HP/s on contact, capped to actual health lost and the drainer’s maximum health. It follows friendly-fire and defense rules; blocked hits do not heal. Cyan-violet glow marks the drainer; a dark body tint marks the drained fighter. Contact ending clears both immediately. Existing inherited passives remain active.
+- Each elemental has one consistent 24-frame atlas: front/right/back idle, four running poses, casting, punching and hurt poses. Left mirrors right; one scale per atlas keeps the outfit and proportions aligned across states. Added crystalline projectiles, swirling water/stone shielding, portraits and in-game guide images.
 
 ## v0.40.0 Speed burst versus Stone Prison
 

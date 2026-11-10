@@ -119,7 +119,7 @@ export function createApp(api) {
     setScreen(next);
     const c = $("shell-content");
     if (next === "home")
-      c.innerHTML = `<section class="home-hero"><span class="eyebrow">THE COLOSSEUM · v0.40.0</span><h1>Power is elemental.</h1><p>Choose your arena. Find your next form.</p><div class="home-elements" aria-label="Light, Dark, Water, Air, Earth and Fire">${Object.keys(
+      c.innerHTML = `<section class="home-hero"><span class="eyebrow">THE COLOSSEUM · v0.41.0</span><h1>Power is elemental.</h1><p>Choose your arena. Find your next form.</p><div class="home-elements" aria-label="Light, Dark, Water, Air, Earth and Fire">${Object.keys(
         ELEMENTS,
       )
         .map(
@@ -283,6 +283,13 @@ export function createApp(api) {
           `${nameOf(id)} · ${name}`,
           SKILL_HELP[name] ||
             "Use the matching skill button in battle. Inherited skills are also available in the top tabs.",
+          "✦",
+          `guides/${id}.png`,
+        ]);
+      if (["ice", "abyssal"].includes(id))
+        items.push([
+          `${nameOf(id)} · Drain`,
+          SKILL_HELP.Drain,
           "✦",
           `guides/${id}.png`,
         ]);

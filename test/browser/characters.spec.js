@@ -44,7 +44,7 @@ test("grounded strides and airborne travel both animate in every direction", asy
     }
     return { grounded, flying };
   });
-  expect(result.grounded).toBe(39);
+  expect(result.grounded).toBe(45);
   // Wind's sideways glide intentionally holds its arms steady.
   expect(result.flying).toBe(29);
 });
@@ -147,7 +147,7 @@ test("every elemental draws four directions and distinct attack frames without m
     return { distinct: new Set(images).size, errors };
   });
   expect(result.errors).toEqual([]);
-  expect(result.distinct).toBe(184);
+  expect(result.distinct).toBe(200);
 });
 
 test("attack poses enter contact when melee hits and recover on the existing timer", async ({
