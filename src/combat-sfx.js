@@ -17,6 +17,7 @@ export const RECORDED_SFX = {
 };
 export const SFX_KINDS = ["swing", "slice", "impact", "clash", "token"];
 const armed = new Set([
+  "ice",
   "dark",
   "light",
   "spirit",

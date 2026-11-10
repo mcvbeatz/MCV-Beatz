@@ -82,8 +82,8 @@ const frames = {
 };
 export const CHARACTERS = Object.keys(frames);
 export const ATTACK_NAMES = {
-  ice: "Frost gauntlet",
-  abyssal: "Abyssal fist",
+  ice: "Glacial blades",
+  abyssal: "Abyssal claw",
   phoenix: "Solar talon",
   terraformer: "Rift gauntlet",
   sanctuary: "Spring lance",
@@ -1059,9 +1059,25 @@ export function drawCharacterStrike(c, a) {
     c.fillStyle = "#c0ffff";
     for (let i = 0; i < 4; i++)
       c.fillRect(40 + p * 18 - i * 2, -17 + i * 10, 3, 3);
-  } else if (style === "dark") {
+  } else if (style === "abyssal") {
+    for (let i = -1; i <= 1; i++) {
+      c.strokeStyle = i === 0 ? "#cbfaff" : "#51bcdd";
+      c.lineWidth = i === 0 ? 2 : 3;
+      c.beginPath();
+      c.moveTo(25, i * 9 - 10);
+      c.quadraticCurveTo(42 + p * 10, i * 9 - 4, 48 + p * 9, i * 9 + 8);
+      c.stroke();
+    }
+  } else if (style === "dark" || style === "ice") {
     for (const sign of [-1, 1]) {
-      c.strokeStyle = sign < 0 ? "#9ca9cf" : "#f1f4ff";
+      c.strokeStyle =
+        style === "ice"
+          ? sign < 0
+            ? "#77dfff"
+            : "#e6fcff"
+          : sign < 0
+            ? "#9ca9cf"
+            : "#f1f4ff";
       c.lineWidth = 3;
       c.beginPath();
       c.moveTo(24, sign * 18);

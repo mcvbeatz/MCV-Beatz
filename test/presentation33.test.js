@@ -56,6 +56,8 @@ test("misses, weapon hits, impacts and contested strikes emit distinct combat so
   );
   for (const [element, kind] of [
     ["light", "slice"],
+    ["ice", "slice"],
+    ["abyssal", "impact"],
     ["water", "impact"],
   ]) {
     const g = duel(element);

@@ -1,4 +1,8 @@
-# Elemental — The Colosseum · v0.42.0
+# Elemental — The Colosseum · v0.43.0
+
+## v0.43.0 Ice and Abyssal visual redesign
+
+Ice now follows the blue-haired hooded rogue concept, with a navy-and-gold outfit and twin crystalline daggers. Abyssal follows the dark armored monster concept, with a horned full-face helm, massive spiked shoulders, claws and cyan fissures. Both have complete, consistent directional idle, running, casting, attack and hurt sprites. Running uses a pronounced forward lean, driving knees and trailing cloth; stable row anchors and one scale per atlas preserve body proportions across the animation. Ice uses icy blade trails and slicing impacts; Abyssal uses cyan claw trails. Portraits and battle guide images show the new designs. Combat abilities and movement speed are unchanged.
 
 ## v0.42.0 Divine allies and battlefield awareness
 

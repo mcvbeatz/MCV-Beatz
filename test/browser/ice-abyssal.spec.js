@@ -49,8 +49,11 @@ for (const [element, mode] of [
         { makeFighter } = await import("/src/combat.js");
       g.countdown = 0;
       g.ai = () => {};
+      g.map = null;
+      g.portals.portals = [];
+      g.portals.placing = null;
       const a = g.player;
-      Object.assign(a, { fx: 1, fy: 0, hp: 60 });
+      Object.assign(a, { x: 300, y: 350, fx: 1, fy: 0, hp: 60 });
       g.fighters = [a, makeFighter("rival", "light", 1, a.x + 100, a.y)];
     });
     const button = page.locator("#charge-btn");
@@ -77,6 +80,16 @@ for (const [element, mode] of [
       .poll(() => page.evaluate(() => __arena.game.player.draining))
       .toBe(1);
     expect(await page.evaluate(() => __arena.game.fighters[1].drained)).toBe(1);
+    // Capture the new design unobscured after verifying its contact feedback.
+    await page.evaluate(() => {
+      const g = __arena.game;
+      g.fighters[1].x = g.player.x + 230;
+      g.player.fx = 0;
+      g.player.fy = 1;
+    });
+    await expect
+      .poll(() => page.evaluate(() => __arena.game.player.draining))
+      .toBe(0);
     if (element === "abyssal") {
       const utility = page.locator("#utility-btn");
       await expect(utility).toContainText("Void Mantle");
@@ -130,6 +143,7 @@ test("new sprite sets render four distinct running steps, casts, attacks and hur
         ][face];
         const frames = [];
         const heights = [];
+        const lean = [];
         for (let pose = 0; pose < 8; pose++) {
           Object.assign(a, {
             vx: 0,
@@ -165,7 +179,29 @@ test("new sprite sets render four distinct running steps, casts, attacks and hur
                 rows.push(y);
                 break;
               }
-          if (pose <= 4) heights.push(Math.max(...rows) - Math.min(...rows));
+          if (pose <= 4) {
+            const top = Math.min(...rows),
+              height = Math.max(...rows) - top;
+            heights.push(height);
+            if (face === 1) {
+              const center = (from, to) => {
+                let sum = 0,
+                  count = 0;
+                for (
+                  let y = Math.ceil(top + height * from);
+                  y <= top + height * to;
+                  y++
+                )
+                  for (let x = 0; x < 120; x++)
+                    if (data[(y * 120 + x) * 4 + 3] > 150) {
+                      sum += x;
+                      count++;
+                    }
+                return sum / count;
+              };
+              lean.push(center(0.1, 0.32) - center(0.82, 1));
+            }
+          }
           if (pose >= 1 && pose <= 4) frames.push(c.toDataURL());
           s.drawImage(c, pose * 145, (e * 3 + face) * 100);
         }
@@ -174,6 +210,10 @@ test("new sprite sets render four distinct running steps, casts, attacks and hur
           face,
           steps: new Set(frames).size,
           spread: Math.max(...heights) - Math.min(...heights),
+          runningLean:
+            face === 1
+              ? lean.slice(1).reduce((sum, x) => sum + x, 0) / 4 - lean[0]
+              : null,
         });
       }
     sheet.id = "sprite-review";
@@ -187,7 +227,13 @@ test("new sprite sets render four distinct running steps, casts, attacks and hur
     return checks;
   });
   expect(result.every((r) => r.steps === 4)).toBe(true);
-  expect(result.every((r) => r.spread <= 7)).toBe(true);
+  // A crouched sprint is naturally shorter, while its head/body pixel scale stays fixed.
+  expect(result.every((r) => r.spread <= 12)).toBe(true);
+  for (const r of result.filter((r) => r.face === 1))
+    expect(
+      r.runningLean,
+      `${r.element} should lead with its head during a sprint`,
+    ).toBeGreaterThan(3);
   await page
     .locator("#sprite-review")
     .screenshot({ path: "/tmp/ice-abyssal-poses.png" });
