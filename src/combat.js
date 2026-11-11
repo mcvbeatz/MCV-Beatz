@@ -189,6 +189,7 @@ export const extraSkillsFor = (form) => EXTRA_SKILLS[form] || [];
 const skillForm = (a) => a.executingForm || activeForm(a);
 export const canUseSkill = (a, form, kind) =>
   !a.skillsDisabled &&
+  !(a.portalsDisabled && form === "spirit" && kind === "utility") &&
   !(a.selfHealOnly && form === "light" && kind === "utility") &&
   ((form === "blindness" && a.parts.includes("dark")) ||
     a.forms.includes(form) ||
@@ -433,7 +434,7 @@ export class Combat {
               ]);
     this.map =
       this.mapId === "corruption"
-        ? createCorruptionMap()
+        ? createCorruptionMap({ portals: false })
         : this.mapId === "classic"
           ? null
           : createBattleMap(this.mapId);
@@ -549,7 +550,10 @@ export class Combat {
       );
     }
     if (["ffa", "corruption", "roulette"].includes(mode)) {
-      const count = Math.max(2, Math.min(8, Math.floor(players) || 4));
+      const count =
+        mode === "corruption"
+          ? 8
+          : Math.max(2, Math.min(8, Math.floor(players) || 4));
       this.fighters = Array.from({ length: count }, (_, i) => {
         const angle = Math.PI + (i * Math.PI * 2) / count;
         return makeFighter(
@@ -610,6 +614,7 @@ export class Combat {
       if (mode === "corruption") {
         a.hp = a.maxHp = 2;
         a.selfHealOnly = true;
+        a.portalsDisabled = true;
       }
       if (mode === "ctf" && !this.map) a.x = a.team === 0 ? 220 : 804;
       a.spawn = { x: a.x, y: a.y, element: a.element };
@@ -984,36 +989,11 @@ export class Combat {
       a.abilityCd = 4.5;
     a.chargeForm = null;
   }
-  fell(a, { lost = false, killer = null, terrain = null } = {}) {
-    if (!a.alive && !a.ghost) return;
-    const wasAlive = a.alive;
-    if (wasAlive && !a.echo) {
-      a.deaths = (a.deaths || 0) + 1;
-      const source =
-        killer || (a.lastDamagedAt > this.time - 5 ? a.lastDamager : null);
-      const credited = source?.echo
-        ? this.fighters.find((b) => b.id === source.summoner)
-        : source;
-      if (credited && credited.team !== a.team) {
-        credited.kills = (credited.kills || 0) + 1;
-        if (["tdm", "war", "rush"].includes(this.mode))
-          this.scores[credited.team]++;
-      }
-      recordWarDeath(this, a, credited);
-      if (this.respawnDelay) a.respawnAt = this.time + this.respawnDelay;
-      for (const flag of this.flags)
-        if (flag.carrier === a.id) {
-          flag.carrier = null;
-          flag.x = a.x;
-          flag.y = a.y;
-          flag.dropped = true;
-          this.cue("portal", flag, flag.team === 0 ? "#82d7eb" : "#ed947d");
-        }
-    }
+  rebirth(a) {
     if (
-      wasAlive &&
+      a.alive &&
       !a.echo &&
-      hasPassive(a, "phoenix") &&
+      (hasPassive(a, "phoenix") || (a.nightRebirth && a.team === 0)) &&
       !this.rebirthUsed.has(a.id)
     ) {
       this.rebirthUsed.add(a.id);
@@ -1063,8 +1043,37 @@ export class Combat {
         life: 1,
         max: 1,
       });
-      return;
+      return true;
     }
+    return false;
+  }
+  fell(a, { lost = false, killer = null, terrain = null } = {}) {
+    if (!a.alive && !a.ghost) return;
+    const wasAlive = a.alive;
+    if (wasAlive && !a.echo) {
+      a.deaths = (a.deaths || 0) + 1;
+      const source =
+        killer || (a.lastDamagedAt > this.time - 5 ? a.lastDamager : null);
+      const credited = source?.echo
+        ? this.fighters.find((b) => b.id === source.summoner)
+        : source;
+      if (credited && credited.team !== a.team) {
+        credited.kills = (credited.kills || 0) + 1;
+        if (["tdm", "war", "rush"].includes(this.mode))
+          this.scores[credited.team]++;
+      }
+      recordWarDeath(this, a, credited);
+      if (this.respawnDelay) a.respawnAt = this.time + this.respawnDelay;
+      for (const flag of this.flags)
+        if (flag.carrier === a.id) {
+          flag.carrier = null;
+          flag.x = a.x;
+          flag.y = a.y;
+          flag.dropped = true;
+          this.cue("portal", flag, flag.team === 0 ? "#82d7eb" : "#ed947d");
+        }
+    }
+    if (wasAlive && this.rebirth(a)) return;
     if (wasAlive) {
       this.fallenAnimations.push({
         fighter: { ...a, parts: [...a.parts], victory: false },
@@ -1224,7 +1233,11 @@ export class Combat {
         if (hit >= 0.5 && !hasPassive(b, "divine"))
           this.cue("interrupt", b, "#e9cc91");
       }
-      if (b.hp <= 0) this.fell(b, { killer: a, terrain: deathTerrain });
+      if (b.hp <= 0) {
+        if (this.mode === "corruption" && b.team === 0 && a.team === 1)
+          this.corrupt(b, a);
+        else this.fell(b, { killer: a, terrain: deathTerrain });
+      }
     }
     return hit;
   }
@@ -1232,7 +1245,7 @@ export class Combat {
     if (!this.friendlyFire && a.team === b.team) return 0;
     if (this.mode === "corruption") {
       if (!a.alive || !b.alive || !inWorld(b)) return 0;
-      if (a.element === "dark") this.corruptionHit(a, b);
+      if (a.team === 1) this.corruptionHit(a, b);
       else return this.damage(a, b, 1);
       return amount;
     }
@@ -1294,8 +1307,8 @@ export class Combat {
         if (this.mode === "corruption") {
           // Both simultaneous hits land. Apply the Light hit before conversion
           // changes the health cap, even if that hit fells the Dark attacker.
-          const dark = a.element === "dark" ? a : clash.who;
-          const light = a.element === "light" ? a : clash.who;
+          const dark = a.team === 1 ? a : clash.who;
+          const light = a.team === 0 ? a : clash.who;
           this.damage(light, dark, 1);
           this.corruptionHit(dark, light);
         } else {
@@ -1380,6 +1393,16 @@ export class Combat {
     });
   }
   revivalTarget(a) {
+    if (this.mode === "corruption") {
+      if (a.element !== "spirit" || a.team !== 0) return undefined;
+      return this.fighters
+        .filter((b) => b.team === 1 && b.element === "dark" && !b.echo)
+        .sort(
+          (b, c) =>
+            (b.infectedAt ?? 0) - (c.infectedAt ?? 0) ||
+            (b.infectionOrder ?? 0) - (c.infectionOrder ?? 0),
+        )[0];
+    }
     return this.fighters
       .filter(
         (b) =>
@@ -1390,6 +1413,15 @@ export class Combat {
   revive(a, power = 1) {
     const fallen = this.revivalTarget(a);
     if (!fallen) return false;
+    if (this.mode === "corruption") {
+      this.nightForm(fallen, "light", 0, true);
+      delete fallen.infectedAt;
+      delete fallen.infectionOrder;
+      this.syncCorruptionHealth();
+      this.cue("revive", fallen, "#bee9bf");
+      this.emitSound("revival", fallen);
+      return true;
+    }
     if (this.respawnDelay) {
       this.respawn(fallen);
       fallen.hp = Math.min(fallen.maxHp, 50 * power);
@@ -3396,41 +3428,87 @@ export class Combat {
     updateDungeon(this);
     this.checkMatchEnd();
   }
+  nightForm(a, element, team, restore = false) {
+    const saved = {};
+    for (const key of [
+      "kills",
+      "deaths",
+      "infections",
+      "infectedAt",
+      "infectionOrder",
+      "nightRebirth",
+      "aiControlled",
+      "respawnAt",
+    ])
+      if (a[key] !== undefined) saved[key] = a[key];
+    const { id, x, y, spawn, alive, hp } = a;
+    const fresh = makeFighter(id, element, team, x, y);
+    for (const key of Object.keys(a)) delete a[key];
+    Object.assign(a, fresh, saved, {
+      spawn: { ...spawn, element },
+      alive: restore || alive,
+      hp: restore ? 2 : hp,
+      maxHp:
+        team === 0
+          ? 2
+          : Math.max(
+              1,
+              this.fighters.filter((b) => b.team === 0 && b.alive && !b.echo)
+                .length,
+            ),
+      selfHealOnly: team === 0,
+      portalsDisabled: true,
+      skillsDisabled: element === "dark",
+      spawnFlash: 0.65,
+    });
+    if (restore) {
+      delete a.respawnAt;
+      this.fallenAnimations = this.fallenAnimations.filter(
+        (d) => d.fighter.id !== a.id,
+      );
+      if (a === this.player) this.spectatorFocus = null;
+    }
+    this.pending = this.pending.filter((p) => p.who !== a);
+    this.tokens = this.tokens.filter((t) => t.owner !== a.id);
+  }
   corruptionHit(source, target) {
-    if (!target.alive || target.element !== "light") return false;
+    if (!target.alive || target.team !== 0 || source.team !== 1) return false;
     if (target.hp <= 1) return this.corrupt(target, source);
     this.damage(source, target, 1);
     return true;
   }
   corrupt(a, source = null) {
-    if (!a || a.element !== "light") return false;
-    const { id, x, y, spawn, kills, deaths } = a;
+    if (!a || !a.alive || a.team !== 0) return false;
+    if (source && this.rebirth(a)) return false;
     if (source) source.infections = (source.infections || 0) + 1;
-    const fresh = makeFighter(id, "dark", 1, x, y);
-    for (const key of Object.keys(a)) delete a[key];
-    Object.assign(a, fresh, {
-      spawn: { ...spawn, element: "dark" },
-      kills,
-      deaths,
-      infectedAt: this.time,
-      infections: 0,
-      skillsDisabled: true,
-      spawnFlash: 0.65,
-    });
-    this.pending = this.pending.filter((p) => p.who !== a);
+    this.nightForm(a, "dark", 1);
+    a.infectedAt = this.time;
+    a.infectionOrder = this.conversionSequence =
+      (this.conversionSequence || 0) + 1;
+    a.infections ??= 0;
+    // Newly converted hunters start at their current hit-count cap.
+    a.hp = a.maxHp;
+    if (source?.element === "dark" && source.infections >= 3) {
+      this.nightForm(source, "smoke", 1);
+      this.cue("fusion", source, "#c3a5d5");
+    }
     this.syncCorruptionHealth();
     this.cue("shatter", a, "#a59dc1");
     return true;
   }
   syncCorruptionHealth() {
     if (this.mode !== "corruption") return;
-    const cap = Math.max(
-      1,
-      this.fighters.filter((a) => a.element === "light" && a.alive && !a.echo)
-        .length,
+    const survivors = this.fighters.filter(
+      (a) => a.team === 0 && a.alive && !a.echo,
     );
+    if (survivors.length <= 3) for (const a of survivors) a.nightRebirth = true;
+    if (survivors.length === 1 && survivors[0].element === "light") {
+      this.nightForm(survivors[0], "spirit", 0);
+      this.cue("fusion", survivors[0], "#e8e2b8");
+    }
+    const cap = Math.max(1, survivors.length);
     for (const a of this.fighters)
-      if (a.element === "dark" && !a.echo) {
+      if (a.team === 1 && !a.echo) {
         a.maxHp = cap;
         if (a.alive) a.hp = Math.min(a.hp, cap);
       }
@@ -3438,7 +3516,7 @@ export class Combat {
   relentless(a) {
     return (
       !a.echo &&
-      ((this.mode === "corruption" && a.element === "dark") ||
+      ((this.mode === "corruption" && a.team === 1) ||
         ((this.mode === "boss" || (isGauntlet(this) && this.finalWave)) &&
           a.element === "invincible"))
     );
@@ -3482,7 +3560,7 @@ export class Combat {
   }
   aiMazeCorruption(a, dt) {
     a.aiControlled = true;
-    if (a.element === "dark") {
+    if (a.team === 1) {
       a.aiPlan = null;
       a.aiNeedChange = false;
     }
@@ -3506,16 +3584,18 @@ export class Combat {
         map.path(a, b).length - map.path(a, c).length ||
         distance(a, b) - distance(a, c),
     )[0];
-    if (a.element === "light" && a.hp < a.maxHp) {
+    const rescue = a.element === "spirit" && this.revivalTarget(a);
+    if (rescue || (a.team === 0 && a.hp < a.maxHp)) {
       if (a.charging && a.charge >= 0.25) this.releaseCharge(a);
-      else if (!a.charging && !a.abilityCd) this.startCharge(a, "light");
+      else if (!a.charging && !a.abilityCd)
+        this.startCharge(a, rescue ? "spirit" : "light");
     }
     if (!target) {
       this.move(a, 0, 0, dt);
       return;
     }
     let goal = target;
-    if (a.element === "light") {
+    if (a.team === 0) {
       if (
         !a.mazeGoal ||
         this.time >= (a.mazeGoalUntil || 0) ||
@@ -3530,6 +3610,21 @@ export class Combat {
         a.mazeGoalUntil = this.time + 2;
       }
       goal = a.mazeGoal;
+    }
+    if (a.element === "smoke" && this.canSee(a, target)) {
+      const gap = distance(a, target);
+      if (a.charging && a.charge >= 0.35) this.releaseCharge(a);
+      else if (!a.charging && !a.abilityCd) {
+        if (
+          gap < VOG_RADIUS &&
+          !this.hazards.some(
+            (h) => h.kind === "vog" && h.owner === a && h.life > 1,
+          )
+        )
+          this.startCharge(a, "smoke");
+        else if (gap < 240) this.startCharge(a, "fire");
+      }
+      if (gap < 70) this.utility(a, true, "dark");
     }
     const route = mazeSpacingRoute(this, a, goal, rivals);
     this.move(a, route.x - a.x, route.y - a.y, dt);
@@ -3608,6 +3703,10 @@ export class Combat {
       infections,
       skillsDisabled,
       highestTier,
+      infectionOrder,
+      nightRebirth,
+      portalsDisabled,
+      selfHealOnly,
     } = a;
     const fresh = makeFighter(a.id, spawn.element, a.team, spawn.x, spawn.y);
     // Keep the object identity used by controls and projectiles, but clear every
@@ -3621,6 +3720,10 @@ export class Combat {
       infections,
       skillsDisabled,
       highestTier,
+      infectionOrder,
+      nightRebirth,
+      portalsDisabled,
+      selfHealOnly,
       spawnFlash: 0.65,
     });
     this.tokens = this.tokens.filter((t) => t.owner !== a.id);
@@ -3776,10 +3879,11 @@ export class Combat {
     const advanced = advancedEnd(this);
     if (advanced !== null) return advanced;
     if (this.mode === "corruption") {
+      this.syncCorruptionHealth();
       if (
         !this.corruptionStarted ||
         (this.time < this.timeLimit &&
-          this.fighters.some((a) => a.element === "light"))
+          this.fighters.some((a) => a.team === 0 && a.alive))
       )
         return false;
       const longest = Math.max(

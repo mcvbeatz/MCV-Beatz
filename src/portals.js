@@ -27,7 +27,8 @@ export class PortalSystem {
     return count >= 2 || (count > 0 && this.closing.has(owner.id));
   }
   activate(owner) {
-    if (!owner.alive || !inWorld(owner)) return false;
+    if (this.game.mode === "corruption" || !owner.alive || !inWorld(owner))
+      return false;
     if (this.willClose(owner)) {
       this.closing.add(owner.id);
       if (this.placing === owner.id) this.placing = null;
@@ -37,7 +38,7 @@ export class PortalSystem {
     return this.begin(owner);
   }
   begin(owner) {
-    if (!owner.alive) return false;
+    if (this.game.mode === "corruption" || !owner.alive) return false;
     if (this.owned(owner).length >= 2) {
       this.game.cue("portal", owner, "#ffffff");
       return false;
@@ -47,6 +48,7 @@ export class PortalSystem {
   }
   place(owner, x, y, { autonomous = false } = {}) {
     if (
+      this.game.mode === "corruption" ||
       (this.placing !== owner.id && !(autonomous && owner.aiControlled)) ||
       !owner.alive ||
       this.owned(owner).length >= 2
@@ -251,6 +253,7 @@ export class PortalSystem {
     return true;
   }
   enter(e, previous) {
+    if (this.game.mode === "corruption") return false;
     if (e.prisonHp > 0) return false;
     if (!inWorld(e) || e.portalCooldown > 0) return false;
     const p = this.portals.find(

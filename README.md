@@ -1,4 +1,12 @@
-# Elemental — The Colosseum · v0.45.0
+# Elemental — The Colosseum · v0.46.0
+
+## v0.46.0 Survive the Night perks
+
+- Survive the Night now always starts eight fighters. Setup offers only eight for this mode, and the combat constructor enforces the same rule. Its two-minute clock and five-second initial infection are unchanged.
+- At three surviving Light-team fighters, those survivors gain the existing one-use Rebirth passive: a conversion or lethal hit is prevented once, restoring half health with the Rebirth animation. It is tracked per fighter for the match and cannot be refreshed by conversion, rescue or respawning.
+- The last surviving Light evolves into Spirit, retaining its current hit-count health and Rebirth. Spirit’s Revival restores the earliest-converted eligible Dark to Light, whether alive or awaiting respawn. Ties follow conversion order; Smoke is never eligible. Rescued Light returns at full two-hit health. Spirit remains on the survivor team and can win at timeout.
+- Three credited conversions evolve Dark into Smoke with its normal forms and skills. Smoke remains on the hunter team, uses the survivor-count health cap, and keeps its evolution and conversion total through ten-second respawns. Its lethal abilities convert survivors, respecting Rebirth first.
+- All portals are disabled in this mode, including fixed maze shortcuts and Spirit’s Portals. The maze remains connected through corridors. AI uses Spirit rescue and Smoke abilities; crowd avoidance works across evolved forms. Battle controls show perk availability, Smoke progress and the rescue target rule.
 
 ## v0.45.0 Portal controls and Survive the Night spacing
 

@@ -55,25 +55,15 @@ test("maze walls stop movement and attacks, including high-speed steps", () => {
   assert.equal(g.autoLock(a), undefined);
   assert.equal(a.lock, null);
 });
-test("fixed maze portals transport every fighter, have safe exits and avoid immediate ping-pong", () => {
-  const g = new Combat({ mode: "corruption", players: 4 }),
-    a = g.player;
-  const [entry, exit] = g.portals.portals;
-  assert.equal(g.portals.portals.length, 2);
-  assert.ok(entry.environment);
-  Object.assign(a, { x: entry.x, y: entry.y });
-  assert.equal(g.portals.enter(a, { x: entry.x - 30, y: entry.y }), true);
-  assert.ok(a.transit);
-  g.portals.tick(a, 0.19);
-  assert.equal(a.transit, null);
-  assert.ok(distance(a, exit) < 50);
-  assert.ok(g.map.walkable(a));
-  assert.equal(g.portals.enter(a, a), false);
-  assert.equal(g.portals.close(a, entry.id), false);
-  assert.equal(
-    g.map.path(g.map.portalCells[0], g.map.portalCells[1]).length,
-    2,
-  );
+test("Survive the Night has no fixed portals and navigation uses connected corridors only", () => {
+  const g = new Combat({ mode: "corruption", players: 8 });
+  assert.deepEqual(g.portals.portals, []);
+  assert.deepEqual(g.map.portals, []);
+  assert.deepEqual(g.map.portalCells, []);
+  const path = g.map.path(64, 72);
+  assert.ok(path.length > 2);
+  for (let i = 1; i < path.length; i++)
+    assert.ok(g.map.graph[path[i - 1]].has(path[i]));
 });
 test("Corruption navigation advances through corridors and its simulation never leaves the floor", () => {
   const g = new Combat({ mode: "corruption", players: 8, random: () => 0.5 });

@@ -9,7 +9,7 @@ function pointDistance(p, a, b) {
   const t = l ? clamp(((p.x - a.x) * dx + (p.y - a.y) * dy) / l, 0, 1) : 0;
   return Math.hypot(p.x - a.x - t * dx, p.y - a.y - t * dy);
 }
-export function createCorruptionMap() {
+export function createCorruptionMap({ portals = true } = {}) {
   const map = {
     kind: "corruption",
     name: "The Umbral Labyrinth",
@@ -191,7 +191,7 @@ export function createCorruptionMap() {
     }
     return distance(start, a);
   };
-  map.portalCells = [64, 72];
+  map.portalCells = portals ? [64, 72] : [];
   map.portals = map.portalCells.map((id, i) => ({
     ...cells[id],
     id: `maze-${i}`,

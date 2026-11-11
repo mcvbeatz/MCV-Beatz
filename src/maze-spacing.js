@@ -48,7 +48,7 @@ function routePlan(game, a, rivals) {
     return null;
   }
   if (
-    a.element === "light" &&
+    a.team === 0 &&
     plan.cells.some(
       (id, step) => clearance(map, map.cells[id], rivals) <= step + 1,
     )
@@ -59,7 +59,7 @@ function routePlan(game, a, rivals) {
     return a;
   }
   const point = map.route(a, map.cells[plan.cells[0]]);
-  if (a.element === "light" && !safeStep(map, a, point, rivals)) {
+  if (a.team === 0 && !safeStep(map, a, point, rivals)) {
     a.mazeSpacing = null;
     a.mazeGoal = null;
     a.mazeGoalUntil = 0;
@@ -81,15 +81,14 @@ export function mazeSpacingRoute(game, a, goal, rivals) {
       b.alive &&
       !b.echo &&
       inWorld(b) &&
-      b.element === a.element &&
-      distance(a, b) < (a.element === "light" ? 64 : 32) &&
+      b.team === a.team &&
+      distance(a, b) < (a.team === 0 ? 64 : 32) &&
       map.lineClear(a, b),
   );
   if (!peers.length) return map.route(a, goal);
 
   const start = map.cellAt(a);
-  const peerGoal = (peer) =>
-    a.element === "light" ? peer.mazeGoal || goal : goal;
+  const peerGoal = (peer) => (a.team === 0 ? peer.mazeGoal || goal : goal);
   const occupied = new Set(
     peers.map((peer) => {
       if (map.cellAt(peer) !== start) return map.cellAt(peer);
@@ -103,7 +102,7 @@ export function mazeSpacingRoute(game, a, goal, rivals) {
     for (const first of neighbors(map, start)) {
       if (occupied.has(first)) continue;
       const paths = branchPaths(map, start, first);
-      if (a.element === "dark") {
+      if (a.team === 1) {
         const path = paths.get(map.cellAt(goal));
         if (path) options.push({ path, score: -path.length });
       } else {
@@ -133,7 +132,7 @@ export function mazeSpacingRoute(game, a, goal, rivals) {
         until: game.time + 8,
         element: a.element,
       };
-      if (a.element === "light") {
+      if (a.team === 0) {
         a.mazeGoal = map.cells[best.path.at(-1)];
         a.mazeGoalUntil = game.time + 8;
       }
@@ -174,7 +173,7 @@ export function mazeSpacingRoute(game, a, goal, rivals) {
       ) ||
       !map.walkable(point, 14) ||
       !map.lineClear(a, point, 14) ||
-      (a.element === "light" && !safeStep(map, a, point, rivals))
+      (a.team === 0 && !safeStep(map, a, point, rivals))
     )
       continue;
     const value =

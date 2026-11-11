@@ -8,7 +8,7 @@ const advance = (g, seconds, ai = false) => {
 const corruption = (players = 4) =>
   new Combat({ mode: "corruption", players, random: () => 0 });
 
-test("Corruption starts with up to eight Lights and seeds exactly one random Dark after five seconds", () => {
+test("Corruption starts with exactly eight Lights and seeds exactly one random Dark after five seconds", () => {
   const g = corruption(20);
   assert.equal(g.fighters.length, 8);
   assert.ok(g.fighters.every((a) => a.element === "light" && a.team === 0));
@@ -39,7 +39,7 @@ test("Corruption converts in two hits, scores infections, respawns Dark without 
   assert.equal(dark.infections, 1);
   g.meleeDamage(hunter, light, 0.01);
   assert.equal(light.alive, true);
-  g.meleeDamage(hunter, light, 0.01);
+  for (let n = 0; n < 5; n++) g.meleeDamage(hunter, light, 0.01);
   assert.equal(light.alive, false);
   assert.equal(light.respawnAt, 22);
   assert.equal(g.tokens.length, 0);
@@ -80,27 +80,35 @@ test("Corruption reports tied Light survivors and independent Dark infection win
   g.corrupt(b, a);
   g.time = 120;
   assert.ok(g.checkMatchEnd());
-  assert.deepEqual(g.winners.light, [c.id, d.id]);
+  assert.deepEqual(
+    g.winners.light,
+    g.fighters.slice(2).map((a) => a.id),
+  );
   assert.deepEqual(g.winners.dark, [a.id]);
   assert.equal(g.result, "victory");
   assert.match(g.finishReason, /Dark infections: You \(1\)/);
 });
-test("Corruption ends when the last Light converts and ignores all-Dark respawn wipes", () => {
-  const g = corruption(3),
-    [a, b, c] = g.fighters;
+test("Corruption ends only after the final Spirit uses Rebirth and converts, ignoring Dark respawn wipes", () => {
+  const g = corruption();
   g.time = 5;
   g.corruptionStarted = true;
-  g.corrupt(a);
-  g.fell(a);
+  const [hunter] = g.fighters;
+  g.corrupt(hunter);
+  g.fell(hunter);
   assert.equal(g.checkMatchEnd(), false);
-  g.respawn(a);
-  g.time = 10;
-  g.corrupt(b, a);
+  g.respawn(hunter);
+  for (const a of g.fighters.slice(1, 7)) {
+    g.time += 1;
+    g.corrupt(a);
+  }
+  const last = g.fighters[7];
+  assert.equal(last.element, "spirit");
+  assert.equal(g.checkMatchEnd(), false);
   g.time = 20;
-  g.corrupt(c, b);
+  for (let n = 0; n < 3; n++) g.meleeDamage(hunter, last, 1);
   assert.ok(g.checkMatchEnd());
-  assert.deepEqual(g.winners.light, [c.id]);
-  assert.deepEqual(g.winners.dark, [a.id, b.id]);
+  assert.deepEqual(g.winners.light, [last.id]);
+  assert.deepEqual(g.winners.dark, [hunter.id]);
 });
 test("Boss randomly assigns either role among four to eight players, with combined HP and last-team standing", () => {
   for (const bossRole of ["boss", "challenger"])

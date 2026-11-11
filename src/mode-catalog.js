@@ -246,21 +246,26 @@ export const MODES = {
   },
   corruption: {
     name: "Survive the Night",
-    tag: "2–8 fighters · 2 minutes",
+    tag: "8 fighters · 2 minutes",
     slides: [
       [
         "The first infection",
-        "Survive the Umbral Labyrinth, a vast circular maze. White portals on opposite sides transport you across the maze. Everyone starts as Light; after five seconds one fighter becomes Dark.",
+        "Survive the Umbral Labyrinth, a vast circular maze. Eight fighters enter, and all portals are disabled. Everyone starts as Light; after five seconds one fighter becomes Dark.",
         "✦ → ◐",
       ],
       [
         "Survive or spread",
-        "Two Dark strikes corrupt Light. Light can heal itself, but cannot heal others or use Flash. Dark health matches the number of remaining Lights; Dark respawns in 10 seconds.",
+        "Two Dark strikes corrupt Light. Light can heal itself, but cannot heal others or use Flash. Hunter health matches the surviving Light team; hunters respawn in 10 seconds. Three conversions evolve Dark into Smoke with all its normal skills.",
         "◐",
       ],
       [
+        "Last lights of hope",
+        "The last three Light survivors gain one automatic Rebirth at half health. The last survivor evolves into Spirit and keeps Rebirth. Revival restores the earliest-converted Dark to Light, even while Dark is alive or awaiting respawn. Smoke cannot be rescued. Rebirth is only usable once per fighter per match.",
+        "✦",
+      ],
+      [
         "Two ways to win",
-        "Lasting longest as Light wins survival. Most infections wins the Dark category. At two minutes remaining Lights share victory. Friendly fire is off.",
+        "Lasting longest as Light wins survival. Most infections wins the Dark category. At two minutes remaining Light and Spirit survivors share victory. Friendly fire is off.",
         "♕",
       ],
     ],
