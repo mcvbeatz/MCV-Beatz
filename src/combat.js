@@ -1031,7 +1031,10 @@ export class Combat {
         portalCooldown: 1,
       });
       delete a.respawnAt;
-      Object.assign(a, this.floorPoint(a));
+      Object.assign(
+        a,
+        this.floorPoint(a, this.mode === "corruption" ? 16 : 13),
+      );
       this.pending = this.pending.filter((p) => p.who !== a);
       this.tokens = this.tokens.filter((t) => t.owner !== a.id);
       this.effects.push({
@@ -3462,6 +3465,7 @@ export class Combat {
       spawnFlash: 0.65,
     });
     if (restore) {
+      Object.assign(a, this.floorPoint(a, 16));
       delete a.respawnAt;
       this.fallenAnimations = this.fallenAnimations.filter(
         (d) => d.fighter.id !== a.id,
@@ -3728,6 +3732,7 @@ export class Combat {
     });
     this.tokens = this.tokens.filter((t) => t.owner !== a.id);
     this.pending = this.pending.filter((p) => p.who !== a);
+    if (this.mode === "corruption") Object.assign(a, this.floorPoint(a, 16));
     this.syncCorruptionHealth();
     // Other fighters keep all tokens they absorbed, even when their source respawns.
     return true;

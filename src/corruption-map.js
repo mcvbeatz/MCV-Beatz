@@ -141,6 +141,32 @@ export function createCorruptionMap({ portals = true } = {}) {
         pointDistance(p, s.a, s.b) < margin,
     );
   };
+  // Recovery must use the maze floor, never the original arena's rectangle.
+  // Keep valid positions unchanged; repair wall overlaps locally before falling
+  // back to a verified corridor center for invalid or far-outside coordinates.
+  map.nearest = (p, r = 13) => {
+    const origin = {
+      x: Number.isFinite(p.x) ? p.x : map.cx,
+      y: Number.isFinite(p.y) ? p.y : map.cy,
+    };
+    if (map.walkable(origin, r)) return origin;
+    for (let radius = 4; radius <= 96; radius += 4) {
+      for (let i = 0; i < 32; i++) {
+        const angle = (i * TAU) / 32;
+        const point = {
+          x: origin.x + Math.cos(angle) * radius,
+          y: origin.y + Math.sin(angle) * radius,
+        };
+        if (map.walkable(point, r)) return point;
+      }
+    }
+    const safe = cells
+      .filter((point) => map.walkable(point, r))
+      .sort((a, b) => distance(origin, a) - distance(origin, b))[0];
+    if (!safe)
+      throw new RangeError("No maze floor fits the requested clearance");
+    return { x: safe.x, y: safe.y };
+  };
   map.lineClear = (a, b, r = 0) => {
     const limit = map.radius - map.wallWidth / 2 - r,
       origin = { x: map.cx, y: map.cy };

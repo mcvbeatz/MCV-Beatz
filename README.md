@@ -1,4 +1,8 @@
-# Elemental — The Colosseum · v0.46.0
+# Elemental — The Colosseum · v0.46.1
+
+## v0.46.1 Safe maze recovery
+
+Rebirth now uses the Umbral Labyrinth’s floor geometry instead of clamping to the original arena’s rectangle. Safe positions stay unchanged. Rebirth, Spirit Revival and Dark/Smoke respawns validate body clearance, relocating unsafe wall or boundary positions to nearby walkable floor. Recovery checks cover every maze wall and real move-stick input after all three recovery paths.
 
 ## v0.46.0 Survive the Night perks
 
