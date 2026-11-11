@@ -17,9 +17,24 @@ export class PortalSystem {
     this.portals = [];
     this.placing = null;
     this.nextId = 0;
+    this.closing = new Set();
   }
   owned(owner) {
     return this.portals.filter((p) => p.owner === owner.id);
+  }
+  willClose(owner) {
+    const count = this.owned(owner).length;
+    return count >= 2 || (count > 0 && this.closing.has(owner.id));
+  }
+  activate(owner) {
+    if (!owner.alive || !inWorld(owner)) return false;
+    if (this.willClose(owner)) {
+      this.closing.add(owner.id);
+      if (this.placing === owner.id) this.placing = null;
+      return this.close(owner, this.owned(owner)[0].id);
+    }
+    this.closing.delete(owner.id);
+    return this.begin(owner);
   }
   begin(owner) {
     if (!owner.alive) return false;
@@ -150,6 +165,8 @@ export class PortalSystem {
       e.transit = null;
     }
     this.portals = this.portals.filter((p) => p !== portal);
+    if (!this.portals.some((p) => p.owner === portal.owner))
+      this.closing.delete(portal.owner);
     this.game.effects.push({
       kind: "portal-close",
       x: portal.x,

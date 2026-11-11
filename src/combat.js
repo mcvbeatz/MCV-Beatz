@@ -1,3 +1,4 @@
+import { mazeSpacingRoute } from "./maze-spacing.js";
 import { TELEPORT_ARRIVAL_TIME } from "./teleport-animation.js";
 import { PRISON_HOLD, PRISON_COLLAPSE } from "./stone-prison.js";
 import {
@@ -1739,7 +1740,7 @@ export class Combat {
       !this.auroraProtected(a) &&
       !(a.shield && ["earth", "abyssal"].includes(e)) &&
       !(a.burst > 0 && e === "blaze") &&
-      ((e === "spirit" && this.portals.owned(a).length < 2) ||
+      ((e === "spirit" && !this.portals.willClose(a)) ||
         (e === "blaze" && !this.isShocked(a)) ||
         (["earth", "abyssal"].includes(e) &&
           a.utilityCd <= 0 &&
@@ -1771,7 +1772,7 @@ export class Combat {
       return true;
     }
     if (e === "spirit") {
-      const begun = this.portals.begin(a);
+      const begun = this.portals.activate(a);
       if (begun) a.reveal = 0.45;
       return begun;
     }
@@ -3530,7 +3531,7 @@ export class Combat {
       }
       goal = a.mazeGoal;
     }
-    const route = map.route(a, goal);
+    const route = mazeSpacingRoute(this, a, goal, rivals);
     this.move(a, route.x - a.x, route.y - a.y, dt);
     if (canHit(a, target) && map.lineClear(a, target)) this.strike(a, target);
   }

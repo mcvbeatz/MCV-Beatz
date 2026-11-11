@@ -460,7 +460,7 @@ export const SKILL_HELP = {
     "Charge and release a slowing, damaging floor. Flyers and Earth-bearing fighters, including Mud, are immune.",
   Revival: "Charge and release to restore the nearest recoverable fallen ally.",
   Portals:
-    "Tap the skill, then tap two clear arena positions. Tap your portal to close it. Closing during transit kills the traveller; a lone portal traps entrants until they reverse out.",
+    "Tap the skill, then tap two clear arena positions. Once both are open, tap the skill again to close the oldest, then tap again to close the remaining portal. You can also tap your portal directly to close it. Closing during transit kills the traveller; a lone portal traps entrants until they reverse out.",
   "Laser beam":
     "Charge and release a fast piercing beam in your facing direction.",
   Heatwave: "Tap to create an area that hurts susceptible fighters over time.",

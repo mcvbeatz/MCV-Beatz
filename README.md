@@ -1,4 +1,10 @@
-# Elemental — The Colosseum · v0.44.0
+# Elemental — The Colosseum · v0.45.0
+
+## v0.45.0 Portal controls and Survive the Night spacing
+
+- Spirit and Divine can tap Portals after opening a pair to close the oldest portal, then tap again to close the remaining one. The button indicates when it will close a portal; a subsequent tap starts placement again. Direct portal taps and existing traveller/closure rules still apply.
+- Crowded Light AI reserves a different escape corridor when it can do so safely, checks every planned corridor for hunter interception, and abandons an escape route if it becomes unsafe. One fighter keeps its course while followers yield.
+- Touching Dark AI reserves another connected pursuit route toward its Light target. Groups account for corridors already reserved by other nearby hunters. When there is no alternate route, fighters choose separate walkable lanes without crossing maze walls or sending Light toward nearby hunters.
 
 ## v0.44.0 Abyssal scale, victory poses and stronger abilities
 
