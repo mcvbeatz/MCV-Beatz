@@ -1,3 +1,4 @@
+import { drawEventObjects } from "./event-render.js";
 import { clearAllyHealth } from "./battle-awareness.js";
 import { drawVoidMantle, drawDrainGlow, drawIcicle } from "./ice-effects.js";
 import { drawStoneShell, drawEmptyPrison } from "./stone-prison.js";
@@ -652,7 +653,12 @@ export class Renderer {
       if (this.mazeSource !== game.map) {
         this.mazeSource = game.map;
         this.mazeBackground = document.createElement("canvas");
-        const backgroundScale = game.map.kind === "dungeon" ? 1.25 : 2;
+        const backgroundScale =
+          game.map.kind === "dungeon"
+            ? 1.25
+            : game.map.kind === "turnpike"
+              ? 1.5
+              : 2;
         this.mazeBackground.width = Math.ceil(game.map.width * backgroundScale);
         this.mazeBackground.height = Math.ceil(
           game.map.height * backgroundScale,
@@ -827,6 +833,7 @@ export class Renderer {
       }
       c.restore();
     }
+    drawEventObjects(c, game, t);
     const visualTime = performance.now() / 1000;
     const bodies = game.fighters
       .filter((a) => (a.alive || a.ghost) && inWorld(a))
@@ -896,6 +903,7 @@ export class Renderer {
         c.restore();
       }
     }
+    drawEventObjects(c, game, t, true);
     drawClashes(c, game);
     for (const p of game.projectiles.filter(inWorld)) {
       c.save();
@@ -1099,7 +1107,9 @@ export class Renderer {
     }
     c.restore();
     if (game.map)
-      (game.map.kind === "corruption" ? drawMazeMap : drawBattleMinimap)(
+      (["corruption", "evergreen"].includes(game.map.kind)
+        ? drawMazeMap
+        : drawBattleMinimap)(
         c,
         game,
         w,

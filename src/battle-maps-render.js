@@ -1,3 +1,4 @@
+import { paintEvergreen, paintStadium, paintTurnpike } from "./event-render.js";
 import { drawMinimapFighters, teamMapColor } from "./battle-awareness.js";
 import { paintDungeonMap } from "./dungeon-render.js";
 import { paintTempleMap } from "./temple-map-render.js";
@@ -12,8 +13,11 @@ export function floorPath(c, map) {
   c.beginPath();
   if (!map) {
     c.rect(135, 175, 754, 385);
-  } else if (map.kind === "corruption") {
+  } else if (["corruption", "evergreen"].includes(map.kind)) {
     c.arc(map.cx, map.cy, map.radius - map.wallWidth / 2, 0, TAU);
+  } else if (["gridiron", "turnpike"].includes(map.kind)) {
+    const r = map.shapes[0];
+    c.rect(r.x, r.y, r.w, r.h);
   } else if (map.kind === "temple" || map.kind === "skykeep") {
     const r = map.shapes[0];
     c.rect(r.x, r.y, r.w, r.h);
@@ -114,6 +118,9 @@ function lamp(c, x, y, t = 0) {
   c.fillRect(x - 1, y - 7, 2, 13);
 }
 export function paintBattleMap(c, map) {
+  if (map.kind === "evergreen") return paintEvergreen(c, map);
+  if (map.kind === "gridiron") return paintStadium(c, map);
+  if (map.kind === "turnpike") return paintTurnpike(c, map);
   if (map.kind === "dungeon") return paintDungeonMap(c, map, floorPath);
   if (map.kind === "skykeep") return paintSkykeepMap(c, map, floorPath);
   if (map.kind === "temple") return paintTempleMap(c, map);
@@ -384,15 +391,28 @@ export function drawBattleMinimap(c, game, width, height, portrait) {
   c.strokeRect(0, 0, w, h);
   c.save();
   c.scale(scale, scale);
-  floorPath(c, map);
+  if (map.kind === "turnpike") {
+    c.beginPath();
+    map.track.forEach((p, i) => (i ? c.lineTo(p.x, p.y) : c.moveTo(p.x, p.y)));
+    c.closePath();
+    c.strokeStyle = "#8db9df";
+    c.lineWidth = 100;
+    c.stroke();
+  } else floorPath(c, map);
   c.fillStyle =
     map.kind === "volcano"
       ? "#a48270"
       : map.kind === "garden"
         ? "#87a565"
         : "#bdc4dc";
-  c.fill();
+  if (map.kind !== "turnpike") c.fill();
   c.restore();
+  if (game.ball) {
+    c.fillStyle = "#ffe0a0";
+    c.beginPath();
+    c.arc(game.ball.x * scale, game.ball.y * scale, 3, 0, TAU);
+    c.fill();
+  }
   if (game.mode === "dungeon") {
     const target = game.dungeon.hasKey
       ? { x: map.gates[1].x, y: map.gates[1].y + 85 }

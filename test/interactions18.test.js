@@ -162,5 +162,6 @@ test("Team Battles use the requested order", () => {
     "domination",
     "gauntlet-team",
     "ctf",
+    "gridiron",
   ]);
 });

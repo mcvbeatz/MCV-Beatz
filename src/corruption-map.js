@@ -9,7 +9,10 @@ function pointDistance(p, a, b) {
   const t = l ? clamp(((p.x - a.x) * dx + (p.y - a.y) * dy) / l, 0, 1) : 0;
   return Math.hypot(p.x - a.x - t * dx, p.y - a.y - t * dy);
 }
-export function createCorruptionMap({ portals = true } = {}) {
+export function createCorruptionMap({
+  portals = true,
+  layoutSeed = 172617,
+} = {}) {
   const map = {
     kind: "corruption",
     name: "The Umbral Labyrinth",
@@ -33,7 +36,7 @@ export function createCorruptionMap({ portals = true } = {}) {
   );
   cells.push({ x: map.cx, y: map.cy });
   const graph = cells.map(() => new Set());
-  let seed = 172617;
+  let seed = layoutSeed;
   const random = () => {
     seed = (seed * 16807) % 2147483647;
     return seed / 2147483647;

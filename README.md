@@ -1,4 +1,14 @@
-# Elemental — The Colosseum · v0.46.1
+# Elemental — The Colosseum · v0.47.0
+
+## v0.47.0 Gridiron, Turnpike Racing and Evergreen Capture the Flag
+
+- Invincible gains an instant Explosion: the fusion knockback effect and 5 base damage in Gravity’s 150-unit radius. It can hit allies; walls and normal defenses still apply.
+- Capture the Flag now always has eight fighters and uses the Evergreen Labyrinth, a dedicated pine-tree maze with a different connected layout from Survive the Night. Any attack on a carrier detonates them, drops the flag and starts their ten-second respawn, including attacks blocked by a shield. First to three captures, own-flag-at-home scoring and no fusion remain.
+- Gridiron joins Team Battles: three minutes, four versus four, three Earth fighters and one randomly assigned Gravity per side, friendly fire on. The Emerald Stadium has turf, end zones, stands and full yard lines, without hash marks or goal posts. Touch the midfield ball with your shield down to collect it. Hits cause fumbles; a carrier’s intact Rock shield must break first. Respawns take five seconds at original positions. A ball reaching an end zone scores for the opposite team; touchdown resets return everyone and the ball to the start. Tied regulation continues until the next touchdown.
+- Turnpike Racing joins Solo Battles: eight Air racers, three laps or three minutes, on a cloud-backed sky circuit with a long straight, two hairpins and connecting curves. Off-course flight, including Blaze bursts, slows greatly. Ordered directional checkpoints prevent shortcuts from counting as laps. Death becomes a slower, controllable guardian angel for five seconds, followed by revival at the current position.
+- Racing Fire tokens appear ahead of last place and grant seven seconds of Blaze; healing drops appear ahead of the lowest-health living racer. Random ability drops replace Sonic boom: Gravity x2, Stone prison, Flash, Tornado, Telekinesis, Randomizer, Teleport, Lightning strikes, Fire ball, Laser beam, Hydro pump, Portals and Explosion. Carry only one until used. Teleport requires a destination; Portals starts a pair of placements. Failed casts keep the pickup.
+- Randomizer is a rainbow holographic question-mark floor: each entry demotes a fused form or changes a level-I form into another random origin. The race’s single-use ability rules continue across transformations. AI follows the circuit, uses pickups and breaks out of prisons; Gridiron AI pursues possession, protects carriers and advances toward the opposing end zone.
+- Added guide images, mode instructions, fixed-eight setup controls, touchdown/sudden-death and lap/place HUDs, plus the two new mode IDs to the optional Supabase schema whitelist.
 
 ## v0.46.1 Safe maze recovery
 

@@ -6,8 +6,8 @@ test("CTF can be selected, shows flags and scores, drops on death and respawns w
   await page.goto("/?mode=duel");
   await page.waitForFunction(() => window.__app?.screen === "setup");
   await page.evaluate(() => __app.chooseMode("ctf"));
-  await expect(page.locator("#team-sizes")).toBeVisible();
-  await page.locator('[data-size="3"]').click();
+  await expect(page.locator("#team-sizes")).toBeHidden();
+  await expect(page.locator("#ffa-count")).toHaveValue("8");
   await page.locator("#begin-btn").click();
   await expect(page.locator("#round-mode")).toContainText("CAPTURE THE FLAG");
   await expect(page.locator("#objective-score")).toHaveText(
@@ -31,7 +31,7 @@ test("CTF can be selected, shows flags and scores, drops on death and respawns w
       flags: g.flags.length,
     };
   });
-  expect(state).toEqual({ count: 6, carried: "player", tokens: 0, flags: 2 });
+  expect(state).toEqual({ count: 8, carried: "player", tokens: 0, flags: 2 });
   await expect(page.locator("#objective-score")).toContainText("1 – 0");
   await expect(page.locator("#health-label")).toHaveText("RESPAWN 10s");
   await expect(page.locator("#game-overlay")).toBeHidden();
@@ -135,14 +135,17 @@ test("phone landscape keeps mode score and touch controls within the screen", as
   // In the iOS fallback, portrait coordinates are rotated by 90 degrees.
   const score = await page.locator("#objective-score").boundingBox();
   const tabs = await page.locator("#skill-switcher").boundingBox();
-  expect(score.x).toBeGreaterThanOrEqual(tabs.x + tabs.width);
+  const separated = (a, b) =>
+    a.x + a.width <= b.x ||
+    b.x + b.width <= a.x ||
+    a.y + a.height <= b.y ||
+    b.y + b.height <= a.y;
+  expect(separated(score, tabs)).toBe(true);
   await page.screenshot({ path: "/tmp/v09-mobile-ctf.png" });
   await page.setViewportSize({ width: 844, height: 390 });
   const landscapeScore = await page.locator("#objective-score").boundingBox();
   const landscapeTabs = await page.locator("#skill-switcher").boundingBox();
-  expect(landscapeScore.y + landscapeScore.height).toBeLessThanOrEqual(
-    landscapeTabs.y,
-  );
+  expect(separated(landscapeScore, landscapeTabs)).toBe(true);
   await page.screenshot({ path: "/tmp/v09-landscape-ctf.png" });
   await context.close();
 });

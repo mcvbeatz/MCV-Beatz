@@ -9,6 +9,10 @@ async function begin(page, { mode = "duel", element = "fire" } = {}) {
 }
 async function stillRival(page) {
   await page.evaluate(() => {
+    // These interaction scenarios use coordinates from the original arena.
+    __arena.game.map = null;
+    __arena.game.mapId = "classic";
+    Object.assign(__arena.game.player, { x: 330, y: 350, vx: 0, vy: 0 });
     __arena.game.ai = () => {};
     __arena.game.portals.portals = __arena.game.portals.owned(
       __arena.game.player,
@@ -79,13 +83,13 @@ test("automatic locking, keyboard movement, charging and pause", async ({
   await page.getByRole("button", { name: "Resume battle" }).click();
   expect(errors).toEqual([]);
 });
-test("fused selector shows nine level-two elements and Mirror exposes shield and healing without switching", async ({
+test("fused selector shows ten level-two elements and Mirror exposes shield and healing without switching", async ({
   page,
 }) => {
   await page.goto("/?mode=duel");
   await page.waitForFunction(() => window.__app?.screen === "setup");
   await page.evaluate(() => __app.chooseMode("fused"));
-  await expect(page.locator("[data-element]")).toHaveCount(9);
+  await expect(page.locator("[data-element]")).toHaveCount(10);
   await expect(page.locator('[data-element="fire"]')).toHaveCount(0);
   await page.locator('[data-element="mirror"]').click();
   await page.locator("#begin-btn").click();
@@ -395,9 +399,10 @@ test("level III selector starts each fusion and Divine retains an owner-only sil
   await page.goto("/?mode=duel");
   await page.waitForFunction(() => window.__app?.screen === "setup");
   await page.evaluate(() => __app.chooseMode("fused3"));
-  await expect(page.locator("[data-element]")).toHaveCount(8);
+  await expect(page.locator("[data-element]")).toHaveCount(9);
   await expect(page.locator(".tier")).toHaveText("III");
   for (const element of [
+    "abyssal",
     "demonic",
     "divine",
     "multi-dimensional",
@@ -546,9 +551,8 @@ test("Lightning fires on press without charging and Invincible exposes inherited
   ).toBeGreaterThan(0);
   await begin(page, { mode: "fused3", element: "invincible" });
   await stillRival(page);
-  await expect(page.locator("#charge-btn")).toBeHidden();
+  await expect(page.locator("#ability-name")).toHaveText("Explosion");
   await expect(page.locator("#utility-btn")).toBeHidden();
-  await expect(page.locator("#passive-note")).toContainText("2× strength");
   await page.locator('[data-form="fire"]').click();
   await expect(page.locator("#ability-name")).toHaveText("Flamethrower");
   expect(await page.evaluate(() => __arena.game.player.element)).toBe(
@@ -570,6 +574,13 @@ test("Divine hit feedback draws a faint clue, then the canvas returns to hidden"
     a.hurtReveal = 0;
     g.effects = [];
     g.events = [];
+    const realNow = performance.now.bind(performance);
+    let visualNow = realNow();
+    performance.now = () => visualNow;
+    for (const fighter of g.fighters) {
+      r.visibilityStates.delete(fighter);
+      fighter.spawnFlash = 0;
+    }
     const draw = () => {
       r.draw(g);
       return r.ctx.getImageData(0, 0, r.canvas.width, r.canvas.height).data;
@@ -577,16 +588,22 @@ test("Divine hit feedback draws a faint clue, then the canvas returns to hidden"
     const animationTime = g.time;
     const hidden = draw();
     g.damage(g.fighters[1], a, 14);
+    draw(); // Start the visibility transition.
+    visualNow += 130;
     const hurt = draw();
     g.update(0.2, { x: 0, y: 0 }, false); // Simulation caps individual time steps.
     for (let i = 0; i < 15; i++) g.update(0.01, { x: 0, y: 0 }, false);
     // Compare at the same animation time so torch flicker and flying bobbing
     // cannot be mistaken for a lingering Divine silhouette.
     g.time = animationTime;
-    const faded = draw();
+    draw(); // Start fading after hurtReveal expires.
+    visualNow += 130;
+    draw();
+    performance.now = realNow;
     return {
       hint: hurt.some((v, i) => v !== hidden[i]),
-      hiddenAgain: faded.every((v, i) => v === hidden[i]),
+      // Other fighters may advance their own animation during the fade.
+      hiddenAgain: r.characterOpacity(a, g.player, visualNow / 1000) === 0,
     };
   });
   expect(result).toEqual({ hint: true, hiddenAgain: true });

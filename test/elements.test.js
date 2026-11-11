@@ -123,7 +123,7 @@ test("Invincible doubles melee only; partial reflections cannot bounce again", (
   assert.equal(b.hp, 98);
   g.damage(b, a, 14);
   assert.equal(a.hp, 109.5); // Still takes melee damage, with hard skin.
-  assert.deepEqual(skillsFor("invincible"), [null, null]);
+  assert.deepEqual(skillsFor("invincible"), ["Explosion", null]);
   const mirror = makeFighter("mirror", "mirror", 1, 500, 400);
   g.fighters.push(mirror);
   const hp = a.hp;

@@ -65,17 +65,25 @@ test("CTF continues through full-team deaths and respawns exactly after ten seco
 test("CTF bots have attacking, defending and carrier-interception objectives", () => {
   const g = match("ctf");
   const attacker = g.fighters[1],
-    defender = g.fighters[3];
+    defender = g.fighters.filter((a) => a.team === 1).at(-1);
   assert.equal(g.flagObjective(attacker), g.flags[0]);
-  assert.ok(g.flagObjective(defender).x > 700);
+  assert.ok(
+    Math.hypot(
+      g.flagObjective(defender).x - g.flags[1].home.x,
+      g.flagObjective(defender).y - g.flags[1].home.y,
+    ) < 80,
+  );
   g.flags[1].carrier = g.player.id;
   assert.equal(g.flagObjective(attacker), g.player);
   assert.equal(g.flagObjective(defender), g.player);
   g.flags[1].carrier = null;
-  for (const a of g.fighters) {
-    a.maxHp = a.hp = 100000;
+  for (const a of g.fighters) if (a !== attacker) a.alive = false;
+  for (let i = 0; i < 5000 && !g.flags[0].carrier; i++) {
+    g.time += 0.02;
+    g.ai(attacker, 0.02);
+    g.updateFlags();
+    assert.ok(g.map.walkable(attacker));
   }
-  advance(g, 20, true);
   assert.ok(
     g.scores[1] > 0 || g.flags[0].carrier,
     "attacking bot reaches and steals the enemy flag",

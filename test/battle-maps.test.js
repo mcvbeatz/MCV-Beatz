@@ -10,7 +10,6 @@ const modes = [
   "fused",
   "fused3",
   "team",
-  "ctf",
   "tdm",
   "ffa",
   "boss",

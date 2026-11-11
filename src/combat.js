@@ -1,3 +1,23 @@
+import {
+  createEvergreenMap,
+  createGridironMap,
+  createTurnpikeMap,
+} from "./event-maps.js";
+import {
+  explosion,
+  ctfCarrierHit,
+  initializeEvents,
+  fumble,
+  gridironHit,
+  updateGridiron,
+  eventEnd,
+  gridironAI,
+  raceFelled,
+  raceSnapshot,
+  updateRace,
+  useRaceItem,
+  raceAI,
+} from "./event-modes.js";
 import { mazeSpacingRoute } from "./maze-spacing.js";
 import { TELEPORT_ARRIVAL_TIME } from "./teleport-animation.js";
 import { PRISON_HOLD, PRISON_COLLAPSE } from "./stone-prison.js";
@@ -135,7 +155,7 @@ export const FUSED = {
   divine: ["Radiance", null],
   "multi-dimensional": [null, null],
   lightning: ["Lightning strikes", "Tailwind"],
-  invincible: [null, null],
+  invincible: ["Explosion", null],
   phoenix: [null, null],
   terraformer: ["Chasm", "Stone Prison"],
   sanctuary: ["Life spring", null],
@@ -189,9 +209,13 @@ export const extraSkillsFor = (form) => EXTRA_SKILLS[form] || [];
 const skillForm = (a) => a.executingForm || activeForm(a);
 export const canUseSkill = (a, form, kind) =>
   !a.skillsDisabled &&
+  (!a.racing ||
+    a.raceCasting ||
+    (kind === "utility" && ["air", "blaze"].includes(form))) &&
   !(a.portalsDisabled && form === "spirit" && kind === "utility") &&
   !(a.selfHealOnly && form === "light" && kind === "utility") &&
-  ((form === "blindness" && a.parts.includes("dark")) ||
+  (a.raceCasting ||
+    (form === "blindness" && a.parts.includes("dark")) ||
     a.forms.includes(form) ||
     extraSkillsFor(a.element).some((s) => s.form === form && s.kind === kind));
 export const VOG_RADIUS = (500 / Math.sqrt(3)) * 0.6 * 0.8;
@@ -391,6 +415,7 @@ export class Combat {
     this.countdown =
       countdown && !["duel", "fused", "fused3", "team"].includes(mode) ? 4 : 0;
     this.mode = mode;
+    if (mode === "ctf") size = 4;
     if (mode === "war") {
       if (!Object.hasOwn(ELEMENTS, element)) element = "fire";
       const rivals = Object.keys(ELEMENTS).filter((e) => e !== element);
@@ -419,25 +444,37 @@ export class Combat {
         mapId = "skykeep";
     }
     this.mapId =
-      mode === "dungeon"
-        ? "dungeon"
-        : mode === "corruption"
-          ? "corruption"
-          : isGauntlet(this)
-            ? "waves"
-            : (mapId ??
-              MATCH_MAP_IDS[
-                Math.min(
-                  MATCH_MAP_IDS.length - 1,
-                  Math.floor(random() * MATCH_MAP_IDS.length),
-                )
-              ]);
+      mode === "ctf"
+        ? "evergreen"
+        : mode === "gridiron"
+          ? "gridiron"
+          : mode === "turnpike"
+            ? "turnpike"
+            : mode === "dungeon"
+              ? "dungeon"
+              : mode === "corruption"
+                ? "corruption"
+                : isGauntlet(this)
+                  ? "waves"
+                  : (mapId ??
+                    MATCH_MAP_IDS[
+                      Math.min(
+                        MATCH_MAP_IDS.length - 1,
+                        Math.floor(random() * MATCH_MAP_IDS.length),
+                      )
+                    ]);
     this.map =
-      this.mapId === "corruption"
-        ? createCorruptionMap({ portals: false })
-        : this.mapId === "classic"
-          ? null
-          : createBattleMap(this.mapId);
+      this.mapId === "evergreen"
+        ? createEvergreenMap()
+        : this.mapId === "gridiron"
+          ? createGridironMap()
+          : this.mapId === "turnpike"
+            ? createTurnpikeMap()
+            : this.mapId === "corruption"
+              ? createCorruptionMap({ portals: false })
+              : this.mapId === "classic"
+                ? null
+                : createBattleMap(this.mapId);
     this.spectatorFocus = null;
     this.fallenAnimations = [];
     this.scores = [0, 0];
@@ -622,6 +659,7 @@ export class Combat {
       a.deaths = 0;
     }
     this.player = this.fighters[0];
+    initializeEvents(this);
     initializeWar(this);
     initializeAdvanced(this, {
       element: ELEMENTS[element] ? element : "fire",
@@ -690,7 +728,7 @@ export class Combat {
     });
   }
   flying(a) {
-    return a.parts.includes("air");
+    return this.mode === "turnpike" || a.parts.includes("air");
   }
   get countingDown() {
     return this.countdown > 1;
@@ -829,12 +867,16 @@ export class Combat {
       (a.slow > 0 ? 0.48 : 1) *
       (a.shield ? 0.32 : 1) *
       (a.element === "invincible" ? 0.85 : 1);
+    if (this.mode === "turnpike")
+      speed *= (this.map.onTrack(a) ? 1 : 0.18) * (a.ghost ? 0.5 : 1);
     const blend = this.flying(a) ? Math.min(1, dt * 4) : 1;
     a.vx += (dx * speed * magnitude - a.vx) * blend;
     a.vy += (dy * speed * magnitude - a.vy) * blend;
     if (a.burst > 0) {
-      a.vx = a.burstX * 650;
-      a.vy = a.burstY * 650;
+      const burstSpeed =
+        this.mode === "turnpike" && !this.map.onTrack(a) ? 650 * 0.18 : 650;
+      a.vx = a.burstX * burstSpeed;
+      a.vy = a.burstY * burstSpeed;
     }
     if (this.map)
       this.map.move(
@@ -929,6 +971,7 @@ export class Combat {
     this.emitSound("token", token);
   }
   startCharge(a, form = activeForm(a)) {
+    if (this.mode === "turnpike" && !a.raceCasting) return useRaceItem(this, a);
     if (
       this.dungeon?.reward ||
       this.intermission ||
@@ -956,7 +999,14 @@ export class Combat {
     if (form !== "gravity" && !this.aiGesture(a, `ability:${form}`))
       return false;
     if (
-      ["lightning", "gravity", "blindness", "smoke", "sanctuary"].includes(form)
+      [
+        "lightning",
+        "gravity",
+        "blindness",
+        "smoke",
+        "sanctuary",
+        "invincible",
+      ].includes(form)
     ) {
       if (this.cast(a, 1, form) === false) return false;
       a.abilityCd = form === "lightning" ? 3 : form === "smoke" ? 7 : 4.5;
@@ -1052,6 +1102,8 @@ export class Combat {
   }
   fell(a, { lost = false, killer = null, terrain = null } = {}) {
     if (!a.alive && !a.ghost) return;
+    if (this.mode === "turnpike" && a.ghost) return;
+    fumble(this, a);
     const wasAlive = a.alive;
     if (wasAlive && !a.echo) {
       a.deaths = (a.deaths || 0) + 1;
@@ -1109,6 +1161,10 @@ export class Combat {
     a.vx = a.vy = 0;
     if (this.portals.placing === a.id) this.portals.placing = null;
     this.tokens = this.tokens.filter((t) => t.owner !== a.id);
+    if (this.mode === "turnpike") {
+      raceFelled(this, a);
+      return;
+    }
     if (this.mode === "dungeon") {
       dungeonFelled(this, a);
       return;
@@ -1154,6 +1210,7 @@ export class Combat {
       (!ignoreFriendlyFire && !this.friendlyFire && a.team === b.team)
     )
       return 0;
+    if (amount > 0 && ctfCarrierHit(this, a, b)) return b.maxHp;
     if (b.dodge > 0 && !a.parts.includes("light")) {
       b.dodge = 0;
       this.cue("dodge", b, "#b8a1df");
@@ -1219,6 +1276,7 @@ export class Combat {
         this.cue("shatter", b, "#b79669");
       }
     }
+    if (amount > 0) gridironHit(this, a, b);
     b.hp = Math.max(0, b.hp - hit);
     if (hit > 0) {
       b.lastDamager = a;
@@ -1509,6 +1567,7 @@ export class Combat {
   castSkill(a, p) {
     const e = skillForm(a);
     if (!skillsFor(e)[0] || isIcicleForm(e)) return false;
+    if (e === "invincible") return explosion(this, a);
     if (e === "sanctuary") {
       if (this.springUsed.has(a.id)) return false;
       this.springUsed.add(a.id);
@@ -2091,7 +2150,10 @@ export class Combat {
       !a.alive ||
       !inWorld(a) ||
       a.blink ||
-      !hasPassive(a, "multi-dimensional") ||
+      !(
+        hasPassive(a, "multi-dimensional") ||
+        (a.racing && a.raceTeleportReady && a.raceItem === "teleport")
+      ) ||
       this.isShocked(a) ||
       !this.walkablePoint({ x, y })
     )
@@ -2107,6 +2169,10 @@ export class Combat {
     if (!this.walkablePoint(destination) || !this.aiGesture(a, "teleport"))
       return false;
     if (this.cancelSabotaged(a)) return false;
+    if (a.raceTeleportReady) {
+      a.raceItem = null;
+      a.raceTeleportReady = false;
+    }
     a.teleportArrival = 0;
     a.blink = {
       ...destination,
@@ -2595,6 +2661,8 @@ export class Combat {
     return true;
   }
   ai(a, dt) {
+    if (this.mode === "gridiron") return gridironAI(this, a, dt);
+    if (this.mode === "turnpike") return raceAI(this, a, dt);
     if (a.prisonHp > 0 && hasPassive(a, "multi-dimensional")) {
       a.aiControlled = true;
       if (a.blink) return;
@@ -3254,7 +3322,9 @@ export class Combat {
       if (wasLocked) return;
     }
     if (
-      ["tdm", "war", "roulette", "ffa"].includes(this.mode) &&
+      ["tdm", "war", "roulette", "ffa", "gridiron", "turnpike"].includes(
+        this.mode,
+      ) &&
       this.checkMatchEnd()
     )
       return;
@@ -3425,6 +3495,8 @@ export class Combat {
     for (const e of this.effects) e.life -= dt;
     this.effects = this.effects.filter((e) => e.life > 0);
     this.events = this.events.filter((e) => this.time - e.time < 1.4);
+    updateGridiron(this);
+    updateRace(this);
     this.updateFlags();
     this.updateDomination(dt);
     updateWar(this, dt);
@@ -3557,6 +3629,8 @@ export class Combat {
     this.moveToward(a, gap > 22 ? focus : a, dt);
     if (gap <= STRIKE_RANGE) this.strike(a, focus);
     if (this.mode === "boss" || (isGauntlet(this) && this.finalWave)) {
+      if (target && gap < 150 && a.abilityCd <= 0)
+        this.startCharge(a, "invincible");
       if (a.charging && a.charge >= 0.35) this.releaseCharge(a);
       else if (!a.charging && target && gap < 300) this.startCharge(a, "fire");
       if (target && gap < 100) this.utility(a, true, "fire");
@@ -3695,6 +3769,7 @@ export class Combat {
   }
   respawn(a) {
     if (!a.spawn || a.echo) return false;
+    const raceState = raceSnapshot(this, a);
     this.fallenAnimations = this.fallenAnimations.filter(
       (d) => d.fighter.id !== a.id,
     );
@@ -3730,6 +3805,7 @@ export class Combat {
       selfHealOnly,
       spawnFlash: 0.65,
     });
+    Object.assign(a, raceState);
     this.tokens = this.tokens.filter((t) => t.owner !== a.id);
     this.pending = this.pending.filter((p) => p.who !== a);
     if (this.mode === "corruption") Object.assign(a, this.floorPoint(a, 16));
@@ -3879,6 +3955,8 @@ export class Combat {
   }
   checkMatchEnd() {
     if (this.finished) return true;
+    const event = eventEnd(this);
+    if (event !== null) return event;
     const dungeon = dungeonEnd(this);
     if (dungeon !== null) return dungeon;
     const advanced = advancedEnd(this);

@@ -44,18 +44,65 @@ export const MODES = {
       ],
     ],
   },
+  gridiron: {
+    name: "Gridiron",
+    tag: "4v4 · 3 minutes · sudden death",
+    slides: [
+      [
+        "Take the field",
+        "Eight fighters: each team has three Earth elementals and one randomly assigned Gravity elemental. Friendly fire is on. Pick up the midfield ball by touching it with your shield down.",
+        "◇",
+      ],
+      [
+        "Protect the ball",
+        "Hits force a fumble. If the carrier raises Rock shield, the shield must break first. Fallen players respawn at their original starting positions after five seconds.",
+        "◉",
+      ],
+      [
+        "Touchdown",
+        "Bring the ball into the opposing end zone for one point. Players and the ball reset after each touchdown. Most points after three minutes wins; a tie goes to sudden death, with the next touchdown winning.",
+        "⚑",
+      ],
+    ],
+  },
+  turnpike: {
+    name: "Turnpike Racing",
+    tag: "8 racers · 3 laps · 3 minutes",
+    slides: [
+      [
+        "Race above the clouds",
+        "Eight Air elementals race a complete sky circuit. Follow the checkpoints through a long straight, two hairpins and sweeping curves. First to three laps wins, or the farthest racer after three minutes. Flying off the track slows you greatly.",
+        "➜",
+      ],
+      [
+        "A second chance",
+        "Attack rival racers. When felled, keep flying as a slower guardian angel for five seconds, then respawn where you are. Fire tokens appear ahead of last place and grant Blaze for seven seconds. Health appears ahead of the racer with the lowest health.",
+        "✦",
+      ],
+      [
+        "One pickup at a time",
+        "Sonic boom is replaced by ability drops. Carry one until you use it: Gravity x2, Stone prison, Flash, Tornado, Telekinesis, Randomizer, Teleport, Lightning strikes, Fire ball, Laser beam, Hydro pump, Portals or Explosion. Tap to use; Teleport then needs a destination tap, and Portals needs two clear placements.",
+        "?",
+      ],
+      [
+        "Holographic hazard",
+        "Randomizer leaves a rainbow question-mark floor. Touch it to lose a fusion tier; if already level I, change to another random origin. Each fresh entry can trigger it again. Ability pickups remain single-use regardless of your form.",
+        "?",
+      ],
+    ],
+  },
   ctf: {
     name: "Capture the Flag",
-    tag: "2v2 · 3v3 · 4v4",
+    tag: "8 fighters · evergreen maze",
     slides: [
       [
         "Steal their flag",
-        "Touch the opposing flag and carry it back to your own base.",
+        "Two teams of four face off in the Evergreen Labyrinth, a tree-wall maze with its own layout. Touch the opposing flag and carry it back to your own base.",
         "⚑",
       ],
       [
         "Protect home",
-        "Your flag must be at home to score. Touch a dropped friendly flag to return it.",
+        "Your flag must be at home to score. Touch a dropped friendly flag to return it. Any attack on a flag carrier makes them explode, drop the flag and wait to respawn—even if shielded.",
         "⌂",
       ],
       [
@@ -359,8 +406,10 @@ export const TEAM_MODES = [
   "domination",
   "gauntlet-team",
   "ctf",
+  "gridiron",
 ];
 export const SOLO_MODES = [
+  "turnpike",
   "ffa",
   "roulette",
   "gauntlet",
@@ -426,6 +475,8 @@ export const CONTROL_SLIDES = [
   ],
 ];
 export const SKILL_HELP = {
+  Explosion:
+    "Tap to blast everyone within 150 units away, dealing 5 base damage. Uses Gravity’s current radius and fusion-strength knockback.",
   "Icicle Burst":
     "Hold to fire an endless stream of ten icicles per second in your facing direction at double projectile speed, dealing 6 HP per second before defenses. Release to stop. No charge or cooldown; always hold, even with tap charging enabled.",
   "Void Mantle":
