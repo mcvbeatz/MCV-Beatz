@@ -310,3 +310,58 @@ test("Blaze bursts also slow down when leaving the racing course", () => {
   g.move(a, 1, 0, 0.02);
   assert.ok(a.vx > 0 && a.vx < 130);
 });
+
+test("Air racing AI uses Tailwind on every recharge, including after three consecutive uses", () => {
+  const g = new Combat({ mode: "turnpike" }),
+    a = g.fighters[1];
+  g.fighters = [a];
+  g.player = a;
+  g.raceDrops = [];
+  g.nextRaceAbility = g.nextRaceFire = g.nextRaceHealth = Infinity;
+  const uses = [],
+    utility = g.utility.bind(g);
+  g.utility = (who, hold, form) => {
+    const used = utility(who, hold, form);
+    if (used && form === "air") uses.push(g.time);
+    return used;
+  };
+  tick(g, 30, true);
+  assert.equal(uses.length, 5);
+  assert.ok(uses[0] <= 0.02);
+  for (let i = 1; i < uses.length; i++)
+    assert.ok(uses[i] - uses[i - 1] >= 7 && uses[i] - uses[i - 1] < 7.03);
+  assert.ok(a.raceProgress > 0);
+  // Other repeated actions retain the adaptive AI limit.
+  a.aiLastGesture = "strike";
+  a.aiRepeat = 3;
+  assert.equal(g.aiGesture(a, "strike"), false);
+});
+
+test("racing Tailwind waits for the countdown and prison escape, and is not used by ghosts or Blaze", () => {
+  const g = new Combat({ mode: "turnpike", countdown: true }),
+    a = g.fighters[1];
+  g.ai(a, 0.02);
+  assert.equal(a.boost, 0);
+  assert.equal(a.utilityCd, 0);
+  g.countdown = 0;
+  a.prisonHp = 65;
+  g.ai(a, 0.02);
+  assert.equal(a.boost, 0);
+  a.prisonHp = 0;
+  a.stagger = 0;
+  g.ai(a, 0.02);
+  assert.equal(a.boost, 2);
+  assert.equal(a.utilityCd, 7);
+  g.fell(a);
+  a.boost = a.utilityCd = 0;
+  g.ai(a, 0.02);
+  assert.equal(a.boost, 0);
+  g.respawn(a);
+  g.ai(a, 0.02);
+  assert.equal(a.boost, 2);
+  setRaceForm(a, "blaze");
+  a.boost = a.utilityCd = 0;
+  g.ai(a, 0.02);
+  assert.equal(a.boost, 0);
+  assert.ok(a.burst > 0);
+});

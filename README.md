@@ -1,4 +1,8 @@
-# Elemental — The Colosseum · v0.47.1
+# Elemental — The Colosseum · v0.47.2
+
+## v0.47.2 Racing Tailwind
+
+Air racers controlled by AI now activate Tailwind as soon as racing begins and whenever its seven-second cooldown finishes, including when no opponent is nearby. Repeated racing Tailwinds are exempt from the three-action combat limit. The existing two-second speed boost and cooldown stay unchanged; countdown, prison escape, death and form requirements still apply. Blaze keeps using Speed burst.
 
 ## v0.47.1 Evergreen passages and Gridiron teamwork
 

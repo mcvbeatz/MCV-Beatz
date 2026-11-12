@@ -569,6 +569,8 @@ export function raceAI(g, a, dt) {
     g.strike(a);
     return;
   }
+  if (a.alive && a.element === "air" && a.utilityCd <= 0)
+    g.utility(a, true, "air");
   const projection = g.map.projectTrack(a);
   const goal =
     projection.gap > g.map.trackRadius

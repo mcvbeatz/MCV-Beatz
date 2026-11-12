@@ -2287,6 +2287,9 @@ export class Combat {
     });
   }
   aiGesture(a, key) {
+    // Racing rewards using Tailwind every recharge; repeating this speed boost
+    // is deliberate, not a stalled combat tactic. Cooldown checks still apply.
+    if (this.mode === "turnpike" && key === "utility:air") return true;
     if (!a.aiControlled || this.relentless(a)) return true;
     if (a.aiLastGesture === key && a.aiRepeat >= 3) {
       a.aiNeedChange = true;
