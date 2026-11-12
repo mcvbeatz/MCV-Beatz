@@ -223,38 +223,125 @@ export function eventEnd(g) {
   }
   return null;
 }
+// Steer toward distinct tactical positions while keeping bodies apart. Exact
+// overlaps get opposing, deterministic directions instead of a zero vector.
+function gridironMove(g, a, goal, living, dt) {
+  let dx = goal.x - a.x,
+    dy = goal.y - a.y;
+  const length = Math.hypot(dx, dy);
+  if (length < 4) dx = dy = 0;
+  else {
+    dx /= Math.max(30, length);
+    dy /= Math.max(30, length);
+  }
+  const index = g.fighters.indexOf(a);
+  for (const b of living) {
+    if (b === a) continue;
+    let x = a.x - b.x,
+      y = a.y - b.y,
+      d = Math.hypot(x, y);
+    const clearance = b.team === a.team ? 82 : 64;
+    if (d >= clearance) continue;
+    if (d < 0.01) {
+      const other = g.fighters.indexOf(b);
+      const angle =
+        (Math.min(index, other) * 7 + Math.max(index, other) * 13) * 2.39996;
+      const sign = index < other ? 1 : -1;
+      x = Math.cos(angle) * sign;
+      y = Math.sin(angle) * sign;
+      d = 1;
+    }
+    const pressure = ((clearance - d) / clearance) * 3;
+    dx += (x / d) * pressure;
+    dy += (y / d) * pressure;
+  }
+  g.move(a, dx, dy, dt);
+}
 export function gridironAI(g, a, dt) {
-  const carrier = g.fighters.find((b) => b.id === g.ball.carrier);
-  const target = g
-    .enemies(a)
-    .sort((b, c) => distance(a, b) - distance(a, c))[0];
-  const goal =
-    carrier === a
-      ? { x: a.team === 0 ? 1540 : 260, y: 550 }
-      : carrier?.team === a.team
-        ? {
-            x: carrier.x + (a.team ? -80 : 80),
-            y: carrier.y + (g.fighters.indexOf(a) % 2 ? 70 : -70),
-          }
-        : carrier || g.ball;
   a.aiControlled = true;
-  if (
-    a.shield &&
-    (!carrier || carrier !== a || !target || distance(a, target) > 95)
-  )
+  const living = g.fighters.filter((b) => b.alive && inWorld(b));
+  const team = living.filter((b) => b.team === a.team);
+  const slot = g.fighters.filter((b) => b.team === a.team).indexOf(a);
+  const carrier = living.find((b) => b.id === g.ball.carrier);
+  const rivals = g.enemies(a);
+  const nearest = [...rivals].sort(
+    (b, c) => distance(a, b) - distance(a, c),
+  )[0];
+  const direction = a.team ? -1 : 1;
+  let target = nearest,
+    goal;
+  if (!a.gridActionOrigin || distance(a, a.gridActionOrigin) > 30) {
+    a.gridActionOrigin = { x: a.x, y: a.y };
+    if (a.aiNeedChange || a.aiRepeat >= 3) {
+      a.aiLastGesture = "reposition";
+      a.aiRepeat = 0;
+      a.aiNeedChange = false;
+    }
+  }
+  const flank = (opponent) => {
+    const angle = (slot * Math.PI) / 2 + Math.PI / 4 + (a.gridFlank || 0);
+    return g.map.nearest({
+      x: opponent.x + Math.cos(angle) * 52,
+      y: opponent.y + Math.sin(angle) * 52,
+    });
+  };
+  if (carrier === a) {
+    goal = { x: a.team ? 260 : 1540, y: a.y };
+  } else if (carrier && carrier.team !== a.team) {
+    target = rivals.includes(carrier) ? carrier : nearest;
+    goal = target ? flank(target) : g.ball;
+  } else if (carrier) {
+    const escorts = team.filter((b) => b !== carrier);
+    const rank = escorts.indexOf(a);
+    const threats = rivals
+      .filter((b) => distance(b, carrier) < 300)
+      .sort((b, c) => distance(b, carrier) - distance(c, carrier));
+    target = threats.length ? threats[rank % threats.length] : nearest;
+    goal = threats.length
+      ? flank(target)
+      : g.map.nearest({
+          x: carrier.x + direction * 100,
+          y: carrier.y + (rank - 1) * 120,
+        });
+  } else {
+    const collector = [...team].sort(
+      (b, c) => distance(b, g.ball) - distance(c, g.ball),
+    )[0];
+    goal =
+      collector === a
+        ? g.ball
+        : nearest && distance(a, nearest) < 260
+          ? flank(nearest)
+          : g.map.nearest({
+              x: g.ball.x + direction * 85,
+              y: g.ball.y + (slot - 1.5) * 100,
+            });
+  }
+  if (a.shield && (carrier !== a || !nearest || distance(a, nearest) > 95))
     g.utility(a, false, "earth");
-  if (carrier === a && target && distance(a, target) < 85 && a.utilityCd <= 0)
+  if (carrier === a && nearest && distance(a, nearest) < 85 && a.utilityCd <= 0)
     g.utility(a, true, "earth");
-  g.moveToward(a, goal, dt);
-  if (target && distance(a, target) < 69 && g.safeAttack(a, target))
-    g.strike(a, target);
   if (
-    a.element === "gravity" &&
     target &&
-    distance(a, target) < 300 &&
-    a.abilityCd <= 0
+    carrier !== a &&
+    g.time >= (a.gridFlankAt || 0) &&
+    (a.aiNeedChange || (distance(a, target) < 75 && !g.safeAttack(a, target)))
+  ) {
+    a.gridFlank = (a.gridFlank || 0) + Math.PI / 3;
+    a.gridFlankAt = g.time + 0.7;
+    goal = flank(target);
+  }
+  gridironMove(g, a, goal, living, dt);
+  // autoLock prefers an opposing carrier in reach, also during strike resolution.
+  const attackTarget = g.target(a) || target;
+  if (
+    attackTarget &&
+    distance(a, attackTarget) <= 69 &&
+    g.safeAttack(a, attackTarget)
   )
-    g.startCharge(a, "gravity");
+    g.strike(a, attackTarget);
+  if (a.element === "gravity" && target && distance(a, target) < 300)
+    g.telekinesis(a, target, target.x - a.x, target.y - a.y);
 }
 export function setRaceForm(a, element) {
   a.element = element;

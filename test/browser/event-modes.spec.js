@@ -154,3 +154,43 @@ for (const mode of ["gridiron", "turnpike"])
       await page.screenshot({ path: `/tmp/${mode}-${width}.png` });
     }
   });
+
+test("Gridiron unstacks a crowded midfield and both teams attack in the browser", async ({
+  page,
+}) => {
+  const errors = [];
+  page.on("pageerror", (e) => errors.push(e.message));
+  await start(page, "gridiron");
+  const result = await page.evaluate(async () => {
+    const { Combat, distance } = await import("/src/combat.js");
+    const g = __arena.game;
+    Object.assign(g, new Combat({ mode: "gridiron", random: () => 0.99 }));
+    g.player.id = "bot";
+    for (const a of g.fighters) Object.assign(a, { x: 900, y: 550 });
+    g.ball.carrier = g.player.id;
+    const hits = [0, 0],
+      damage = g.damage.bind(g);
+    g.damage = (a, b, ...args) => {
+      const before = b.hp + (b.shield ? b.shieldHp : 0);
+      const value = damage(a, b, ...args);
+      if (a.team !== b.team && b.hp + (b.shield ? b.shieldHp : 0) < before)
+        hits[a.team]++;
+      return value;
+    };
+    for (let i = 0; i < 400; i++) Combat.prototype.update.call(g, 0.02);
+    const living = g.fighters.filter((a) => a.alive);
+    return {
+      hits,
+      min: Math.min(
+        ...living.flatMap((a, i) =>
+          living.slice(i + 1).map((b) => distance(a, b)),
+        ),
+      ),
+    };
+  });
+  expect(result.hits[0]).toBeGreaterThan(3);
+  expect(result.hits[1]).toBeGreaterThan(3);
+  expect(result.min).toBeGreaterThan(20);
+  await page.screenshot({ path: "/tmp/gridiron-unstacked.png" });
+  expect(errors).toEqual([]);
+});

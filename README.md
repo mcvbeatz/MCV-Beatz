@@ -1,4 +1,10 @@
-# Elemental — The Colosseum · v0.47.0
+# Elemental — The Colosseum · v0.47.1
+
+## v0.47.1 Evergreen passages and Gridiron teamwork
+
+- Opened the marked upper-left, top and right-hand tree-wall passages in the Evergreen Labyrinth. Maze drawing, collision and navigation use the same openings. The surrounding maze and Survive the Night layout stay intact.
+- Gridiron bots use separate approach and escort positions, steer away from overlapping bodies, and prioritize an opposing ball carrier. Teammates engage nearby threats while supporting their carrier; one teammate pursues a loose ball while the others spread out.
+- Gridiron melee safety checks the actual swing area, so a closer ally behind the attacker no longer prevents attacking. Allies inside the swing remain protected by AI restraint; friendly fire remains enabled. Bots reposition after repeated actions and resume attacking instead of becoming stuck at the three-action limit.
 
 ## v0.47.0 Gridiron, Turnpike Racing and Evergreen Capture the Flag
 

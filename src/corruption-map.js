@@ -12,6 +12,7 @@ function pointDistance(p, a, b) {
 export function createCorruptionMap({
   portals = true,
   layoutSeed = 172617,
+  openings = [],
 } = {}) {
   const map = {
     kind: "corruption",
@@ -73,6 +74,12 @@ export function createCorruptionMap({
   // A few loops provide escape choices instead of a single forced corridor.
   for (let a = 0; a < center; a++)
     for (const b of adjacent(a)) if (b > a && random() < 0.16) link(a, b);
+  // Link deliberate openings before building walls so navigation and collision agree.
+  for (const [a, b] of openings) {
+    if (!adjacent(a).includes(b))
+      throw new RangeError("Maze opening must join neighboring cells");
+    link(a, b);
+  }
   const walls = [],
     segments = [];
   const segment = (a, b) =>

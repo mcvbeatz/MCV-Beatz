@@ -53,7 +53,17 @@ function openMap(kind, name, width, height, floor) {
   return map;
 }
 export function createEvergreenMap() {
-  const map = createCorruptionMap({ portals: false, layoutSeed: 881923 });
+  const map = createCorruptionMap({
+    portals: false,
+    layoutSeed: 881923,
+    // Marked upper-left, top and right-hand tree-wall openings.
+    openings: [
+      [41, 57],
+      [60, 76],
+      [63, 79],
+      [48, 64],
+    ],
+  });
   map.kind = "evergreen";
   map.name = "The Evergreen Labyrinth";
   map.flagHomes = [map.cells[64], map.cells[72]].map((p) => ({ ...p }));

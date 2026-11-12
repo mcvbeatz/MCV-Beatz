@@ -2241,6 +2241,13 @@ export class Combat {
   safeAttack(a, target, kind = "melee", form = activeForm(a)) {
     if (!target) return false;
     if (!this.friendlyFire) return true;
+    if (this.mode === "gridiron" && kind === "melee") {
+      // A teammate behind us is not in the strike arc. Still protect allies
+      // who would actually be hit, both when winding up and resolving a strike.
+      return !this.fighters.some(
+        (b) => b !== a && b.team === a.team && canHit(a, b),
+      );
+    }
     const enemies = this.enemies(a);
     const nearestEnemy = Math.min(
       distance(a, target),
@@ -3598,6 +3605,11 @@ export class Combat {
     );
   }
   pursuitOrder(a, b, c) {
+    if (this.mode === "gridiron")
+      return (
+        Number(c.id === this.ball.carrier) -
+          Number(b.id === this.ball.carrier) || distance(a, b) - distance(a, c)
+      );
     const healer = (b) =>
       canUseSkill(b, "light", "ability") || canUseSkill(b, "divine", "ability");
     const priority =
