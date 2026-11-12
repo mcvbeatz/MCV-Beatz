@@ -1,4 +1,8 @@
-# Elemental — The Colosseum · v0.49.1
+# Elemental — The Colosseum · v0.49.2
+
+## v0.49.2 Zombies ability space
+
+Removed the Drain and collected-ability notice from the Zombies battle controls so Icicle Burst and the three acquired ability buttons can fill the available space.
 
 ## v0.49.1 AI escape passes and health-drop limits
 
