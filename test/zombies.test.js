@@ -314,3 +314,37 @@ test("Zombies crowd separation frees exact overlaps for both teams without movin
         );
   }
 });
+
+test("Zombies allows at most 20 health drops, reuses collected slots, and expires drops individually at 15 seconds", () => {
+  const g = new Combat({ mode: "zombies", random: () => 0 });
+  for (let i = 0; i < 25; i++) g.fell(spawnZombie(g));
+  assert.equal(g.healthDrops.length, 20);
+  const first = { ...g.healthDrops[0] };
+  g.time = 14.9;
+  Object.assign(g.player, { x: first.x, y: first.y, hp: 30 });
+  updateZombies(g);
+  assert.ok(g.player.hp > 30);
+  assert.ok(g.healthDrops.length < 20);
+  const b = spawnZombie(g);
+  Object.assign(b, { x: 1400, y: 400 });
+  g.fell(b);
+  assert.ok(g.healthDrops.some((h) => h.id === b.id));
+  g.player.hp = 30;
+  g.time = 15;
+  updateZombies(g);
+  assert.equal(g.player.hp, 30, "expired drops cannot heal");
+  assert.equal(g.healthDrops.length, 1);
+  assert.equal(g.healthDrops[0].id, b.id);
+  g.time = 30;
+  updateZombies(g);
+  assert.equal(g.healthDrops.length, 0);
+});
+test("Expired health drops release the cap before a new Fire defeat", () => {
+  const g = new Combat({ mode: "zombies", random: () => 0 });
+  for (let i = 0; i < 20; i++) g.fell(spawnZombie(g));
+  g.time = 15;
+  const b = spawnZombie(g);
+  g.fell(b);
+  assert.equal(g.healthDrops.length, 1);
+  assert.equal(g.healthDrops[0].id, b.id);
+});

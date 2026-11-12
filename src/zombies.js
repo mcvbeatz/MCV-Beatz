@@ -174,7 +174,8 @@ export function zombieFelled(g, a) {
   if (!a.zombieEnemy) return;
   g.zombies.kills++;
   g.zombies.rate = Math.min(100, 1 + g.zombies.kills);
-  if (g.random() < 0.3)
+  g.healthDrops = g.healthDrops.filter((h) => g.time - h.bornAt < 15);
+  if (g.healthDrops.length < 20 && g.random() < 0.3)
     g.healthDrops.push({
       id: a.id,
       x: a.x,
@@ -229,6 +230,7 @@ export function updateZombies(g) {
     }
   }
   g.healthDrops = g.healthDrops.filter((h) => {
+    if (g.time - h.bornAt >= 15) return false;
     const a = allies.find(
       (a) => a.hp < a.maxHp && distance(a, h) < 30 && g.map.lineClear(a, h),
     );

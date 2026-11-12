@@ -401,6 +401,38 @@ function gridironMove(g, a, goal, living, dt) {
   }
   g.move(a, dx, dy, dt);
 }
+// Keep the normal lateral rules and reject both marked receivers and blocked lanes.
+function gridironEscapePass(g, a, rivals) {
+  if (rivals.filter((b) => distance(a, b) <= 130).length < 2) return false;
+  const open = lateralTargets(g, a).filter(
+    (b) =>
+      !b.prisonHp &&
+      rivals.every((rival) => {
+        if (distance(b, rival) < 170) return false;
+        const dx = b.x - a.x,
+          dy = b.y - a.y,
+          length2 = dx * dx + dy * dy;
+        const u = length2
+          ? Math.max(
+              0,
+              Math.min(
+                1,
+                ((rival.x - a.x) * dx + (rival.y - a.y) * dy) / length2,
+              ),
+            )
+          : 0;
+        return Math.hypot(rival.x - a.x - u * dx, rival.y - a.y - u * dy) > 45;
+      }),
+  );
+  open.sort(
+    (b, c) =>
+      Math.min(...rivals.map((r) => distance(c, r))) -
+      Math.min(...rivals.map((r) => distance(b, r))),
+  );
+  if (!open.length || !passGridiron(g, a, open[0])) return false;
+  if (a.shield) g.utility(a, false, "earth");
+  return true;
+}
 export function gridironAI(g, a, dt) {
   a.aiControlled = true;
   const living = g.fighters.filter((b) => b.alive && inWorld(b));
@@ -429,7 +461,11 @@ export function gridironAI(g, a, dt) {
       y: opponent.y + Math.sin(angle) * 52,
     });
   };
-  if (carrier === a) {
+  if (carrier === a && gridironEscapePass(g, a, rivals)) return;
+  if (g.ball.pass?.target === a.id) {
+    // Stay at the receiving spot rather than chasing the ball's launch position.
+    goal = { x: g.ball.pass.toX, y: g.ball.pass.toY };
+  } else if (carrier === a) {
     goal = { x: a.team ? 260 : 1540, y: a.y };
   } else if (carrier && carrier.team !== a.team) {
     target = rivals.includes(carrier) ? carrier : nearest;
@@ -468,6 +504,7 @@ export function gridironAI(g, a, dt) {
   if (
     target &&
     carrier !== a &&
+    g.ball.pass?.target !== a.id &&
     g.time >= (a.gridFlankAt || 0) &&
     (a.aiNeedChange || (distance(a, target) < 75 && !g.safeAttack(a, target)))
   ) {

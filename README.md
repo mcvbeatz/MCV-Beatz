@@ -1,4 +1,9 @@
-# Elemental — The Colosseum · v0.49.0
+# Elemental — The Colosseum · v0.49.1
+
+## v0.49.1 AI escape passes and health-drop limits
+
+- Gridiron AI carriers with at least two opponents within 130 units attempt a legal lateral to a teammate with no opponent within 170 units, requiring a clear passing lane. AI receivers stay at the receiving spot during the pass. Marked, shielded, trapped, unavailable and forward receivers are excluded.
+- Zombies health drops are capped at 20 simultaneously and expire after 15 seconds of match time. Expired drops cannot heal and no longer occupy a drop slot. The normal random drop chance and healing strength remain.
 
 ## v0.49.0 Zombies pacing and Gridiron laterals
 

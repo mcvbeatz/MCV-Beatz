@@ -55,7 +55,7 @@ export const MODES = {
       ],
       [
         "The Fire horde",
-        "Fire enemies take five hits and use melee only. Batches spawn every five seconds, starting at one and growing by one per defeat, capped at 100. At 50 per batch, spawns spread from the boss-room edges to exposed edges throughout the dungeon. Fallen Fire enemies sometimes leave health drops.",
+        "Fire enemies take five hits and use melee only. Batches spawn every five seconds, starting at one and growing by one per defeat, capped at 100. At 50 per batch, spawns spread from the boss-room edges to exposed edges throughout the dungeon. Fallen Fire enemies sometimes leave health drops: at most 20 on the map, each lasting 15 seconds.",
         "♨",
       ],
       [
@@ -81,7 +81,7 @@ export const MODES = {
       ],
       [
         "Protect the ball",
-        "Hits force a fumble. If the carrier raises Rock shield, the shield must break first. Tap a teammate to throw a lateral, or tap Pass / P for the furthest eligible teammate sideways or behind you. Passes can be intercepted; missed catches leave a loose ball. Shielded teammates cannot catch. Fallen players respawn at their original starting positions after five seconds.",
+        "Hits force a fumble. If the carrier raises Rock shield, the shield must break first. Tap a teammate to throw a lateral, or tap Pass / P for the furthest eligible teammate sideways or behind you. Passes can be intercepted; missed catches leave a loose ball. Shielded teammates cannot catch. Surrounded AI carriers pass to an open teammate when the lateral lane is clear. Fallen players respawn at their original starting positions after five seconds.",
         "◉",
       ],
       [
