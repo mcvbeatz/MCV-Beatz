@@ -81,7 +81,7 @@ export const MODES = {
       ],
       [
         "Protect the ball",
-        "Hits force a fumble. If the carrier raises Rock shield, the shield must break first. Tap a teammate to throw a lateral, or tap Pass / P for the furthest eligible teammate sideways or behind you. Passes can be intercepted; missed catches leave a loose ball. Shielded teammates cannot catch. Surrounded AI carriers pass to an open teammate when the lateral lane is clear. Fallen players respawn at their original starting positions after five seconds.",
+        "Hits force a fumble. If the carrier raises Rock shield, the shield must break first. Tap a teammate to pass in any direction, or tap Pass / P for the furthest eligible teammate. Passes can be intercepted; missed catches leave a loose ball. Shielded teammates cannot catch. AI carriers use open forward receivers and escape pressure with safe passes. Teammates run receiving routes; opponents cover receivers and move to intercept. Fallen players respawn at their original starting positions after five seconds.",
         "◉",
       ],
       [

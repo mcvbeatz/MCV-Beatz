@@ -148,7 +148,7 @@ export function updateGridironEvolution(g) {
   a.chargeForm = null;
   if (a.alive) g.cue("fusion", a, "#c59bff");
 }
-export function lateralTargets(g, a) {
+export function passTargets(g, a) {
   if (
     g.mode !== "gridiron" ||
     !a.alive ||
@@ -156,7 +156,6 @@ export function lateralTargets(g, a) {
     g.ball.carrier !== a.id
   )
     return [];
-  const direction = a.team === 0 ? 1 : -1;
   return g.fighters.filter(
     (b) =>
       b !== a &&
@@ -165,7 +164,6 @@ export function lateralTargets(g, a) {
       inWorld(b) &&
       !b.shield &&
       !b.blink &&
-      (b.x - a.x) * direction <= 0.01 &&
       g.map.lineClear(a, b),
   );
 }
@@ -179,7 +177,7 @@ export function passGridiron(g, a, receiver = null) {
     g.ball?.pass
   )
     return false;
-  const targets = lateralTargets(g, a);
+  const targets = passTargets(g, a);
   if (receiver ? !targets.includes(receiver) : !targets.length) return false;
   receiver ||= targets.sort((b, c) => distance(a, c) - distance(a, b))[0];
   const duration = Math.max(0.18, distance(a, receiver) / 750);
@@ -204,7 +202,7 @@ export function passGridiron(g, a, receiver = null) {
   g.animateCast(a);
   return true;
 }
-function updateLateral(g) {
+function updatePassFlight(g) {
   const ball = g.ball,
     p = ball.pass;
   if (!p) return false;
@@ -254,7 +252,7 @@ export function updateGridiron(g) {
   if (g.mode !== "gridiron") return;
   updateGridironEvolution(g);
   const ball = g.ball;
-  if (updateLateral(g)) return;
+  if (updatePassFlight(g)) return;
   let carrier = g.fighters.find((a) => a.id === ball.carrier);
   if (carrier && (!carrier.alive || !inWorld(carrier))) {
     fumble(g, carrier);
@@ -401,12 +399,14 @@ function gridironMove(g, a, goal, living, dt) {
   }
   g.move(a, dx, dy, dt);
 }
-// Keep the normal lateral rules and reject both marked receivers and blocked lanes.
-function gridironEscapePass(g, a, rivals) {
-  if (rivals.filter((b) => distance(a, b) <= 130).length < 2) return false;
-  const open = lateralTargets(g, a).filter(
+// Take safe forward gains, or use any open receiver to escape pressure.
+function gridironAIPass(g, a, rivals) {
+  const pressured = rivals.filter((b) => distance(a, b) <= 130).length >= 2;
+  const direction = a.team === 0 ? 1 : -1;
+  const open = passTargets(g, a).filter(
     (b) =>
       !b.prisonHp &&
+      (pressured || (b.x - a.x) * direction >= 100) &&
       rivals.every((rival) => {
         if (distance(b, rival) < 170) return false;
         const dx = b.x - a.x,
@@ -424,14 +424,31 @@ function gridironEscapePass(g, a, rivals) {
         return Math.hypot(rival.x - a.x - u * dx, rival.y - a.y - u * dy) > 45;
       }),
   );
-  open.sort(
-    (b, c) =>
-      Math.min(...rivals.map((r) => distance(c, r))) -
-      Math.min(...rivals.map((r) => distance(b, r))),
-  );
+  const safety = (b) => Math.min(400, ...rivals.map((r) => distance(b, r)));
+  const value = (b) =>
+    safety(b) + (b.x - a.x) * direction * (pressured ? 0.2 : 1);
+  open.sort((b, c) => value(c) - value(b));
   if (!open.length || !passGridiron(g, a, open[0])) return false;
   if (a.shield) g.utility(a, false, "earth");
   return true;
+}
+// Defenders aim for the ball's remaining flight path, rather than its old position.
+function passIntercept(g, a) {
+  const p = g.ball.pass,
+    dx = p.toX - g.ball.x,
+    dy = p.toY - g.ball.y,
+    length2 = dx * dx + dy * dy;
+  const u = length2
+    ? Math.max(
+        0,
+        Math.min(1, ((a.x - g.ball.x) * dx + (a.y - g.ball.y) * dy) / length2),
+      )
+    : 1;
+  const point = { x: g.ball.x + u * dx, y: g.ball.y + u * dy };
+  const remaining = Math.max(0, p.start + p.duration - g.time);
+  return distance(a, point) <= remaining * u * 150 + 26
+    ? point
+    : { x: p.toX, y: p.toY };
 }
 export function gridironAI(g, a, dt) {
   a.aiControlled = true;
@@ -439,6 +456,8 @@ export function gridironAI(g, a, dt) {
   const team = living.filter((b) => b.team === a.team);
   const slot = g.fighters.filter((b) => b.team === a.team).indexOf(a);
   const carrier = living.find((b) => b.id === g.ball.carrier);
+  const pass = g.ball.pass;
+  const passer = pass && g.fighters.find((b) => b.id === pass.from);
   const rivals = g.enemies(a);
   const nearest = [...rivals].sort(
     (b, c) => distance(a, b) - distance(a, c),
@@ -461,15 +480,53 @@ export function gridironAI(g, a, dt) {
       y: opponent.y + Math.sin(angle) * 52,
     });
   };
-  if (carrier === a && gridironEscapePass(g, a, rivals)) return;
+  if (carrier === a && gridironAIPass(g, a, rivals)) return;
   if (g.ball.pass?.target === a.id) {
     // Stay at the receiving spot rather than chasing the ball's launch position.
     goal = { x: g.ball.pass.toX, y: g.ball.pass.toY };
+  } else if (pass && passer?.team !== a.team) {
+    const defenders = team.filter((b) => b.id !== "player");
+    const interceptor = defenders.sort(
+      (b, c) =>
+        distance(b, passIntercept(g, b)) - distance(c, passIntercept(g, c)),
+    )[0];
+    target = living.find((b) => b.id === pass.target) || nearest;
+    goal =
+      interceptor === a
+        ? passIntercept(g, a)
+        : target
+          ? flank(target)
+          : { x: pass.toX, y: pass.toY };
+  } else if (pass) {
+    const receiver = living.find((b) => b.id === pass.target);
+    goal = g.map.nearest({
+      x: pass.toX - direction * 80,
+      y: pass.toY + (slot - 1.5) * 90,
+    });
+    target = receiver
+      ? rivals.sort((b, c) => distance(b, receiver) - distance(c, receiver))[0]
+      : nearest;
   } else if (carrier === a) {
     goal = { x: a.team ? 260 : 1540, y: a.y };
   } else if (carrier && carrier.team !== a.team) {
-    target = rivals.includes(carrier) ? carrier : nearest;
-    goal = target ? flank(target) : g.ball;
+    const defenders = team
+      .filter((b) => b.id !== "player")
+      .sort((b, c) => distance(b, carrier) - distance(c, carrier));
+    const receivers = passTargets(g, carrier).sort((b, c) =>
+      b.id.localeCompare(c.id),
+    );
+    const rank = defenders.indexOf(a);
+    if (rank > 0 && receivers.length && distance(a, carrier) > 90) {
+      target = receivers[(rank - 1) % receivers.length];
+      const d = distance(target, carrier) || 1;
+      goal = g.map.nearest({
+        x: target.x + ((carrier.x - target.x) / d) * 38,
+        y: target.y + ((carrier.y - target.y) / d) * 38,
+      });
+    } else {
+      target = rivals.includes(carrier) ? carrier : nearest;
+      goal = target ? flank(target) : g.ball;
+    }
   } else if (carrier) {
     const escorts = team.filter((b) => b !== carrier);
     const rank = escorts.indexOf(a);
@@ -477,12 +534,23 @@ export function gridironAI(g, a, dt) {
       .filter((b) => distance(b, carrier) < 300)
       .sort((b, c) => distance(b, carrier) - distance(c, carrier));
     target = threats.length ? threats[rank % threats.length] : nearest;
-    goal = threats.length
-      ? flank(target)
-      : g.map.nearest({
-          x: carrier.x + direction * 100,
-          y: carrier.y + (rank - 1) * 120,
-        });
+    if (rank === escorts.length - 1) {
+      const routes = [-170, 170].map((side) =>
+        g.map.nearest({ x: carrier.x + direction * 230, y: carrier.y + side }),
+      );
+      routes.sort(
+        (b, c) =>
+          Math.min(500, ...rivals.map((r) => distance(c, r))) -
+          Math.min(500, ...rivals.map((r) => distance(b, r))),
+      );
+      goal = routes[0];
+    } else
+      goal = threats.length
+        ? flank(target)
+        : g.map.nearest({
+            x: carrier.x + direction * 100,
+            y: carrier.y + (rank - 1) * 120,
+          });
   } else {
     const collector = [...team].sort(
       (b, c) => distance(b, g.ball) - distance(c, g.ball),
@@ -504,7 +572,7 @@ export function gridironAI(g, a, dt) {
   if (
     target &&
     carrier !== a &&
-    g.ball.pass?.target !== a.id &&
+    !pass &&
     g.time >= (a.gridFlankAt || 0) &&
     (a.aiNeedChange || (distance(a, target) < 75 && !g.safeAttack(a, target)))
   ) {

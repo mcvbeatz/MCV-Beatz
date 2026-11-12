@@ -159,7 +159,7 @@ test("CTF shows a three-minute timer and sudden-death captures; Gridiron starts 
   await expect(page.locator("#objective-score")).toContainText("0 – 2");
 });
 
-test("Gridiron Pass button and teammate taps launch lateral passes", async ({
+test("Gridiron Pass button and teammate taps launch forward passes", async ({
   page,
 }) => {
   await start(page, "gridiron");
@@ -170,8 +170,8 @@ test("Gridiron Pass button and teammate taps launch lateral passes", async ({
         Object.assign(a, { x: 500 + i * 90, y: 800 }),
       );
       Object.assign(g.player, { x: 900, y: 500 });
-      Object.assign(g.fighters[1], { x: 760, y: 440 });
-      Object.assign(g.fighters[2], { x: 900, y: 620 });
+      Object.assign(g.fighters[1], { x: 1120, y: 440 });
+      Object.assign(g.fighters[2], { x: 1010, y: 620 });
       Object.assign(g.fighters[3], { x: 1040, y: 500 });
       Object.assign(g.ball, { carrier: g.player.id, pass: null });
     });

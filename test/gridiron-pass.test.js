@@ -4,7 +4,7 @@ import { Combat } from "../src/combat.js";
 import {
   passGridiron,
   gridironAI,
-  lateralTargets,
+  passTargets,
   updateGridiron,
 } from "../src/event-modes.js";
 function setup(team = 0) {
@@ -26,10 +26,10 @@ function fly(g) {
     updateGridiron(g);
   }
 }
-test("Pass chooses the furthest eligible sideways/backward teammate for either team", () => {
+test("Pass chooses the furthest eligible teammate in any direction for either team", () => {
   for (const team of [0, 1]) {
     const { g, a, allies } = setup(team);
-    assert.equal(lateralTargets(g, a).length, 2);
+    assert.equal(passTargets(g, a).length, 3);
     assert.ok(passGridiron(g, a));
     assert.equal(g.ball.pass.target, allies[1].id);
     assert.equal(g.ball.carrier, null);
@@ -37,9 +37,8 @@ test("Pass chooses the furthest eligible sideways/backward teammate for either t
     assert.equal(g.ball.carrier, allies[1].id);
   }
 });
-test("A specific teammate can receive a sideways pass; forward, enemy, shielded and dead targets are rejected", () => {
+test("A specific teammate can receive a sideways pass; enemy, shielded and dead targets are rejected", () => {
   const { g, a, allies } = setup();
-  assert.equal(passGridiron(g, a, allies[2]), false);
   assert.equal(passGridiron(g, a, g.fighters[5]), false);
   allies[0].shield = 1;
   assert.equal(passGridiron(g, a, allies[0]), false);
@@ -130,4 +129,74 @@ test("AI does not force a pass to a marked receiver, through an opponent, or wit
     assert.equal(g.ball.pass, undefined, condition);
     assert.equal(g.ball.carrier, a.id, condition);
   }
+});
+
+test("Forward passes work through explicit selection and the furthest-teammate button for both teams", () => {
+  for (const team of [0, 1])
+    for (const explicit of [true, false]) {
+      const { g, a, allies } = setup(team);
+      allies[2].x = a.x + (team === 0 ? 1 : -1) * 320;
+      assert.ok(passGridiron(g, a, explicit ? allies[2] : null));
+      assert.equal(g.ball.pass.target, allies[2].id);
+      fly(g);
+      assert.equal(g.ball.carrier, allies[2].id);
+    }
+});
+test("Both AI teams use open forward gains without waiting to be surrounded", () => {
+  for (const team of [0, 1]) {
+    const { g, a, allies } = setup(team);
+    gridironAI(g, a, 0.02);
+    assert.equal(g.ball.pass?.target, allies[2].id);
+  }
+});
+test("AI refuses a covered forward receiver or blocked forward passing lane", () => {
+  for (const condition of ["covered", "lane"]) {
+    const { g, a, allies } = setup();
+    const rival = g.fighters[5];
+    Object.assign(
+      rival,
+      condition === "covered"
+        ? { x: allies[2].x, y: allies[2].y + 100 }
+        : { x: 975, y: 500 },
+    );
+    gridironAI(g, a, 0.02);
+    assert.equal(g.ball.pass, undefined);
+  }
+});
+test("AI defenders on either team move to intercept a forward pass", () => {
+  for (const team of [0, 1]) {
+    const { g, a, allies } = setup(team),
+      direction = team === 0 ? 1 : -1;
+    allies[2].x = a.x + direction * 350;
+    const defender = g.fighters.find(
+      (b) => b.team !== team && b.id !== "player",
+    );
+    Object.assign(defender, { x: a.x + direction * 150, y: 545 });
+    passGridiron(g, a, allies[2]);
+    for (let i = 0; i < 80 && g.ball.pass; i++) {
+      gridironAI(g, defender, 0.02);
+      g.time += 0.02;
+      updateGridiron(g);
+    }
+    assert.equal(g.ball.carrier, defender.id);
+  }
+});
+test("Supporting AI runs a forward route while defenders cover potential receivers", () => {
+  const { g, a, allies } = setup();
+  const runner = allies[2],
+    before = runner.x;
+  gridironAI(g, runner, 0.1);
+  assert.ok(runner.x > before);
+  const defenders = g.fighters.filter((b) => b.team !== a.team);
+  Object.assign(defenders[0], { x: 950, y: 550 });
+  const cover = defenders[1];
+  Object.assign(cover, { x: 1400, y: 650 });
+  const gap = Math.min(
+    ...allies.map((b) => Math.hypot(cover.x - b.x, cover.y - b.y)),
+  );
+  for (let i = 0; i < 10; i++) gridironAI(g, cover, 0.02);
+  assert.ok(
+    Math.min(...allies.map((b) => Math.hypot(cover.x - b.x, cover.y - b.y))) <
+      gap,
+  );
 });

@@ -1,4 +1,10 @@
-# Elemental — The Colosseum · v0.49.2
+# Elemental — The Colosseum · v0.50.0
+
+## v0.50.0 Forward passing
+
+- Gridiron allows forward, sideways and backward throws through teammate taps or Pass / P. The button selects the furthest eligible teammate in any direction. Shield, possession and match-state restrictions, interceptions and loose balls remain.
+- Both teams' AI takes clear forward gains and passes to open receivers when surrounded. One supporting teammate runs an open forward route, while defenders divide pressure on the carrier and receiver coverage. During flight, the closest AI defender moves toward an interception point and others cover the receiver. Intended AI receivers hold their catch position.
+- The Zombies Drain notice removal from v0.49.2 remains published.
 
 ## v0.49.2 Zombies ability space
 
