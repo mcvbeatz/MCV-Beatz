@@ -148,10 +148,113 @@ export function updateGridironEvolution(g) {
   a.chargeForm = null;
   if (a.alive) g.cue("fusion", a, "#c59bff");
 }
+export function lateralTargets(g, a) {
+  if (
+    g.mode !== "gridiron" ||
+    !a.alive ||
+    !inWorld(a) ||
+    g.ball.carrier !== a.id
+  )
+    return [];
+  const direction = a.team === 0 ? 1 : -1;
+  return g.fighters.filter(
+    (b) =>
+      b !== a &&
+      b.team === a.team &&
+      b.alive &&
+      inWorld(b) &&
+      !b.shield &&
+      !b.blink &&
+      (b.x - a.x) * direction <= 0.01 &&
+      g.map.lineClear(a, b),
+  );
+}
+export function passGridiron(g, a, receiver = null) {
+  if (
+    g.finished ||
+    g.countingDown ||
+    a.prisonHp > 0 ||
+    a.blink ||
+    a.stagger > 0 ||
+    g.ball?.pass
+  )
+    return false;
+  const targets = lateralTargets(g, a);
+  if (receiver ? !targets.includes(receiver) : !targets.length) return false;
+  receiver ||= targets.sort((b, c) => distance(a, c) - distance(a, b))[0];
+  const duration = Math.max(0.18, distance(a, receiver) / 750);
+  Object.assign(g.ball, {
+    x: a.x,
+    y: a.y,
+    carrier: null,
+    pickupAt: g.time + duration,
+    lastCarrier: a.id,
+    lastCarrierUntil: g.time + duration + 0.3,
+    pass: {
+      from: a.id,
+      target: receiver.id,
+      x: a.x,
+      y: a.y,
+      toX: receiver.x,
+      toY: receiver.y,
+      start: g.time,
+      duration,
+    },
+  });
+  g.animateCast(a);
+  return true;
+}
+function updateLateral(g) {
+  const ball = g.ball,
+    p = ball.pass;
+  if (!p) return false;
+  const progress = Math.min(1, Math.max(0, (g.time - p.start) / p.duration));
+  const old = { x: ball.x, y: ball.y };
+  ball.x = p.x + (p.toX - p.x) * progress;
+  ball.y = p.y + (p.toY - p.y) * progress;
+  const dx = ball.x - old.x,
+    dy = ball.y - old.y,
+    length2 = dx * dx + dy * dy;
+  const catches = g.fighters
+    .filter(
+      (a) => a.id !== p.from && a.alive && inWorld(a) && !a.shield && !a.blink,
+    )
+    .map((a) => {
+      const u = length2
+        ? Math.max(
+            0,
+            Math.min(1, ((a.x - old.x) * dx + (a.y - old.y) * dy) / length2),
+          )
+        : 0;
+      return {
+        a,
+        u,
+        gap: Math.hypot(a.x - old.x - u * dx, a.y - old.y - u * dy),
+      };
+    })
+    .filter((c) => c.gap < 26)
+    .sort((a, b) => a.u - b.u || a.gap - b.gap);
+  if (catches.length) {
+    ball.carrier = catches[0].a.id;
+    ball.x = catches[0].a.x;
+    ball.y = catches[0].a.y;
+    ball.pass = null;
+    ball.pickupAt = g.time;
+    return false;
+  }
+  if (progress >= 1) {
+    ball.pass = null;
+    ball.pickupAt = g.time;
+    return false;
+  }
+  return true;
+}
+
 export function updateGridiron(g) {
   if (g.mode !== "gridiron") return;
   updateGridironEvolution(g);
   const ball = g.ball;
+  if (updateLateral(g)) return;
   let carrier = g.fighters.find((a) => a.id === ball.carrier);
   if (carrier && (!carrier.alive || !inWorld(carrier))) {
     fumble(g, carrier);
@@ -193,6 +296,7 @@ export function updateGridiron(g) {
       carrier: receiver.id,
       pickupAt: g.time,
       lastCarrier: null,
+      pass: null,
     });
     g.cue("heal", ball, "#f5d28b");
     return;

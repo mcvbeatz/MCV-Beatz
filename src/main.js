@@ -1,5 +1,10 @@
 import { zombieAbility, useZombieAbility } from "./zombies.js";
-import { raceItemName, useRaceItem } from "./event-modes.js";
+import {
+  raceItemName,
+  useRaceItem,
+  passGridiron,
+  lateralTargets,
+} from "./event-modes.js";
 import { dungeonObjective } from "./dungeon.js";
 import {
   orientationPoint,
@@ -351,13 +356,17 @@ function action(key, down = true) {
     if (down) game.strike(p);
   }
   if (key === "k") {
-    if (game.mode === "zombies" && p.zombieSelected !== "ice")
-      useZombieAbility(game, p, p.zombieSelected, down);
-    else if (game.mode === "turnpike") {
+    if (game.mode === "turnpike") {
       if (down) useRaceItem(game, p);
     } else chargeAction(p, activeForm(p), down);
   }
-  if (key === "l" && game.mode !== "zombies") game.utility(p, down);
+  if (key === "p" && down && game.mode === "gridiron") passGridiron(game, p);
+  if (game.mode === "zombies" && ["l", "u", "i"].includes(key)) {
+    const id = p.zombieSkills[["l", "u", "i"].indexOf(key)];
+    if (id) useZombieAbility(game, p, id, down);
+    return;
+  }
+  if (key === "l") game.utility(p, down);
   if (key === "u" || key === "i") {
     const skill = extraSkillsFor(activeForm(p))[key === "u" ? 0 : 1];
     if (!skill) return;
@@ -365,10 +374,7 @@ function action(key, down = true) {
     else chargeAction(p, skill.form, down);
   }
   if (key === "tab" && down) {
-    if (game.mode === "zombies") {
-      const tabs = ["ice", ...p.zombieSkills];
-      selectZombieTab(tabs[(tabs.indexOf(p.zombieSelected) + 1) % tabs.length]);
-    } else game.switchForm(p);
+    game.switchForm(p);
     formSignature = "";
   }
 }
@@ -396,6 +402,7 @@ window.addEventListener("keydown", (e) => {
       "l",
       "u",
       "i",
+      "p",
       "r",
       "tab",
       "escape",
@@ -437,6 +444,7 @@ for (const [id, key] of [
   ["utility-btn", "l"],
   ["extra-skill-0", "u"],
   ["extra-skill-1", "i"],
+  ["pass-btn", "p"],
 ]) {
   const b = $(id);
   let pointer = null;
@@ -570,16 +578,35 @@ $("game").addEventListener("pointerup", (e) => {
     a = game.player;
   if (!click) {
     if (
-      ["gravity", "terraformer"].includes(gesture.form) &&
+      (["gravity", "terraformer"].includes(gesture.form) ||
+        (game.mode === "zombies" && a.zombieSkills.includes("telekinesis"))) &&
       activeForm(a) === gesture.form &&
       !game.portals.placing
     ) {
       const target = game.fighters.find((b) => b.id === gesture.target);
       // Camera panning must not add an unintended component to the finger's swipe.
       const from = localPoint($("game"), gesture.x, gesture.y);
-      game.telekinesis(a, target, local.x - from.x, local.y - from.y);
+      if (game.mode === "zombies") {
+        useZombieAbility(game, a, "telekinesis", true, {
+          target,
+          dx: local.x - from.x,
+          dy: local.y - from.y,
+        });
+      } else game.telekinesis(a, target, local.x - from.x, local.y - from.y);
     }
     return;
+  }
+  if (game.mode === "gridiron" && game.ball.carrier === a.id) {
+    const teammate = lateralTargets(game, a)
+      .filter(
+        (b) => Math.abs(p.x - b.x) <= 38 && p.y >= b.y - 80 && p.y <= b.y + 15,
+      )
+      .sort(
+        (b, c) =>
+          Math.hypot(p.x - b.x, p.y - b.y + 30) -
+          Math.hypot(p.x - c.x, p.y - c.y + 30),
+      )[0];
+    if (teammate && passGridiron(game, a, teammate)) return;
   }
   if (game.portals.closeAt(a, p.x, p.y)) return;
   if (game.portals.placing === a.id) {
@@ -603,23 +630,7 @@ $("cancel-portal").onclick = () => {
   game.player.chasmReady = false;
   game.player.zombieTeleportReady = false;
 };
-function selectZombieTab(id) {
-  const a = game.player;
-  if (id !== "ice" && !a.zombieSkills.includes(id)) return;
-  game.releaseCharge(a);
-  if (a.shield) useZombieAbility(game, a, "shield", false);
-  a.zombieSelected = id;
-  a.chasmReady = false;
-  a.zombieTeleportReady = false;
-  formSignature = "";
-}
 $("skill-switcher").onclick = (e) => {
-  const skill = e.target.closest("[data-zombie-skill]");
-  if (skill && !game.finished && game.player.alive) {
-    selectZombieTab(skill.dataset.zombieSkill);
-    updateHUD();
-    return;
-  }
   const b = e.target.closest("[data-form]");
   if (b && !game.finished && game.player.alive) {
     game.switchForm(game.player, b.dataset.form);
@@ -757,7 +768,7 @@ document.querySelectorAll("[data-mode]").forEach(
       };
       const desc = {
         zombies:
-          "2–8 Ice teammates in the Drowned Vault. Survive together: Fire enemies take two hits, spawning faster with each kill. Collect up to three unique room abilities. Revival and Rebirth can save teammates; the run ends when everyone is felled.",
+          "2–8 Ice teammates in the Drowned Vault. Survive together: Fire enemies take five hits and use melee only. Five-second batches grow with each kill, capped at 100; at 50 they spawn around the whole dungeon. Collect up to three unique room abilities. Revival and Rebirth can save teammates; the run ends when everyone is felled.",
         gridiron:
           "8 players · All Earth. A trailing team’s most-felled player becomes Gravity for the rest of the match. Carry the ball into the opposing end zone. Shield up to protect it; hits cause fumbles. Five-second respawns. After a score, the other team’s top killer gets the ball. Three minutes, then sudden death if tied.",
         turnpike:
@@ -827,7 +838,7 @@ $("sound-btn").onclick = () => {
   $("sound-btn").setAttribute("aria-pressed", sound);
   beep(400);
 };
-const guide = `<span class="eyebrow">TOUCH COMBAT / v0.48.0</span><h2>Your thumbs. Your timing.</h2><p>Battles open in an expanded view automatically, using your selected orientation. If Safari cannot hide its browser bars, use Share → Add to Home Screen for a standalone view.</p><table><tr><td>Bottom-left stick / WASD</td><td>Move in any direction. Drag farther for full speed.</td></tr><tr><td>Bottom-right Strike / J</td><td>Strike locks automatically onto the nearest rival within melee range.</td></tr><tr><td>Bottom-middle skills / K, L</td><td>Hold your main skill to charge, then release to cast. Hold Rock shield until you release it or it breaks.</td></tr><tr><td>Top ability-set tabs / Tab</td><td>Choose origin or fused skills. Your elemental identity and accumulated passives remain active.</td></tr><tr><td>Touch an ally token</td><td>Compatible fusion happens automatically and blows nearby and distant fighters away. Enemy tokens are hidden in team modes. Free for All allows rival tokens; Capture the Flag disables fusion.</td></tr></table><h3>Ice and Abyssal</h3><p>Water + Dark creates Ice. Ice + Earth or Mud + Dark creates Abyssal. Hold Icicle Burst for an endless directional stream dealing 6 base HP per second; release to stop, even with tap charging enabled. Abyssal can hold Void Mantle for a 65-HP dark-water and stone shield that reaches twice as far and deals 10 base damage per second. Drain passively steals up to 3 HP per second on contact: the drainer glows, and the drained fighter darkens. Defenses and friendly-fire rules apply; only actual health taken is restored.</p><h3>Battle modes</h3><p>Capture the Flag: eight fighters in the Evergreen Labyrinth; first to 3 captures or most captures at three minutes, with next capture winning a timed tie. Respawns take 10 seconds; fusion is off. Any attack on a flag carrier detonates them and drops their flag. Take the enemy flag home while your own flag is at base. Touch a dropped friendly flag to return it. Team Deathmatch: most enemy kills in 3 minutes wins; ties draw. Respawns take 10 seconds, but your team loses immediately if everyone is down together. A teammate respawning keeps your fusion intact; your own respawn resets you to your starting element. Unclaimed tokens disappear when their owner respawns. Free for All: 2–8 independent fighters, ten-second respawns. The last standing fighter wins early; otherwise most kills at three minutes wins. All rival tokens are visible and compatible tokens fuse on touch.</p><h3>Zombies</h3><p>Choose 2–8 Ice teammates and survive as long as possible in the fully open Drowned Vault. Two hits defeat each Fire enemy. One Fire spawns per second along the boss-room edges; every defeat increases the rate by one per second. Fire may leave a healing drop. Seventeen unique ability runes are spread among the other rooms, excluding the starting and boss rooms. Each teammate can collect three extra abilities alongside Icicle Burst and Drain; select a top tab to use one. Rebirth and Invisibility are passive. Rock shield is held; Teleport and Chasm need destination taps; Portals needs two placements. No automatic respawns: use Revival or Rebirth. The run ends when all teammates are felled, and survival time is the score.</p><h3>Gridiron and Turnpike Racing</h3><p>Gridiron: eight fighters, with three Earth and one randomly assigned Gravity per team. Carry the midfield ball into the opposing end zone. Friendly fire is on; attacks cause fumbles unless an intact Rock shield protects the carrier. Shielded fighters cannot pick up the ball. Respawn at your starting position after five seconds. After a touchdown, the team that conceded starts with the ball, carried by its player with the most kills. Most touchdowns in three minutes wins; a tie goes to sudden death.</p><p>Turnpike Racing: eight Air racers fly the Cloudway Circuit. Finish three laps or lead at three minutes. Leave the course to fly very slowly; follow the glowing checkpoints in order. Fallen racers become slower guardian angels and revive where they are after five seconds. Pick up one ability at a time and tap to use it. Fire tokens ahead of last place grant Blaze for seven seconds; health appears ahead of the lowest-health racer.</p><h3>Survive the Night, Boss and Domination</h3><p>Survive the Night: exactly eight fighters start as Light in the Umbral Labyrinth. Walls block movement and attacks; portals are disabled. At five seconds one random fighter becomes Dark. Two Dark strikes convert Light. The last three survivors gain one-use Rebirth; the last survivor becomes Spirit and can revive the oldest eligible Dark as Light. Smoke cannot be revived. Three conversions evolve Dark into Smoke with its normal skills. Dark and Smoke respawn after ten seconds. Light survivors at two minutes win survival; hunters with the most conversions share the Dark win. Recoveries choose clear maze floor. Boss: choose an origin; one of 4–8 fighters becomes Invincible at random. Boss health equals their combined health; last team standing wins. The AI boss relentlessly pursues healers first, nearest healer first, then the nearest remaining opponent. Both modes disable friendly fire and fusion.</p><p>Domination: two teams start with two flags each. Stand within the ring for 10 seconds to capture an enemy flag. Each extra attacker doubles capture speed: 10 / 5 / 2.5 / 1.25 seconds. Defenders contest and pause capture; unattended progress drains over time. Every owned flag scores one flag-second each second. Most flag-seconds at 3 minutes wins; ties draw. Respawns take 10 seconds, with normal allied-token fusion rules. Friendly fire is off, so allies do not prevent AI attacks.</p><h3>Spirit: portals, revival and angel guard</h3><p>Tap Portals, then tap two clear arena positions. Each portal warns for 0.5 seconds before opening and cannot be placed under a fighter. Fighters, ghosts, attacks, tokens and lingering effects can travel through either portal. Tap your portal to close it; Divine can also close other players’ portals. Closing a portal during a crossing kills the traveller; simply standing nearby is safe. A lone portal holds entrants off-screen: reverse your entry direction with the stick to retreat, or open a second exit. Closing the lone portal permanently loses anyone still inside and their token.</p><p>Revival brings back the closest recoverable fallen ally. It never heals you instead. If their token has already been fused, their contribution is removed from its bearer when they revive in elimination modes. Deathmatch revival preserves other fighters’ fusions and resets the revived fighter to their starting element. In elimination modes, a felled Spirit becomes a controllable ghost while allies remain: stand between an enemy and an ally to block melee attacks.</p><h3>Always-active abilities</h3><p>Reflect, hard skin, burn, flight, venomous contact, Angel guard and Divine immunity do not have buttons. Multi-Dimensional gains repeatable tap-to-teleport up to 180 units away, with a visible destination and 0.2-second vulnerable preparation; placement and portal-closing taps take priority. Passives stay active across ability sets.</p><h3>New tactics</h3><p>Fused II and Fused III offer separate duels for each fusion tier. Healing picks the living teammate with the lowest current health, including you. Blaze has only Speed burst: a short dash, a flame trail, impact damage and contact-only burn unless immune. It has no recharge; another dash can start as soon as the current dash ends. Smoke has Vog, Shadow step and Flamethrower. A Fire-bearing fighter entering Vog halves its remaining duration once per field; casting around a fighter already inside does not trigger this. Gravity is purple.</p><p>Allied Divine health bars remain fully visible even while their bodies are invisible. Minimap allies appear green and visible enemies orange. Divine is fully invisible to enemies while still; its controller sees only a luminous outline while hidden and the full character whenever revealed. Enemies see attacks and abilities at 30% opacity. Continuous movement gives a brief 10% glimpse once per second, and damage gives a 150ms glimpse at 10% opacity. Concealed fighters cannot be target-locked, but physical attacks can still hit them. In modes with friendly fire, AI fighters avoid attacking through allies; they help endangered teammates, and dodge hazards. Fire closes in for contact burn; Light favors healing and Flash, retreats while supporting, and still strikes nearby rivals. When idle, AI searches random spots around a Divine’s last seen location. Burn stops when contact ends; Mud venom lasts five seconds after contact.</p><h3>Lightning and Invincible</h3><p>Both are available in Fused III. Cloud + Light or Spirit + Water creates Lightning: tap Lightning strikes to hit the nearest visible rival within 450 units instantly, with no charge and a 3-second cooldown. Shock prevents movement while touching Lightning; Divine is immune. Sun + Earth or Mirror + Fire creates Invincible: 2× melee damage is always active. Tap Explosion for fusion-style knockback and 5 base damage to other fighters within Gravity’s radius. Abilities and contact burn have normal strength. Lightning strikes bypass its Reflect and hard skin and deal 25% extra damage. Active Flood makes Lightning strikes hit everyone, including allies and the caster. Multi-Dimensional has no Rift; its Teleport reminder button explains arena taps and does not activate or limit teleportation.</p><h3>Balance update</h3><p>Reflect returns 40% of direct incoming ability damage and lets 60% through before defenses. Quicksand, Gravity x2, Flood, Heatwave, Magma, Sabotage, Speed burst, Vog, Telekinesis, contact burn and venom never trigger Reflect. Elemental advantages grant 20% extra damage. Charging raises Demonic minion health from 8 to 40 HP and Apparition copy health from 1 to 33 HP. Flood hits Fire-bearing fighters once per cast for 25% of their maximum health as base damage, with normal defenses applied, instead of instantly killing them. Water-bearing fighters move 25% faster inside Flood without its slowing effect; other grounded fighters still slow. Teleport has no recharge: you remain vulnerable at the departure point for 0.2 seconds, and a distant tap is limited to 180 units. Damage can kill you during preparation; knockback, Shock and portal travel cancel it.</p><h3>Movement and battle effects</h3><p>Every elemental has its own directional design. Earth and Mud run on all fours; other grounded fighters run with alternating strides; Air-based fusions hover. Level-II fusions shine and level-III fusions glow. In the Gravity or Terraformer skill tab, swipe directly on an enemy to move them in that direction; tap Telekinesis to push the nearest visible rival away. It has 400 range, twice the pushing distance and a 4.5-second cooldown. Gravity x2 distorts and tints its area purple. Flood covers grounded fighters to the waist; quicksand flows inward and covers their feet. Earth-bearing fighters, including Mud, are immune to quicksand. Reflection creates an orbiting translucent shield, and contested melee attacks enter a paired weapon clash.</p><h3>Fused shortcuts</h3><p>Added skills appear beside fused abilities, with U and I shortcuts on a keyboard. Charge abilities share the existing main-skill cooldown, and utilities share the utility cooldown; Speed burst still has no recharge. Spirit can heal directly. Divine can revive allies and place portals. Once Spirit or Divine has two portals open, tapping Portals closes the oldest; the next tap closes the remaining portal. Radiance heals every living teammate, including its caster. Earth uses Rock shield without Rock burst. Doppelgängers prioritize pursuing enemies. Combat messages use body flashes, shining tokens and visual cues instead of floating text; idle and running fighters recoil visibly when hit. Spirit and Divine AI travel through planned portal pairs, and Multi-Dimensional AI teleports to approach or escape.</p><h3>Death and adaptive tactics</h3><p>Demonic can place one permanent Death sigil per match, even across respawns. Its dark opening takes half a second before it can demote anyone. It is the size of Magma and affects flying fighters too. Each entry lowers a fighter by one tier; staying inside does not repeat it. Level III keeps its alphabetically first compatible level-II form, and level II keeps its alphabetically first origin. Fallen teammates stay felled. Invincible moves 15% slower. AI changes tactics after three repeated actions or a stalled fight and seeks compatible tokens. Corrupted fighters and the AI boss instead maintain relentless attacks.</p><h3>Combat rules</h3><p>Friendly fire is off in Survive the Night, Boss, Domination, Dungeon and Zombies. Flash reaches 85% of Vog’s radius, with one second of full white followed by a two-second fade. It follows friendly-fire rules and respects Divine/Aurora immunity. Mutual strikes within 100ms clash for quarter damage. Hits pause charging for 270ms without deleting stored power. Same-element abilities deal half damage. Fire now takes 30% less Water ability damage than in v0.1. Sonic boom is a spreading fan; the Sun laser is a fast, piercing beam.</p>`;
+const guide = `<span class="eyebrow">TOUCH COMBAT / v0.49.0</span><h2>Your thumbs. Your timing.</h2><p>Battles open in an expanded view automatically, using your selected orientation. If Safari cannot hide its browser bars, use Share → Add to Home Screen for a standalone view.</p><table><tr><td>Bottom-left stick / WASD</td><td>Move in any direction. Drag farther for full speed.</td></tr><tr><td>Bottom-right Strike / J</td><td>Strike locks automatically onto the nearest rival within melee range.</td></tr><tr><td>Bottom-middle skills / K, L</td><td>Hold your main skill to charge, then release to cast. Hold Rock shield until you release it or it breaks.</td></tr><tr><td>Top ability-set tabs / Tab</td><td>Choose origin or fused skills. Your elemental identity and accumulated passives remain active.</td></tr><tr><td>Touch an ally token</td><td>Compatible fusion happens automatically and blows nearby and distant fighters away. Enemy tokens are hidden in team modes. Free for All allows rival tokens; Capture the Flag disables fusion.</td></tr></table><h3>Ice and Abyssal</h3><p>Water + Dark creates Ice. Ice + Earth or Mud + Dark creates Abyssal. Hold Icicle Burst for an endless directional stream dealing 6 base HP per second; release to stop, even with tap charging enabled. Abyssal can hold Void Mantle for a 65-HP dark-water and stone shield that reaches twice as far and deals 10 base damage per second. Drain passively steals up to 3 HP per second on contact: the drainer glows, and the drained fighter darkens. Defenses and friendly-fire rules apply; only actual health taken is restored.</p><h3>Battle modes</h3><p>Capture the Flag: eight fighters in the Evergreen Labyrinth; first to 3 captures or most captures at three minutes, with next capture winning a timed tie. Respawns take 10 seconds; fusion is off. Any attack on a flag carrier detonates them and drops their flag. Take the enemy flag home while your own flag is at base. Touch a dropped friendly flag to return it. Team Deathmatch: most enemy kills in 3 minutes wins; ties draw. Respawns take 10 seconds, but your team loses immediately if everyone is down together. A teammate respawning keeps your fusion intact; your own respawn resets you to your starting element. Unclaimed tokens disappear when their owner respawns. Free for All: 2–8 independent fighters, ten-second respawns. The last standing fighter wins early; otherwise most kills at three minutes wins. All rival tokens are visible and compatible tokens fuse on touch.</p><h3>Zombies</h3><p>Choose 2–8 Ice teammates and survive as long as possible in the fully open Drowned Vault. Five hits defeat each Fire enemy, which uses melee only. Every five seconds a batch spawns, starting at one and increasing by one per defeat up to 100. At 50 per batch, spawns spread from the boss room to exposed edges across the dungeon. Fire may leave a healing drop. Seventeen unique ability runes are spread among the other rooms, excluding the starting and boss rooms. Each teammate can collect three extra abilities alongside Icicle Burst and Drain; use their buttons beside Icicle Burst while remaining Ice. Rebirth and Invisibility are passive. Rock shield is held; Teleport and Chasm need destination taps; Portals needs two placements. No automatic respawns: use Revival or Rebirth. The run ends when all teammates are felled, and survival time is the score.</p><h3>Gridiron and Turnpike Racing</h3><p>Gridiron: eight fighters, all starting as Earth. A trailing team’s most-felled player becomes Gravity for the rest of the match. Carry the midfield ball into the opposing end zone. Friendly fire is on; attacks cause fumbles unless an intact Rock shield protects the carrier. Shielded fighters cannot pick up the ball. Respawn at your starting position after five seconds. Tap a teammate sideways or behind you to pass, or tap Pass / P for the furthest eligible teammate. Passes can be intercepted; shielded teammates cannot catch. After a touchdown, the team that conceded starts with the ball, carried by its player with the most kills. Most touchdowns in three minutes wins; a tie goes to sudden death.</p><p>Turnpike Racing: eight Air racers fly the Cloudway Circuit. Finish three laps or lead at three minutes. Leave the course to fly very slowly; follow the glowing checkpoints in order. Fallen racers become slower guardian angels and revive where they are after five seconds. Pick up one ability at a time and tap to use it. Fire tokens ahead of last place grant Blaze for seven seconds; health appears ahead of the lowest-health racer.</p><h3>Survive the Night, Boss and Domination</h3><p>Survive the Night: exactly eight fighters start as Light in the Umbral Labyrinth. Walls block movement and attacks; portals are disabled. At five seconds one random fighter becomes Dark. Two Dark strikes convert Light. The last three survivors gain one-use Rebirth; the last survivor becomes Spirit and can revive the oldest eligible Dark as Light. Smoke cannot be revived. Three conversions evolve Dark into Smoke with its normal skills. Dark and Smoke respawn after ten seconds. Light survivors at two minutes win survival; hunters with the most conversions share the Dark win. Recoveries choose clear maze floor. Boss: choose an origin; one of 4–8 fighters becomes Invincible at random. Boss health equals their combined health; last team standing wins. The AI boss relentlessly pursues healers first, nearest healer first, then the nearest remaining opponent. Both modes disable friendly fire and fusion.</p><p>Domination: two teams start with two flags each. Stand within the ring for 10 seconds to capture an enemy flag. Each extra attacker doubles capture speed: 10 / 5 / 2.5 / 1.25 seconds. Defenders contest and pause capture; unattended progress drains over time. Every owned flag scores one flag-second each second. Most flag-seconds at 3 minutes wins; ties draw. Respawns take 10 seconds, with normal allied-token fusion rules. Friendly fire is off, so allies do not prevent AI attacks.</p><h3>Spirit: portals, revival and angel guard</h3><p>Tap Portals, then tap two clear arena positions. Each portal warns for 0.5 seconds before opening and cannot be placed under a fighter. Fighters, ghosts, attacks, tokens and lingering effects can travel through either portal. Tap your portal to close it; Divine can also close other players’ portals. Closing a portal during a crossing kills the traveller; simply standing nearby is safe. A lone portal holds entrants off-screen: reverse your entry direction with the stick to retreat, or open a second exit. Closing the lone portal permanently loses anyone still inside and their token.</p><p>Revival brings back the closest recoverable fallen ally. It never heals you instead. If their token has already been fused, their contribution is removed from its bearer when they revive in elimination modes. Deathmatch revival preserves other fighters’ fusions and resets the revived fighter to their starting element. In elimination modes, a felled Spirit becomes a controllable ghost while allies remain: stand between an enemy and an ally to block melee attacks.</p><h3>Always-active abilities</h3><p>Reflect, hard skin, burn, flight, venomous contact, Angel guard and Divine immunity do not have buttons. Multi-Dimensional gains repeatable tap-to-teleport up to 180 units away, with a visible destination and 0.2-second vulnerable preparation; placement and portal-closing taps take priority. Passives stay active across ability sets.</p><h3>New tactics</h3><p>Fused II and Fused III offer separate duels for each fusion tier. Healing picks the living teammate with the lowest current health, including you. Blaze has only Speed burst: a short dash, a flame trail, impact damage and contact-only burn unless immune. It has no recharge; another dash can start as soon as the current dash ends. Smoke has Vog, Shadow step and Flamethrower. A Fire-bearing fighter entering Vog halves its remaining duration once per field; casting around a fighter already inside does not trigger this. Gravity is purple.</p><p>Allied Divine health bars remain fully visible even while their bodies are invisible. Minimap allies appear green and visible enemies orange. Divine is fully invisible to enemies while still; its controller sees only a luminous outline while hidden and the full character whenever revealed. Enemies see attacks and abilities at 30% opacity. Continuous movement gives a brief 10% glimpse once per second, and damage gives a 150ms glimpse at 10% opacity. Concealed fighters cannot be target-locked, but physical attacks can still hit them. In modes with friendly fire, AI fighters avoid attacking through allies; they help endangered teammates, and dodge hazards. Fire closes in for contact burn; Light favors healing and Flash, retreats while supporting, and still strikes nearby rivals. When idle, AI searches random spots around a Divine’s last seen location. Burn stops when contact ends; Mud venom lasts five seconds after contact.</p><h3>Lightning and Invincible</h3><p>Both are available in Fused III. Cloud + Light or Spirit + Water creates Lightning: tap Lightning strikes to hit the nearest visible rival within 450 units instantly, with no charge and a 3-second cooldown. Shock prevents movement while touching Lightning; Divine is immune. Sun + Earth or Mirror + Fire creates Invincible: 2× melee damage is always active. Tap Explosion for fusion-style knockback and 5 base damage to other fighters within Gravity’s radius. Abilities and contact burn have normal strength. Lightning strikes bypass its Reflect and hard skin and deal 25% extra damage. Active Flood makes Lightning strikes hit everyone, including allies and the caster. Multi-Dimensional has no Rift; its Teleport reminder button explains arena taps and does not activate or limit teleportation.</p><h3>Balance update</h3><p>Reflect returns 40% of direct incoming ability damage and lets 60% through before defenses. Quicksand, Gravity x2, Flood, Heatwave, Magma, Sabotage, Speed burst, Vog, Telekinesis, contact burn and venom never trigger Reflect. Elemental advantages grant 20% extra damage. Charging raises Demonic minion health from 8 to 40 HP and Apparition copy health from 1 to 33 HP. Flood hits Fire-bearing fighters once per cast for 25% of their maximum health as base damage, with normal defenses applied, instead of instantly killing them. Water-bearing fighters move 25% faster inside Flood without its slowing effect; other grounded fighters still slow. Teleport has no recharge: you remain vulnerable at the departure point for 0.2 seconds, and a distant tap is limited to 180 units. Damage can kill you during preparation; knockback, Shock and portal travel cancel it.</p><h3>Movement and battle effects</h3><p>Every elemental has its own directional design. Earth and Mud run on all fours; other grounded fighters run with alternating strides; Air-based fusions hover. Level-II fusions shine and level-III fusions glow. In the Gravity or Terraformer skill tab, swipe directly on an enemy to move them in that direction; tap Telekinesis to push the nearest visible rival away. It has 400 range, twice the pushing distance and a 4.5-second cooldown. Gravity x2 distorts and tints its area purple. Flood covers grounded fighters to the waist; quicksand flows inward and covers their feet. Earth-bearing fighters, including Mud, are immune to quicksand. Reflection creates an orbiting translucent shield, and contested melee attacks enter a paired weapon clash.</p><h3>Fused shortcuts</h3><p>Added skills appear beside fused abilities, with U and I shortcuts on a keyboard. Charge abilities share the existing main-skill cooldown, and utilities share the utility cooldown; Speed burst still has no recharge. Spirit can heal directly. Divine can revive allies and place portals. Once Spirit or Divine has two portals open, tapping Portals closes the oldest; the next tap closes the remaining portal. Radiance heals every living teammate, including its caster. Earth uses Rock shield without Rock burst. Doppelgängers prioritize pursuing enemies. Combat messages use body flashes, shining tokens and visual cues instead of floating text; idle and running fighters recoil visibly when hit. Spirit and Divine AI travel through planned portal pairs, and Multi-Dimensional AI teleports to approach or escape.</p><h3>Death and adaptive tactics</h3><p>Demonic can place one permanent Death sigil per match, even across respawns. Its dark opening takes half a second before it can demote anyone. It is the size of Magma and affects flying fighters too. Each entry lowers a fighter by one tier; staying inside does not repeat it. Level III keeps its alphabetically first compatible level-II form, and level II keeps its alphabetically first origin. Fallen teammates stay felled. Invincible moves 15% slower. AI changes tactics after three repeated actions or a stalled fight and seeks compatible tokens. Corrupted fighters and the AI boss instead maintain relentless attacks.</p><h3>Combat rules</h3><p>Friendly fire is off in Survive the Night, Boss, Domination, Dungeon and Zombies. Flash reaches 85% of Vog’s radius, with one second of full white followed by a two-second fade. It follows friendly-fire rules and respects Divine/Aurora immunity. Mutual strikes within 100ms clash for quarter damage. Hits pause charging for 270ms without deleting stored power. Same-element abilities deal half damage. Fire now takes 30% less Water ability damage than in v0.1. Sonic boom is a spreading fan; the Sun laser is a fast, piercing beam.</p>`;
 function openDialog(content) {
   if (started && !paused && !game.finished) pause(true);
   $("dialog-content").innerHTML = content;
@@ -894,25 +905,14 @@ function updateHUD() {
       !game.intermission &&
       !game.waveTravel &&
       !game.countingDown;
-  const signature =
-    game.mode === "zombies"
-      ? "zombies:" + a.zombieSkills.join("|") + ":" + a.zombieSelected
-      : a.forms.join("|") + ":" + form;
+  const signature = a.forms.join("|") + ":" + form;
   if (signature !== formSignature) {
-    $("skill-switcher").innerHTML =
-      game.mode === "zombies"
-        ? ["ice", ...a.zombieSkills]
-            .map((id) => {
-              const skill = zombieAbility(id);
-              return `<button data-zombie-skill="${id}" class="form-button ${a.zombieSelected === id ? "selected" : ""}" aria-pressed="${a.zombieSelected === id}">${icon(skill?.form || "ice")}<span>${skill?.name || "Ice"}</span></button>`;
-            })
-            .join("")
-        : a.forms
-            .map(
-              (f) =>
-                `<button data-form="${f}" class="form-button ${f === form ? "selected" : ""}" aria-pressed="${f === form}" style="--element:${profile(f).color}">${icon(f)}<span>${nameOf(f)}</span></button>`,
-            )
-            .join("");
+    $("skill-switcher").innerHTML = a.forms
+      .map(
+        (f) =>
+          `<button data-form="${f}" class="form-button ${f === form ? "selected" : ""}" aria-pressed="${f === form}" style="--element:${profile(f).color}">${icon(f)}<span>${nameOf(f)}</span></button>`,
+      )
+      .join("");
     formSignature = signature;
   }
   if (
@@ -933,8 +933,6 @@ function updateHUD() {
     extras.length = 0;
   }
   if (game.mode === "zombies") {
-    if (a.zombieSelected !== "ice")
-      skills[0] = zombieAbility(a.zombieSelected).name;
     skills[1] = null;
     extras.length = 0;
   }
@@ -1018,7 +1016,7 @@ function updateHUD() {
   ].includes(game.mode);
   $("objective-score").textContent =
     game.mode === "zombies"
-      ? `${game.fighters.filter((b) => b.team === 0 && b.alive).length} SURVIVORS · ${game.zombies.kills} KILLS · ${game.zombies.rate}/s`
+      ? `${game.fighters.filter((b) => b.team === 0 && b.alive).length} SURVIVORS · ${game.zombies.kills} KILLS · ${game.zombies.rate}/5s`
       : game.mode === "ctf"
         ? `${game.scores[0]} – ${game.scores[1]} FLAGS · ${game.suddenDeath ? "SUDDEN DEATH" : "FIRST TO 3"}`
         : game.mode === "gridiron"
@@ -1209,21 +1207,27 @@ function updateHUD() {
       ? "Tap the arena to place the exit portal."
       : "Tap the arena to place the first portal.";
   if (game.mode === "zombies") {
-    const id = a.zombieSelected,
-      skill = zombieAbility(id),
-      cd = Math.max(0, (a.zombieCooldowns[id] || 0) - game.time);
-    const passive = id === "rebirth" || id === "invisibility";
-    $("charge-btn").disabled =
-      !ready ||
-      passive ||
-      cd > 0 ||
-      (id === "spring" && game.springUsed.has(a.id));
-    if (id !== "ice") {
-      $("ability-status").textContent = passive
+    for (let i = 0; i < 3; i++) {
+      const button = $(["utility-btn", "extra-skill-0", "extra-skill-1"][i]),
+        id = a.zombieSkills[i],
+        skill = zombieAbility(id);
+      button.hidden = !skill;
+      if (!skill) continue;
+      const cd = Math.max(0, (a.zombieCooldowns[id] || 0) - game.time),
+        passive = id === "rebirth" || id === "invisibility";
+      button.querySelector("strong").textContent = skill.name;
+      button.querySelector(".ability-icon").innerHTML = icon("ice");
+      button.setAttribute("aria-label", skill.name);
+      button.disabled =
+        !ready ||
+        passive ||
+        cd > 0 ||
+        (id === "spring" && game.springUsed.has(a.id));
+      button.querySelector("small").textContent = passive
         ? id === "rebirth"
           ? game.rebirthUsed.has(a.id)
             ? "Rebirth used"
-            : "Passive · one second chance"
+            : "Passive · second chance"
           : "Passive · concealment"
         : cd > 0
           ? `${cd.toFixed(1)}s`
@@ -1241,10 +1245,25 @@ function updateHUD() {
                     ? "Placed · once per run"
                     : "Tap to use";
     }
+    document
+      .querySelector(".skill-controls")
+      .classList.toggle("expanded-skills", a.zombieSkills.length > 1);
+    $("portal-notice").hidden =
+      game.portals.placing !== a.id && !a.chasmReady && !a.zombieTeleportReady;
+    if (a.zombieTeleportReady)
+      $("portal-instruction").textContent = "Tap the arena to teleport.";
     $("passive-note").hidden = false;
     $("passive-note").textContent =
       `DRAIN · ${a.zombieSkills.length}/3 EXTRA ABILITIES · Touch room runes to collect`;
   }
+  $("pass-btn").hidden = game.mode !== "gridiron";
+  $("pass-btn").disabled =
+    !ready || !lateralTargets(game, a).length || a.prisonHp > 0 || !!a.blink;
+  if (game.mode === "gridiron")
+    $("pass-btn").querySelector("small").textContent =
+      game.ball.carrier === a.id
+        ? "Furthest sideways/back teammate"
+        : "Carry the ball to pass";
   $("move-label").textContent = game.spectatorFocus ? "LOOK" : "MOVE";
   $("joystick").setAttribute(
     "aria-label",
@@ -1285,7 +1304,7 @@ function updateHUD() {
                         : game.mode === "gridiron"
                           ? "Carry the ball to the opposite end zone. Shields protect possession; hits cause fumbles."
                           : game.mode === "zombies"
-                            ? "Survive together. Fire takes two hits; each kill adds one spawn per second."
+                            ? "Fire takes five hits. Five-second batches grow to 100; at 50, spawns spread across the dungeon."
                             : game.mode === "turnpike"
                               ? "Follow the circuit. Use your pickup before collecting another."
                               : game.mode === "ctf"

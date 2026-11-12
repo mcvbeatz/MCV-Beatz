@@ -1,4 +1,11 @@
-# Elemental — The Colosseum · v0.48.0
+# Elemental — The Colosseum · v0.49.0
+
+## v0.49.0 Zombies pacing and Gridiron laterals
+
+- Zombies spawns in batches every five seconds: one Fire initially, plus one per defeat, capped at 100 per batch. At 50 per batch, spawn locations expand to exposed, walkable room and corridor edges throughout the dungeon. Fire requires five hits and cannot use Fireball or Magma. Drain retains its one-second hit cadence.
+- Ice allies and Fire enemies steer apart and resolve overlaps using a nearby-body grid, while respecting walls and the player's position. Spawn batches prefer free perimeter slots.
+- Collected abilities stay on Ice, with three buttons beside Icicle Burst, independent cooldowns and L/U/I shortcuts. The element selector contains only Ice. Passive pickups show their status.
+- Gridiron carriers can tap a sideways/backward teammate or use Pass / P to throw to the furthest eligible teammate. The ball travels in an arc; any unshielded fighter can intercept, and a missed catch leaves it loose. Forward passes and dead, off-field or shielded recipients are excluded. Opening possession, scoring handoffs and comeback evolutions are unchanged.
 
 ## v0.48.0 Zombies and objective-mode updates
 

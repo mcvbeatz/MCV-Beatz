@@ -34,7 +34,7 @@ test("Zombies starts an Ice team on the open dungeon with unique room abilities"
   await page.screenshot({ path: "public/guides/zombies.png" });
   expect(errors).toEqual([]);
 });
-test("collected abilities appear as top tabs and work through touch controls while keeping Ice", async ({
+test("collected abilities appear beside Icicle Burst and work through touch controls while keeping Ice", async ({
   page,
 }) => {
   const errors = [];
@@ -51,19 +51,18 @@ test("collected abilities appear as top tabs and work through touch controls whi
     }
     g.player.hp = 40;
   });
-  await expect(page.locator("[data-zombie-skill]")).toHaveCount(4);
-  await page.locator('[data-zombie-skill="healing"]').click();
-  await page.locator("#charge-btn").click();
+  await expect(page.locator("#skill-switcher button")).toHaveCount(1);
+  await expect(page.locator("#skill-switcher")).toHaveText("Ice");
+  await expect(page.locator("#ability-name")).toHaveText("Icicle Burst");
+  await page.locator("#utility-btn").click();
   expect(await page.evaluate(() => __arena.game.player.hp)).toBeGreaterThan(40);
-  await page.locator('[data-zombie-skill="shield"]').click();
-  const b = await page.locator("#charge-btn").boundingBox();
+  const b = await page.locator("#extra-skill-0").boundingBox();
   await page.mouse.move(b.x + b.width / 2, b.y + b.height / 2);
   await page.mouse.down();
   expect(await page.evaluate(() => __arena.game.player.shield)).toBeTruthy();
   await page.mouse.up();
   expect(await page.evaluate(() => __arena.game.player.shield)).toBe(0);
-  await page.locator('[data-zombie-skill="teleport"]').click();
-  await page.locator("#charge-btn").click();
+  await page.locator("#extra-skill-1").click();
   const p = await page.evaluate(() => {
     const a = __arena.game.player,
       v = __arena.renderer.view;
@@ -75,7 +74,7 @@ test("collected abilities appear as top tabs and work through touch controls whi
   expect(await page.evaluate(() => __arena.game.player.element)).toBe("ice");
   expect(errors).toEqual([]);
 });
-test("Zombies ability tabs fit both phone orientations and survive revival", async ({
+test("Zombies ability buttons fit both phone orientations and survive revival", async ({
   page,
 }) => {
   await start(page);
@@ -96,6 +95,9 @@ test("Zombies ability tabs fit both phone orientations and survive revival", asy
       "#joystick",
       "#attack-btn",
       "#charge-btn",
+      "#utility-btn",
+      "#extra-skill-0",
+      "#extra-skill-1",
       "#objective-score",
     ]) {
       await expect(page.locator(selector)).toBeVisible();
@@ -155,4 +157,52 @@ test("CTF shows a three-minute timer and sudden-death captures; Gridiron starts 
   expect(possession.carrier).toBe(possession.player);
   expect(possession.atStart).toBe(true);
   await expect(page.locator("#objective-score")).toContainText("0 – 2");
+});
+
+test("Gridiron Pass button and teammate taps launch lateral passes", async ({
+  page,
+}) => {
+  await start(page, "gridiron");
+  const prepare = () =>
+    page.evaluate(() => {
+      const g = __arena.game;
+      g.fighters.forEach((a, i) =>
+        Object.assign(a, { x: 500 + i * 90, y: 800 }),
+      );
+      Object.assign(g.player, { x: 900, y: 500 });
+      Object.assign(g.fighters[1], { x: 760, y: 440 });
+      Object.assign(g.fighters[2], { x: 900, y: 620 });
+      Object.assign(g.fighters[3], { x: 1040, y: 500 });
+      Object.assign(g.ball, { carrier: g.player.id, pass: null });
+    });
+  await prepare();
+  await expect(page.locator("#pass-btn")).toBeEnabled();
+  await page.locator("#pass-btn").click();
+  expect(await page.evaluate(() => __arena.game.ball.pass.target)).toBe(
+    "rival-1",
+  );
+  await prepare();
+  await page.waitForTimeout(100);
+  const p = await page.evaluate(() => {
+    const a = __arena.game.fighters[2],
+      v = __arena.renderer.view;
+    return { x: a.x * v.scale + v.tx, y: (a.y - 30) * v.scale + v.ty };
+  });
+  const box = await page.locator("#game").boundingBox();
+  await page.mouse.click(box.x + p.x, box.y + p.y);
+  expect(await page.evaluate(() => __arena.game.ball.pass?.target)).toBe(
+    "rival-2",
+  );
+  for (const [width, height] of [
+    [844, 390],
+    [390, 844],
+  ]) {
+    await page.setViewportSize({ width, height });
+    await expect(page.locator("#pass-btn")).toBeVisible();
+    const b = await page.locator("#pass-btn").boundingBox();
+    expect(b.x).toBeGreaterThanOrEqual(0);
+    expect(b.x + b.width).toBeLessThanOrEqual(width);
+    expect(b.y).toBeGreaterThanOrEqual(0);
+    expect(b.y + b.height).toBeLessThanOrEqual(height);
+  }
 });

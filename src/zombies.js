@@ -50,7 +50,6 @@ export function initializeZombies(g, players) {
       deaths: 0,
       zombieSkills: [],
       zombieCooldowns: {},
-      zombieSelected: "ice",
       forms: ["ice"],
       form: 0,
     });
@@ -71,6 +70,7 @@ export function initializeZombies(g, players) {
       y: r.y + 170 + Math.floor(slot / 3) * 190,
     };
   });
+  g.zombieEdges = dungeonEdges(g.map);
   refreshZombieTeams(g);
 }
 export function refreshZombieTeams(g) {
@@ -100,19 +100,51 @@ export function spawnZombie(g) {
     x = r.x + margin;
     y = r.y + r.h - margin - n;
   }
-  const p = g.map.nearest({ x, y }, 20);
+  let p = g.map.nearest({ x, y }, 24);
+  if (g.zombies.rate >= 50) {
+    p =
+      g.zombieEdges[
+        Math.floor(g.random() * g.zombieEdges.length) % g.zombieEdges.length
+      ];
+  }
+  if (!g.zombieCrowd) buildCrowdGrid(g);
+  // Choose an unoccupied perimeter slot when a batch enters the map.
+  const slots =
+    g.zombies.rate >= 50
+      ? g.zombieEdges
+      : g.zombieEdges.filter((e) => e.room === 4);
+  const start = Math.floor(g.random() * slots.length);
+  let best = p,
+    bestGap = -1;
+  for (let i = 0; i < slots.length; i++) {
+    const candidate = i === 0 ? p : slots[(start + i) % slots.length];
+    let gap = 100;
+    for (const other of neighbours(g, candidate))
+      if (other.alive) gap = Math.min(gap, distance(other, candidate));
+    if (gap > bestGap) {
+      best = candidate;
+      bestGap = gap;
+    }
+    if (gap >= 60) break;
+  }
+  p = best;
   const a = makeFighter(`zombie-${g.zombies.nextId++}`, "fire", 1, p.x, p.y);
   Object.assign(a, {
     zombieEnemy: true,
-    hp: 2,
-    maxHp: 2,
+    hp: 5,
+    maxHp: 5,
+    skillsDisabled: true,
     kills: 0,
     deaths: 0,
     zombieTicks: {},
     spawnFlash: 0.5,
   });
   a.zombieNextStep = g.time + (g.zombies.nextId % 8) * 0.02;
+  a.crowdIndex = g.fighters.length;
   g.fighters.push(a);
+  const cell = `${Math.floor(a.x / 90)},${Math.floor(a.y / 90)}`;
+  if (!g.zombieCrowd.has(cell)) g.zombieCrowd.set(cell, []);
+  g.zombieCrowd.get(cell).push(a);
   g.zombies.spawned++;
   g.zombieTeams[1].push(a);
   return a;
@@ -122,10 +154,11 @@ export function beginZombiesFrame(g, dt) {
   // Remove spent enemies, retaining fallen allies for Revival and scorekeeping.
   g.fighters = g.fighters.filter((a) => !a.zombieEnemy || a.alive);
   refreshZombieTeams(g);
-  g.zombies.credit += g.zombies.rate * dt;
-  while (g.zombies.credit >= 1 - 1e-9) {
-    g.zombies.credit -= 1;
-    spawnZombie(g);
+  buildCrowdGrid(g);
+  g.zombies.credit += dt;
+  while (g.zombies.credit >= 5 - 1e-9) {
+    g.zombies.credit -= 5;
+    for (let i = 0; i < Math.min(100, g.zombies.rate); i++) spawnZombie(g);
   }
   for (const a of g.zombieTeams[1]) {
     a.zombieFar =
@@ -140,7 +173,7 @@ export function zombieFelled(g, a) {
   a.zombieTeleportReady = false;
   if (!a.zombieEnemy) return;
   g.zombies.kills++;
-  g.zombies.rate = 1 + g.zombies.kills;
+  g.zombies.rate = Math.min(100, 1 + g.zombies.kills);
   if (g.random() < 0.3)
     g.healthDrops.push({
       id: a.id,
@@ -250,7 +283,11 @@ export function useZombieAbility(g, a, id, hold = true, point = null) {
   a.abilityCd = a.utilityCd = 0;
   let used = false;
   try {
-    if (id === "chasm") used = g.placeChasm(a, point.x, point.y);
+    if (id === "telekinesis" && point)
+      used = g.executeSkill(a, "gravity", () =>
+        g.telekinesis(a, point.target, point.dx, point.dy),
+      );
+    else if (id === "chasm") used = g.placeChasm(a, point.x, point.y);
     else if (s.kind === "utility") used = g.utility(a, true, s.form);
     else used = g.cast(a, 2.6, s.form);
   } finally {
@@ -265,6 +302,106 @@ export function useZombieAbility(g, a, id, hold = true, point = null) {
   }
   return false;
 }
+
+// Sample exposed room/causeway boundaries, never internal doorways or void floor.
+function dungeonEdges(map) {
+  const edges = [];
+  for (const r of map.shapes) {
+    const room = map.rooms.indexOf(r);
+    for (const [x, y, dx, dy, nx, ny, length] of [
+      [r.x, r.y, 1, 0, 0, -1, r.w],
+      [r.x, r.y + r.h, 1, 0, 0, 1, r.w],
+      [r.x, r.y, 0, 1, -1, 0, r.h],
+      [r.x + r.w, r.y, 0, 1, 1, 0, r.h],
+    ])
+      for (let offset = 30; offset < length - 25; offset += 48) {
+        const boundary = { x: x + dx * offset, y: y + dy * offset };
+        const p = { x: boundary.x - nx * 28, y: boundary.y - ny * 28, room };
+        if (
+          !map.walkable(
+            { x: boundary.x + nx * 4, y: boundary.y + ny * 4 },
+            0,
+          ) &&
+          map.walkable(p, 24)
+        )
+          edges.push(p);
+      }
+  }
+  return edges;
+}
+function buildCrowdGrid(g) {
+  g.zombieCrowd = new Map();
+  for (let i = 0; i < g.fighters.length; i++) {
+    const a = g.fighters[i];
+    if (!a.alive || !inWorld(a)) continue;
+    a.crowdIndex = i;
+    const key = `${Math.floor(a.x / 90)},${Math.floor(a.y / 90)}`;
+    if (!g.zombieCrowd.has(key)) g.zombieCrowd.set(key, []);
+    g.zombieCrowd.get(key).push(a);
+  }
+}
+function neighbours(g, a) {
+  const out = [],
+    x = Math.floor(a.x / 90),
+    y = Math.floor(a.y / 90);
+  for (let dx = -1; dx <= 1; dx++)
+    for (let dy = -1; dy <= 1; dy++)
+      out.push(...(g.zombieCrowd?.get(`${x + dx},${y + dy}`) || []));
+  return out;
+}
+function away(a, b) {
+  let x = a.x - b.x,
+    y = a.y - b.y,
+    d = Math.hypot(x, y);
+  if (d < 0.01) {
+    const angle =
+      (Math.min(a.crowdIndex, b.crowdIndex) * 7 +
+        Math.max(a.crowdIndex, b.crowdIndex) * 13) *
+      2.39996;
+    const sign = a.crowdIndex < b.crowdIndex ? 1 : -1;
+    x = Math.cos(angle) * sign;
+    y = Math.sin(angle) * sign;
+    d = 1;
+  }
+  return { x: x / d, y: y / d, d };
+}
+function crowdMove(g, a, dx, dy, dt) {
+  const length = Math.max(1, Math.hypot(dx, dy));
+  dx /= length;
+  dy /= length;
+  for (const b of neighbours(g, a)) {
+    if (b === a || !b.alive) continue;
+    const v = away(a, b),
+      clearance = a.team === b.team ? 76 : 58;
+    if (v.d >= clearance) continue;
+    const pressure = (3 * (clearance - v.d)) / clearance;
+    dx += v.x * pressure;
+    dy += v.y * pressure;
+  }
+  g.move(a, dx, dy, dt);
+}
+export function separateZombies(g, dt) {
+  if (g.mode !== "zombies") return;
+  buildCrowdGrid(g);
+  // Smoothly resolve residual overlaps without moving the user or crossing walls.
+  for (const a of g.fighters) {
+    if (a === g.player || !a.alive || !inWorld(a) || a.prisonHp > 0 || a.blink)
+      continue;
+    let dx = 0,
+      dy = 0;
+    for (const b of neighbours(g, a)) {
+      if (a === b || !b.alive) continue;
+      const v = away(a, b);
+      if (v.d >= 48) continue;
+      dx += v.x * (48 - v.d);
+      dy += v.y * (48 - v.d);
+    }
+    const d = Math.hypot(dx, dy),
+      step = Math.min(d, dt * 140);
+    if (d > 0) g.map.move(a, a.x + (dx / d) * step, a.y + (dy / d) * step);
+  }
+}
+
 function travel(g, a, to, dt) {
   if (
     !a.zombieWaypoint ||
@@ -291,7 +428,7 @@ function travel(g, a, to, dt) {
   }
   const p = a.zombieWaypoint,
     d = distance(a, p);
-  g.move(a, d > 5 ? p.x - a.x : 0, d > 5 ? p.y - a.y : 0, dt);
+  crowdMove(g, a, d > 5 ? p.x - a.x : 0, d > 5 ? p.y - a.y : 0, dt);
 }
 export function zombieAI(g, a, dt) {
   if (g.mode !== "zombies") return false;
@@ -320,14 +457,9 @@ export function zombieAI(g, a, dt) {
       a.zombieMemory = { x: target.x, y: target.y };
       travel(g, a, target, dt);
     } else if (a.zombieMemory) travel(g, a, a.zombieMemory, dt);
-    else g.move(a, 0, 0, dt);
+    else crowdMove(g, a, 0, 0, dt);
     if (target && d < 69 && g.map.lineClear(a, target)) g.strike(a, target);
-    if (target && d < 300 && g.map.lineClear(a, target)) {
-      a.fx = (target.x - a.x) / (d || 1);
-      a.fy = (target.y - a.y) / (d || 1);
-      if (a.charging && a.charge > 0.6) g.releaseCharge(a);
-      else if (!a.charging && a.abilityCd <= 0) g.startCharge(a, "fire");
-    } else if (a.charging) g.releaseCharge(a);
+    a.charging = false;
     return true;
   }
   const leader =
@@ -353,7 +485,7 @@ export function zombieAI(g, a, dt) {
     });
     travel(g, a, point, dt);
   } else if (leader && distance(a, leader) > 130) travel(g, a, leader, dt);
-  else g.move(a, 0, 0, dt);
+  else crowdMove(g, a, 0, 0, dt);
   for (const id of a.zombieSkills) {
     if (id === "healing" && g.zombieTeams[0].some((b) => b.hp < b.maxHp - 30))
       useZombieAbility(g, a, id);

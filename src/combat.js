@@ -1,5 +1,6 @@
 import {
   initializeZombies,
+  separateZombies,
   beginZombiesFrame,
   zombieFelled,
   zombieDamage,
@@ -824,9 +825,9 @@ export class Combat {
         (b) =>
           b.alive &&
           inWorld(b) &&
-          this.canSee(a, b) &&
           b.team !== a.team &&
-          distance(a, b) <= STRIKE_RANGE,
+          distance(a, b) <= STRIKE_RANGE &&
+          this.canSee(a, b),
       )
       .sort((b, c) => this.pursuitOrder(a, b, c))[0];
     if (t) {
@@ -3523,6 +3524,7 @@ export class Combat {
     }
     this.tokens = this.tokens.filter((t) => !t.removed);
     for (const a of this.fighters) if (!a.zombieFar) this.autoLock(a);
+    if (runAI) separateZombies(this, dt);
     this.resolveStrikes();
     this.updateProjectiles(dt);
     this.updateWaves(dt);

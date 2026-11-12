@@ -55,12 +55,12 @@ export const MODES = {
       ],
       [
         "The Fire horde",
-        "Fire enemies take two hits. One spawns per second from the outer edges of the big boss room. Each enemy defeated adds one to the spawn rate per second. Fallen Fire enemies sometimes leave health drops.",
+        "Fire enemies take five hits and use melee only. Batches spawn every five seconds, starting at one and growing by one per defeat, capped at 100. At 50 per batch, spawns spread from the boss-room edges to exposed edges throughout the dungeon. Fallen Fire enemies sometimes leave health drops.",
         "♨",
       ],
       [
         "Explore for abilities",
-        "Each teammate can hold three extra abilities alongside Icicle Burst and Drain. Touch a labelled rune to collect it, then select its top tab to use it. All 17 pickups are unique across the team and stay yours for the run, including after Revival. No runes appear in the starting or boss room.",
+        "Each teammate can hold three extra abilities alongside Icicle Burst and Drain. Touch a labelled rune to collect it, then use its ability button beside Icicle Burst on Ice. All 17 pickups are unique across the team and stay yours for the run, including after Revival. No runes appear in the starting or boss room.",
         "+",
       ],
       [
@@ -81,7 +81,7 @@ export const MODES = {
       ],
       [
         "Protect the ball",
-        "Hits force a fumble. If the carrier raises Rock shield, the shield must break first. Fallen players respawn at their original starting positions after five seconds.",
+        "Hits force a fumble. If the carrier raises Rock shield, the shield must break first. Tap a teammate to throw a lateral, or tap Pass / P for the furthest eligible teammate sideways or behind you. Passes can be intercepted; missed catches leave a loose ball. Shielded teammates cannot catch. Fallen players respawn at their original starting positions after five seconds.",
         "◉",
       ],
       [

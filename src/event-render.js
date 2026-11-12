@@ -218,10 +218,23 @@ export function drawEventObjects(c, g, t, foreground = false) {
   if (g.ball && foreground) {
     const carrier = g.fighters.find((a) => a.id === g.ball.carrier),
       x = carrier ? carrier.x + 19 : g.ball.x,
-      y = carrier ? carrier.y - 25 : g.ball.y;
+      y = carrier
+        ? carrier.y - 25
+        : g.ball.y -
+          (g.ball.pass
+            ? 18 +
+              45 *
+                Math.sin(
+                  Math.PI *
+                    Math.min(
+                      1,
+                      (g.time - g.ball.pass.start) / g.ball.pass.duration,
+                    ),
+                )
+            : 0);
     c.save();
     c.translate(x, y);
-    c.rotate(-0.4);
+    c.rotate(g.ball.pass ? (g.time - g.ball.pass.start) * 12 : -0.4);
     c.fillStyle = "#8b4b2b";
     c.strokeStyle = "#ffe3b5";
     c.lineWidth = 2;

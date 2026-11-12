@@ -7,6 +7,9 @@ import {
   updateZombies,
   useZombieAbility,
   refreshZombieTeams,
+  beginZombiesFrame,
+  zombieFelled,
+  separateZombies,
 } from "../src/zombies.js";
 import { updateGridironEvolution, updateGridiron } from "../src/event-modes.js";
 const tick = (g, seconds, ai = false) => {
@@ -84,10 +87,12 @@ test("Zombies clamps a 2–8 Ice team, opens the dungeon and distributes 17 uniq
     }
   }
 });
-test("Fire spawns only at boss-room edges and each two-hit defeat adds one spawn per second", () => {
+test("Fire spawns only at boss-room edges and each five-hit defeat adds one spawn per five seconds", () => {
   const g = new Combat({ mode: "zombies", random: () => 0.1 });
-  tick(g, 2);
-  assert.equal(g.zombies.spawned, 2);
+  tick(g, 4.9);
+  assert.equal(g.zombies.spawned, 0);
+  tick(g, 0.1);
+  assert.equal(g.zombies.spawned, 1);
   for (const a of g.fighters.filter((a) => a.zombieEnemy)) {
     const r = g.map.rooms[4];
     assert.ok(g.map.walkable(a));
@@ -98,24 +103,28 @@ test("Fire spawns only at boss-room edges and each two-hit defeat adds one spawn
   const a = g.fighters.find((a) => a.zombieEnemy);
   assert.equal(g.damage(g.player, a, 10000), 1);
   assert.equal(a.alive, true);
-  assert.equal(a.hp, 1);
+  assert.equal(a.hp, 4);
+  for (let i = 0; i < 3; i++) g.damage(g.player, a, 0.01);
+  assert.equal(a.alive, true);
   g.damage(g.player, a, 0.01);
   assert.equal(a.alive, false);
   assert.equal(g.zombies.rate, 2);
   assert.equal(g.zombies.kills, 1);
   assert.equal(g.healthDrops.length, 1);
-  tick(g, 1);
-  assert.equal(g.zombies.spawned, 4);
+  tick(g, 5);
+  assert.equal(g.zombies.spawned, 3);
   assert.equal(g.fighters.includes(a), false);
 });
-test("contact Drain does not turn two-hit enemies into a frame-rate-dependent instant kill", () => {
+test("contact Drain does not turn five-hit enemies into a frame-rate-dependent instant kill", () => {
   const g = new Combat({ mode: "zombies" }),
     b = spawnZombie(g);
   for (let i = 0; i < 20; i++)
     g.damage(g.player, b, 0.06, true, false, "ice", false);
-  assert.equal(b.hp, 1);
-  g.time = 1;
-  g.damage(g.player, b, 0.06, true, false, "ice", false);
+  assert.equal(b.hp, 4);
+  for (let i = 1; i <= 4; i++) {
+    g.time = i;
+    g.damage(g.player, b, 0.06, true, false, "ice", false);
+  }
   assert.equal(b.alive, false);
 });
 test("room runes are team-wide unique and each Ice survivor can collect at most three", () => {
@@ -176,7 +185,7 @@ for (const s of ZOMBIE_ABILITIES)
         s.id === "explosion" ||
         s.id === "telekinesis"
       )
-        assert.equal(b.hp, 1);
+        assert.equal(b.hp, 4);
       if (s.id === "portals") {
         assert.ok(g.portals.place(a, 1400, 450));
         assert.ok(g.portals.place(a, 1500, 650));
@@ -223,8 +232,8 @@ test("fatal quicksand damage retains its sinking animation in Zombies", () => {
   const g = new Combat({ mode: "zombies" }),
     b = spawnZombie(g),
     h = { kind: "quicksand", x: b.x, y: b.y, r: 90 };
-  g.damage(g.player, b, 5, true, false, "mud", false, false, h);
-  g.damage(g.player, b, 5, true, false, "mud", false, false, h);
+  for (let i = 0; i < 5; i++)
+    g.damage(g.player, b, 5, true, false, "mud", false, false, h);
   assert.equal(g.fallenAnimations.at(-1).terrain.kind, "quicksand");
 });
 
@@ -251,4 +260,57 @@ test("Gridiron gives the next possession to the conceding team's highest-kill pl
   updateGridiron(g);
   assert.deepEqual(g.scores, [1, 1]);
   assert.equal(g.ball.carrier, g.fighters[1].id);
+});
+
+test("Zombies spreads to the full dungeon perimeter at 50 and caps five-second batches at 100", () => {
+  const g = new Combat({ mode: "zombies", random: () => 0.1 });
+  g.zombies.kills = 48;
+  g.zombies.rate = 49;
+  const b = spawnZombie(g);
+  zombieFelled(g, b);
+  assert.equal(g.zombies.rate, 50);
+  beginZombiesFrame(g, 5);
+  assert.equal(g.zombies.spawned, 51);
+  const boss = g.map.rooms[4];
+  assert.ok(
+    g.fighters.some(
+      (a) => a.zombieEnemy && (a.x < boss.x || a.y > boss.y + boss.h),
+    ),
+  );
+  assert.ok(g.fighters.every((a) => g.map.walkable(a, 24)));
+  for (let i = 0; i < 80; i++) zombieFelled(g, b);
+  assert.equal(g.zombies.rate, 100);
+  beginZombiesFrame(g, 4.9);
+  assert.equal(g.zombies.spawned, 51);
+  beginZombiesFrame(g, 0.1);
+  assert.equal(g.zombies.spawned, 151);
+});
+test("Fire enemies cannot cast Fireball or Magma and AI only attacks in melee", () => {
+  const g = new Combat({ mode: "zombies" }),
+    b = spawnZombie(g);
+  Object.assign(g.player, { x: 1200, y: 450 });
+  Object.assign(b, { x: 1400, y: 450 });
+  assert.equal(g.cast(b, 2.6, "fire"), false);
+  assert.equal(g.utility(b, true, "fire"), false);
+  tick(g, 4, true);
+  assert.ok(!g.projectiles.some((p) => p.owner === b));
+  assert.ok(!g.hazards.some((p) => p.owner === b));
+  assert.equal(b.charging, false);
+});
+test("Zombies crowd separation frees exact overlaps for both teams without moving the player or crossing walls", () => {
+  const g = new Combat({ mode: "zombies", players: 4 });
+  for (let i = 0; i < 12; i++) spawnZombie(g);
+  for (const a of g.fighters) Object.assign(a, { x: 1200, y: 450 });
+  const before = { x: g.player.x, y: g.player.y };
+  for (let i = 0; i < 200; i++) separateZombies(g, 0.02);
+  assert.deepEqual({ x: g.player.x, y: g.player.y }, before);
+  for (const a of g.fighters) {
+    assert.ok(g.map.walkable(a));
+    for (const b of g.fighters)
+      if (a !== b)
+        assert.ok(
+          distance(a, b) > 43,
+          `${a.id}/${b.id} overlap: ${distance(a, b)}`,
+        );
+  }
 });
