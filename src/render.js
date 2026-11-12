@@ -1,3 +1,4 @@
+import { drawZombies } from "./zombies.js";
 import { drawEventObjects } from "./event-render.js";
 import { clearAllyHealth } from "./battle-awareness.js";
 import { drawVoidMantle, drawDrainGlow, drawIcicle } from "./ice-effects.js";
@@ -678,6 +679,7 @@ export class Renderer {
     drawTerrain(c, game, t);
     if (game.map?.kind === "skykeep") drawSkykeepChasms(c, game.map);
     drawDungeon(c, game, t);
+    drawZombies(c, game, t);
     drawWarSupplies(c, game, t);
     drawTempleTraps(c, game);
     for (const flag of game.flags) {
@@ -837,6 +839,14 @@ export class Renderer {
     const visualTime = performance.now() / 1000;
     const bodies = game.fighters
       .filter((a) => (a.alive || a.ghost) && inWorld(a))
+      .filter(
+        (a) =>
+          game.mode !== "zombies" ||
+          (a.x * this.view.scale + this.view.tx > -160 &&
+            a.x * this.view.scale + this.view.tx < w + 160 &&
+            a.y * this.view.scale + this.view.ty > -160 &&
+            a.y * this.view.scale + this.view.ty < h + 160),
+      )
       .map((a) => ({
         a,
         y: a.y,

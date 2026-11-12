@@ -12,7 +12,7 @@ export const clearAllyHealth = (a, viewer) =>
   inWorld(a) &&
   a.id !== viewer.id &&
   a.team === viewer.team &&
-  a.element === "divine";
+  (a.element === "divine" || a.zombieSkills?.includes("invisibility"));
 
 export function minimapFighters(game) {
   return game.fighters

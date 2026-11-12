@@ -71,7 +71,8 @@ export function cameraView(
 export function updateRespawnCamera(game, dt, input) {
   const a = game.player;
   const canSpectate =
-    a.respawnAt > game.time || ["boss", "gauntlet-team"].includes(game.mode);
+    a.respawnAt > game.time ||
+    ["boss", "gauntlet-team", "zombies"].includes(game.mode);
   if (game.finished || a.alive || a.ghost || !canSpectate) {
     game.spectatorFocus = null;
     return;

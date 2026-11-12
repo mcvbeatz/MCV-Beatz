@@ -64,7 +64,7 @@ test("any hit on a CTF carrier defeats them even through a shield and drops the 
   assert.ok(g.effects.some((e) => e.kind === "fusion" && e.r === 150));
   assert.ok(b.knockX > 0);
 });
-test("Gridiron has eight players, exactly one random Gravity per team, fixed spawns and friendly fire", () => {
+test("Gridiron has eight Earth players, fixed spawns and friendly fire", () => {
   for (const random of [() => 0, () => 0.99]) {
     const g = new Combat({ mode: "gridiron", size: 1, random });
     assert.equal(g.fighters.length, 8);
@@ -72,8 +72,8 @@ test("Gridiron has eight players, exactly one random Gravity per team, fixed spa
     assert.equal(g.respawnDelay, 5);
     for (const team of [0, 1]) {
       const members = g.fighters.filter((a) => a.team === team);
-      assert.equal(members.filter((a) => a.element === "gravity").length, 1);
-      assert.equal(members.filter((a) => a.element === "earth").length, 3);
+      assert.equal(members.filter((a) => a.element === "gravity").length, 0);
+      assert.equal(members.filter((a) => a.element === "earth").length, 4);
     }
     const a = g.player,
       p = { ...a.spawn };
@@ -117,12 +117,14 @@ test("Gridiron scores the opposite end zone, resets possession, and ends tied re
   g.ball.y = 550;
   updateGridiron(g);
   assert.deepEqual(g.scores, [1, 0]);
-  assert.equal(g.ball.x, 900);
-  assert.equal(g.ball.carrier, null);
+  const receiver = g.fighters.find((a) => a.id === g.ball.carrier);
+  assert.equal(receiver.team, 1);
+  assert.equal(g.ball.x, receiver.spawn.x);
   g.scores = [1, 1];
   g.time = 180;
   assert.equal(eventEnd(g), false);
   assert.equal(g.suddenDeath, true);
+  g.ball.carrier = null;
   g.ball.x = 250;
   g.ball.y = 550;
   updateGridiron(g);

@@ -1,4 +1,14 @@
 import {
+  initializeZombies,
+  beginZombiesFrame,
+  zombieFelled,
+  zombieDamage,
+  updateZombies,
+  zombiesEnd,
+  zombieAI,
+  zombieAllows,
+} from "./zombies.js";
+import {
   createEvergreenMap,
   createGridironMap,
   createTurnpikeMap,
@@ -215,6 +225,7 @@ export const canUseSkill = (a, form, kind) =>
   !(a.portalsDisabled && form === "spirit" && kind === "utility") &&
   !(a.selfHealOnly && form === "light" && kind === "utility") &&
   (a.raceCasting ||
+    zombieAllows(a, form, kind) ||
     (form === "blindness" && a.parts.includes("dark")) ||
     a.forms.includes(form) ||
     extraSkillsFor(a.element).some((s) => s.form === form && s.kind === kind));
@@ -279,10 +290,11 @@ export const nameOf = (e) =>
 export const distance = (a, b) => Math.hypot(a.x - b.x, a.y - b.y);
 export const combination = (a, b) =>
   COMBOS[[...new Set([...a, ...b])].sort().join("+")] || null;
-export const recipe = (e) =>
-  Object.entries(COMBOS)
-    .find(([, v]) => v === e)?.[0]
-    .split("+") || [e];
+const FUSION_RECIPES = Object.create(null);
+for (const [parts, element] of Object.entries(COMBOS))
+  FUSION_RECIPES[element] ??= parts.split("+");
+// Callers own their returned parts; passive checks reuse the immutable lookup.
+export const recipe = (e) => (FUSION_RECIPES[e] ? [...FUSION_RECIPES[e]] : [e]);
 export const LEVEL_TWO = Object.values(COMBOS).filter(
   (e) => recipe(e).length === 2,
 );
@@ -297,11 +309,16 @@ export const skillsFor = (e) =>
       ? [ELEMENTS[e].ability, ELEMENTS[e].utility]
       : FUSED[e] || [null, null];
 export const hasPassive = (a, form) =>
-  a.parts.includes(form) || recipe(form).every((e) => a.parts.includes(e));
+  a.parts.includes(form) ||
+  !!FUSION_RECIPES[form]?.every((e) => a.parts.includes(e));
 export const burnImmune = (a) =>
   hasPassive(a, "fire") || hasPassive(a, "water") || hasPassive(a, "divine");
 export function visibility(a) {
-  if (a.ghost || !hasPassive(a, "divine")) return 1;
+  if (
+    a.ghost ||
+    (!hasPassive(a, "divine") && !a.zombieSkills?.includes("invisibility"))
+  )
+    return 1;
   if (a.reveal > 0 || a.charging || a.shield || a.swing > 0) return 0.3;
   if (a.hurtReveal > 0) return 0.1;
   return a.movingTime >= 1 && a.movingTime % 1 < 0.15 ? 0.1 : 0;
@@ -450,7 +467,7 @@ export class Combat {
           ? "gridiron"
           : mode === "turnpike"
             ? "turnpike"
-            : mode === "dungeon"
+            : ["dungeon", "zombies"].includes(mode)
               ? "dungeon"
               : mode === "corruption"
                 ? "corruption"
@@ -493,7 +510,15 @@ export class Combat {
     this.timeLimit =
       mode === "corruption"
         ? 120
-        : ["tdm", "war", "domination", "rush", "roulette", "ffa"].includes(mode)
+        : [
+              "ctf",
+              "tdm",
+              "war",
+              "domination",
+              "rush",
+              "roulette",
+              "ffa",
+            ].includes(mode)
           ? 180
           : null;
     this.respawnDelay = [
@@ -667,6 +692,7 @@ export class Combat {
       players,
     });
     initializeDungeon(this, element);
+    initializeZombies(this, players);
   }
   placeMapFighters() {
     if (!this.map || this.map.kind === "corruption") return;
@@ -741,6 +767,7 @@ export class Combat {
         : "";
   }
   auroraProtected(a) {
+    if (this.mode === "zombies") return false;
     return (
       a.alive &&
       this.fighters.some(
@@ -784,10 +811,15 @@ export class Combat {
       (b) => b.id === a.lock && b.alive && inWorld(b) && this.canSee(a, b),
     );
   }
+  opponents(a) {
+    return this.mode === "zombies"
+      ? this.zombieTeams[1 - a.team]
+      : this.fighters;
+  }
   autoLock(a) {
     a.lock = null;
     if (!a.alive || !inWorld(a) || a.blind > 0) return;
-    const t = this.fighters
+    const t = this.opponents(a)
       .filter(
         (b) =>
           b.alive &&
@@ -807,6 +839,7 @@ export class Combat {
     }
   }
   isShocked(a) {
+    if (this.mode === "zombies") return false;
     return (
       !this.waveTravel &&
       a.alive &&
@@ -842,7 +875,9 @@ export class Combat {
       dy /= length;
     }
     const movementHealth =
-      this.mode === "corruption" ? (a.hp / a.maxHp) * 120 : a.hp;
+      this.mode === "corruption" || a.zombieEnemy
+        ? (a.hp / a.maxHp) * 120
+        : a.hp;
     const swimming =
       a.parts.includes("water") &&
       this.hazards.some(
@@ -1043,7 +1078,9 @@ export class Combat {
     if (
       a.alive &&
       !a.echo &&
-      (hasPassive(a, "phoenix") || (a.nightRebirth && a.team === 0)) &&
+      (hasPassive(a, "phoenix") ||
+        a.zombieSkills?.includes("rebirth") ||
+        (a.nightRebirth && a.team === 0)) &&
       !this.rebirthUsed.has(a.id)
     ) {
       this.rebirthUsed.add(a.id);
@@ -1165,6 +1202,10 @@ export class Combat {
       raceFelled(this, a);
       return;
     }
+    if (this.mode === "zombies") {
+      zombieFelled(this, a);
+      return;
+    }
     if (this.mode === "dungeon") {
       dungeonFelled(this, a);
       return;
@@ -1210,6 +1251,17 @@ export class Combat {
       (!ignoreFriendlyFire && !this.friendlyFire && a.team === b.team)
     )
       return 0;
+    const zombieHit = zombieDamage(
+      this,
+      a,
+      b,
+      amount,
+      ability,
+      sourceElement,
+      reflectable,
+      deathTerrain,
+    );
+    if (zombieHit !== null) return zombieHit;
     if (amount > 0 && ctfCarrierHit(this, a, b)) return b.maxHp;
     if (b.dodge > 0 && !a.parts.includes("light")) {
       b.dodge = 0;
@@ -1273,6 +1325,8 @@ export class Combat {
       if (b.shieldHp <= 0) {
         b.shield = 0;
         b.utilityCd = 5;
+        if (b.zombieSkills?.includes("shield"))
+          b.zombieCooldowns.shield = this.time + 5;
         this.cue("shatter", b, "#b79669");
       }
     }
@@ -1509,6 +1563,10 @@ export class Combat {
     );
     fallen.absorbed = [];
     this.rebuildFusion(fallen);
+    if (this.mode === "zombies") {
+      fallen.forms = ["ice"];
+      fallen.form = 0;
+    }
     fallen.alive = true;
     fallen.ghost = false;
     fallen.fusedInto = null;
@@ -1825,6 +1883,8 @@ export class Combat {
       if (a.shield) {
         a.shield = 0;
         a.utilityCd = 5;
+        if (a.zombieSkills?.includes("shield"))
+          a.zombieCooldowns.shield = this.time + 5;
       }
       return;
     }
@@ -2152,7 +2212,8 @@ export class Combat {
       a.blink ||
       !(
         hasPassive(a, "multi-dimensional") ||
-        (a.racing && a.raceTeleportReady && a.raceItem === "teleport")
+        (a.racing && a.raceTeleportReady && a.raceItem === "teleport") ||
+        (a.zombieTeleportReady && a.zombieSkills?.includes("teleport"))
       ) ||
       this.isShocked(a) ||
       !this.walkablePoint({ x, y })
@@ -2169,6 +2230,7 @@ export class Combat {
     if (!this.walkablePoint(destination) || !this.aiGesture(a, "teleport"))
       return false;
     if (this.cancelSabotaged(a)) return false;
+    a.zombieTeleportReady = false;
     if (a.raceTeleportReady) {
       a.raceItem = null;
       a.raceTeleportReady = false;
@@ -2232,7 +2294,7 @@ export class Combat {
       .sort((b, c) => b.hp - c.hp || distance(a, b) - distance(a, c))[0];
   }
   enemies(a) {
-    return this.fighters.filter(
+    return this.opponents(a).filter(
       (b) => b.alive && inWorld(b) && b.team !== a.team && this.canSee(a, b),
     );
   }
@@ -2290,6 +2352,7 @@ export class Combat {
     // Racing rewards using Tailwind every recharge; repeating this speed boost
     // is deliberate, not a stalled combat tactic. Cooldown checks still apply.
     if (this.mode === "turnpike" && key === "utility:air") return true;
+    if (this.mode === "zombies" && key === "ability:ice") return true;
     if (!a.aiControlled || this.relentless(a)) return true;
     if (a.aiLastGesture === key && a.aiRepeat >= 3) {
       a.aiNeedChange = true;
@@ -2671,6 +2734,7 @@ export class Combat {
     return true;
   }
   ai(a, dt) {
+    if (zombieAI(this, a, dt)) return;
     if (this.mode === "gridiron") return gridironAI(this, a, dt);
     if (this.mode === "turnpike") return raceAI(this, a, dt);
     if (a.prisonHp > 0 && hasPassive(a, "multi-dimensional")) {
@@ -3207,7 +3271,12 @@ export class Combat {
       }
       if (h.kind === "spring") {
         for (const b of this.fighters)
-          if (b.alive && inWorld(b) && distance(h, b) <= h.r)
+          if (
+            b.alive &&
+            inWorld(b) &&
+            distance(h, b) <= h.r &&
+            (this.mode !== "zombies" || b.team === h.owner.team)
+          )
             this.restoreHealth(b, 8 * dt, true);
         continue;
       }
@@ -3332,13 +3401,14 @@ export class Combat {
       if (wasLocked) return;
     }
     if (
-      ["tdm", "war", "roulette", "ffa", "gridiron", "turnpike"].includes(
+      ["ctf", "tdm", "war", "roulette", "ffa", "gridiron", "turnpike"].includes(
         this.mode,
       ) &&
       this.checkMatchEnd()
     )
       return;
     this.time += dt;
+    beginZombiesFrame(this, dt);
     updateAdvanced(this);
     if (
       this.mode === "corruption" &&
@@ -3363,9 +3433,17 @@ export class Combat {
     updateRespawnCamera(this, dt, input);
     this.portals.update();
     for (const a of this.fighters) {
+      let actorDt = dt;
+      if (a.zombieEnemy) {
+        a.zombieElapsed = (a.zombieElapsed || 0) + dt;
+        if (a.zombieFar && this.time < a.zombieNextStep) continue;
+        actorDt = a.zombieElapsed;
+        a.zombieElapsed = 0;
+        a.zombieNextStep = this.time + 0.16;
+      }
       if (!a.alive && !a.ghost) continue;
       if (!dungeonActorAvailable(this, a)) continue;
-      if (this.portals.tick(a, dt, a.id === "player" ? input : undefined))
+      if (this.portals.tick(a, actorDt, a.id === "player" ? input : undefined))
         continue;
       for (const key of [
         "attackCd",
@@ -3390,15 +3468,15 @@ export class Combat {
         "castTime",
         "teleportArrival",
       ])
-        a[key] = Math.max(0, a[key] - dt);
-      if (a.life !== undefined && (a.life -= dt) <= 0) {
+        a[key] = Math.max(0, a[key] - actorDt);
+      if (a.life !== undefined && (a.life -= actorDt) <= 0) {
         this.fell(a);
         continue;
       }
       if (a.charging && a.stagger <= 0 && !isIcicleForm(a.chargeForm))
-        a.charge = Math.min(1.8, a.charge + dt);
-      if (a.shield) a.shieldTime += dt;
-      else a.shieldHp = Math.min(65, a.shieldHp + dt * 5);
+        a.charge = Math.min(1.8, a.charge + actorDt);
+      if (a.shield) a.shieldTime += actorDt;
+      else a.shieldHp = Math.min(65, a.shieldHp + actorDt * 5);
       if (hasPassive(a, "divine") || this.auroraProtected(a))
         a.venom = a.venomTint = a.burn = a.blind = a.whiteout = 0;
       if (this.auroraProtected(a)) {
@@ -3414,16 +3492,24 @@ export class Combat {
       }
       if (a.venom > 0) {
         const health = a.hp;
-        this.damage(a.venomSource || a, a, dt * 3, true, false, "mud", false);
+        this.damage(
+          a.venomSource || a,
+          a,
+          actorDt * 3,
+          true,
+          false,
+          "mud",
+          false,
+        );
         if (a.alive && a.hp < health) a.venomTint = 0.16;
       }
       if (!a.alive && !a.ghost) continue;
       const old = { x: a.x, y: a.y };
-      if (a.id === "player") this.move(a, input.x, input.y, dt);
-      else if (runAI) this.ai(a, dt);
-      else this.move(a, 0, 0, dt);
-      this.updateBurst(a, old, dt);
-      this.updateIcicles(a, dt);
+      if (a.id === "player") this.move(a, input.x, input.y, actorDt);
+      else if (runAI) this.ai(a, actorDt);
+      else this.move(a, 0, 0, actorDt);
+      this.updateBurst(a, old, actorDt);
+      this.updateIcicles(a, actorDt);
       if (this.portals.enter(a, old)) continue;
       this.touchTokens(a);
       if (a.alive && a.parts.includes("water"))
@@ -3436,7 +3522,7 @@ export class Combat {
       this.portals.enter(t, t);
     }
     this.tokens = this.tokens.filter((t) => !t.removed);
-    for (const a of this.fighters) this.autoLock(a);
+    for (const a of this.fighters) if (!a.zombieFar) this.autoLock(a);
     this.resolveStrikes();
     this.updateProjectiles(dt);
     this.updateWaves(dt);
@@ -3447,10 +3533,11 @@ export class Combat {
       a.drained = 0;
     }
     for (const a of this.fighters) {
-      if (!a.alive || !inWorld(a)) continue;
-      for (const b of this.fighters) {
+      if (!a.alive || a.zombieFar || !inWorld(a)) continue;
+      for (const b of this.opponents(a)) {
         if (!a.alive) break;
         if (
+          b.zombieFar ||
           b.id === a.id ||
           !b.alive ||
           !inWorld(b) ||
@@ -3511,6 +3598,7 @@ export class Combat {
     this.updateDomination(dt);
     updateWar(this, dt);
     updateDungeon(this);
+    updateZombies(this);
     this.checkMatchEnd();
   }
   nightForm(a, element, team, restore = false) {
@@ -3602,7 +3690,8 @@ export class Combat {
   relentless(a) {
     return (
       !a.echo &&
-      ((this.mode === "corruption" && a.team === 1) ||
+      (a.zombieEnemy ||
+        (this.mode === "corruption" && a.team === 1) ||
         ((this.mode === "boss" || (isGauntlet(this) && this.finalWave)) &&
           a.element === "invincible"))
     );
@@ -3970,6 +4059,8 @@ export class Combat {
   }
   checkMatchEnd() {
     if (this.finished) return true;
+    const zombies = zombiesEnd(this);
+    if (zombies !== null) return zombies;
     const event = eventEnd(this);
     if (event !== null) return event;
     const dungeon = dungeonEnd(this);
@@ -4057,5 +4148,7 @@ export class Combat {
 
 export function viewerVisibility(a, viewer) {
   if (a.victory) return 1;
+  if (a.zombieSkills?.includes("invisibility") && a.team === viewer?.team)
+    return Math.max(0.25, visibility(a));
   return a.id === viewer?.id && a.element === "divine" ? 1 : visibility(a);
 }

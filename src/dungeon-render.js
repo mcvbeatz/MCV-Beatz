@@ -198,7 +198,7 @@ export function paintDungeonMap(c, map, floorPath) {
   }
 }
 export function drawDungeon(c, g, time) {
-  if (g.mode !== "dungeon") return;
+  if (!["dungeon", "zombies"].includes(g.mode)) return;
   c.save();
   for (const gate of g.map.gates) {
     if (g.map.dungeonStage >= gate.section) continue;
@@ -242,7 +242,7 @@ export function drawDungeon(c, g, time) {
     c.fillRect(h.x - 7, y - 9, 14, 4);
     c.shadowBlur = 0;
   }
-  const key = g.dungeon.key;
+  const key = g.dungeon?.key;
   if (key && !key.collected) {
     c.save();
     c.translate(key.x, key.y - 15 + Math.sin(time * 3) * 3);

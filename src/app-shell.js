@@ -119,7 +119,7 @@ export function createApp(api) {
     setScreen(next);
     const c = $("shell-content");
     if (next === "home")
-      c.innerHTML = `<section class="home-hero"><span class="eyebrow">THE COLOSSEUM · v0.47.2</span><h1>Power is elemental.</h1><p>Choose your arena. Find your next form.</p><div class="home-elements" aria-label="Light, Dark, Water, Air, Earth and Fire">${Object.keys(
+      c.innerHTML = `<section class="home-hero"><span class="eyebrow">THE COLOSSEUM · v0.48.0</span><h1>Power is elemental.</h1><p>Choose your arena. Find your next form.</p><div class="home-elements" aria-label="Light, Dark, Water, Air, Earth and Fire">${Object.keys(
         ELEMENTS,
       )
         .map(
@@ -131,7 +131,7 @@ export function createApp(api) {
         )}</div></section><nav class="home-menu"><button data-screen="play"><strong>Play</strong><span>Enter the colosseum →</span></button><button data-screen="practice"><strong>Practice</strong><span>Learn. Experiment. Improve.</span></button><button data-screen="leaderboard"><strong>Leaderboard</strong><span>Compare your records</span></button><button data-screen="account"><strong>My Account</strong><span>Sign in & view stats</span></button><button data-screen="settings"><strong>Settings</strong><span>Sound & orientation</span></button></nav><p class="shell-note">Single-player battles with adaptive AI. Online multiplayer comes later.</p>`;
     else if (next === "play") {
       category = "play";
-      c.innerHTML = `<div class="screen-intro"><h1>Choose your battles.</h1><p>Find your team. Face the arena alone. Or let Quick Match decide.</p></div><nav class="battle-categories"><button data-screen="team-battles"><strong>Team Battles</strong><span>Six ways to fight together →</span></button><button data-screen="solo-battles"><strong>Solo Battles</strong><span>Four ways to test yourself →</span></button><button id="quick-match"><strong>Quick Match</strong><span>A random Team or Solo mode →</span></button></nav>`;
+      c.innerHTML = `<div class="screen-intro"><h1>Choose your battles.</h1><p>Find your team. Face the arena alone. Or let Quick Match decide.</p></div><nav class="battle-categories"><button data-screen="team-battles"><strong>Team Battles</strong><span>Fight and survive together →</span></button><button data-screen="solo-battles"><strong>Solo Battles</strong><span>Test yourself in solo battles →</span></button><button id="quick-match"><strong>Quick Match</strong><span>A random Team or Solo mode →</span></button></nav>`;
       $("quick-match").onclick = () => chooseMode("random");
     } else if (["team-battles", "solo-battles", "practice"].includes(next)) {
       category = next;

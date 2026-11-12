@@ -34,6 +34,7 @@ export function explosion(g, a, damage = true) {
   for (const b of [...g.fighters]) {
     if (
       b === a ||
+      (g.mode === "zombies" && b.team === a.team) ||
       !b.alive ||
       !inWorld(b) ||
       distance(a, b) > EXPLOSION_RADIUS ||
@@ -77,18 +78,9 @@ export function initializeEvents(g) {
   g.respawnDelay = 5;
   g.fusionEnabled = false;
   g.friendlyFire = true;
-  const gravity = [
-    Math.floor(g.random() * 4) % 4,
-    Math.floor(g.random() * 4) % 4,
-  ];
   g.fighters = Array.from({ length: 8 }, (_, i) => {
     const team = g.mode === "gridiron" ? Math.floor(i / 4) : i;
-    const element =
-      g.mode === "gridiron"
-        ? i % 4 === gravity[team]
-          ? "gravity"
-          : "earth"
-        : "air";
+    const element = g.mode === "gridiron" ? "earth" : "air";
     const p =
       g.mode === "gridiron" ? g.map.teamSpawn(team, i % 4) : g.map.spawn(i);
     const a = makeFighter(i ? `rival-${i}` : "player", element, team, p.x, p.y);
@@ -106,9 +98,10 @@ export function initializeEvents(g) {
     return a;
   });
   g.player = g.fighters[0];
-  if (g.mode === "gridiron")
+  if (g.mode === "gridiron") {
     g.ball = { x: g.map.cx, y: g.map.cy, carrier: null, pickupAt: 0 };
-  else {
+    g.gridGravityOwners = [null, null];
+  } else {
     g.raceDrops = [];
     g.nextRaceAbility = 2;
     g.nextRaceFire = 7;
@@ -133,8 +126,31 @@ export function gridironHit(g, a, target) {
   if (g.mode === "gridiron" && a !== target && !target.shield)
     fumble(g, target);
 }
+export function updateGridironEvolution(g) {
+  if (g.mode !== "gridiron" || g.finished || g.scores[0] === g.scores[1])
+    return;
+  const team = g.scores[0] < g.scores[1] ? 0 : 1;
+  if (g.gridGravityOwners[team]) return;
+  const members = g.fighters.filter((a) => a.team === team);
+  const deaths = Math.max(...members.map((a) => a.deaths || 0));
+  const a = pick(
+    g,
+    members.filter((a) => (a.deaths || 0) === deaths),
+  );
+  g.gridGravityOwners[team] = a.id;
+  a.element = "gravity";
+  a.parts = recipe("gravity");
+  a.nativeParts = [...a.parts];
+  a.forms = [...a.parts, "gravity"];
+  a.form = a.forms.indexOf("gravity");
+  a.spawn.element = "gravity";
+  a.charging = false;
+  a.chargeForm = null;
+  if (a.alive) g.cue("fusion", a, "#c59bff");
+}
 export function updateGridiron(g) {
   if (g.mode !== "gridiron") return;
+  updateGridironEvolution(g);
   const ball = g.ball;
   let carrier = g.fighters.find((a) => a.id === ball.carrier);
   if (carrier && (!carrier.alive || !inWorld(carrier))) {
@@ -159,16 +175,23 @@ export function updateGridiron(g) {
       g.finish(team, "Sudden-death touchdown");
       return;
     }
+    updateGridironEvolution(g);
     for (const a of g.fighters) g.respawn(a);
     g.projectiles = [];
     g.hazards = [];
     g.waves = [];
     g.pending = [];
+    const receivingTeam = g.fighters.filter((a) => a.team === zone.team);
+    const kills = Math.max(...receivingTeam.map((a) => a.kills || 0));
+    const receiver = pick(
+      g,
+      receivingTeam.filter((a) => (a.kills || 0) === kills),
+    );
     Object.assign(ball, {
-      x: g.map.cx,
-      y: g.map.cy,
-      carrier: null,
-      pickupAt: g.time + 1,
+      x: receiver.x,
+      y: receiver.y,
+      carrier: receiver.id,
+      pickupAt: g.time,
       lastCarrier: null,
     });
     g.cue("heal", ball, "#f5d28b");
@@ -195,6 +218,23 @@ export function updateGridiron(g) {
   }
 }
 export function eventEnd(g) {
+  if (g.mode === "ctf") {
+    const winner = g.scores.findIndex((score) => score >= 3);
+    if (winner >= 0)
+      return g.finish(
+        winner,
+        g.suddenDeath ? "Sudden-death capture" : "Three flags captured",
+      );
+    if (g.time < 180) return false;
+    if (g.scores[0] === g.scores[1]) {
+      g.suddenDeath = true;
+      return false;
+    }
+    return g.finish(
+      g.scores[0] > g.scores[1] ? 0 : 1,
+      g.suddenDeath ? "Sudden-death capture" : "Most flags at three minutes",
+    );
+  }
   if (g.mode === "gridiron") {
     if (g.time < 180) return false;
     if (g.scores[0] === g.scores[1]) {

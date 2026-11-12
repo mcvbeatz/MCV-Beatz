@@ -163,5 +163,6 @@ test("Team Battles use the requested order", () => {
     "gauntlet-team",
     "ctf",
     "gridiron",
+    "zombies",
   ]);
 });

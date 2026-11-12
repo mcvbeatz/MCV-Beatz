@@ -1,4 +1,13 @@
-# Elemental — The Colosseum · v0.47.2
+# Elemental — The Colosseum · v0.48.0
+
+## v0.48.0 Zombies and objective-mode updates
+
+- Capture the Flag ends at three captures or awards the lead at three minutes. A timed tie continues in sudden death until the next capture. The HUD shows the countdown and sudden-death state; existing eight-player, carrier explosion and respawn rules remain.
+- Gridiron starts with eight Earth elementals. When a team first trails, one teammate with the most deaths becomes Gravity; ties choose randomly. Each team can receive this comeback evolution once per match. The chosen fighter stays Gravity through ties, leads, deaths and touchdown resets. After each touchdown, the team that conceded starts with possession, carried by its player with the most kills; ties choose randomly. The opening ball still starts at midfield.
+- Zombies joins Team Battles: 2–8 Ice survivors on the fully open dungeon map. The run ends only when all allies are felled, with elapsed survival time recorded. Friendly fire, fusion, dungeon bosses and automatic respawns are disabled. Fallen users can pan the map and await Revival.
+- Fire enemies spawn along the boss-room perimeter at one per second initially. Each defeat adds one spawn per second, with fractional timing preserved and no spawn-rate cap. Fire takes two damaging hits; continuous contact Drain has a one-second hit cadence. Full-health Fire uses normal movement speed despite its two-hit health scale. Fire enemies pursue the team, strike and cast Fireballs; 30% of defeats leave a fully charged healing drop.
+- Seventeen unique runes occupy the four other rooms, excluding the start and boss rooms. Each survivor can hold three extras: Vog, Quicksand, Teleport, Lightning strikes, Flood, Portals, Explosion, Revival, Rebirth, Telekinesis, Rock shield, Speed burst, Invisibility, Healing, Chasm, Stone prison and Life spring. Top tabs select the native Ice ability or a collected ability. Pickups are permanent for the run, including through Revival; cooldowns are tracked per pickup. Rebirth is once per run, Invisibility is passive concealment without Divine immunity, and Life spring retains its once-per-run rule.
+- Ice allies follow the team, collect nearby runes, use their abilities and continue fighting after the user falls. Large-horde updates avoid enemy-versus-enemy scans, share valid navigation waypoints, batch distant movement while retaining elapsed travel time, and cull off-camera sprites. Cached fusion recipes remove repeated allocation from passive checks while preserving caller-owned recipe arrays.
 
 ## v0.47.2 Racing Tailwind
 

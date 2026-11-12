@@ -44,13 +44,39 @@ export const MODES = {
       ],
     ],
   },
+  zombies: {
+    name: "Zombies",
+    tag: "2–8 Ice survivors · endless horde",
+    slides: [
+      [
+        "Hold out together",
+        "Survive as long as possible on the fully open dungeon map. Your team has 2–8 Ice elementals. The run ends when all teammates are felled; survival time is your score. Friendly fire and fusion are off.",
+        "❄",
+      ],
+      [
+        "The Fire horde",
+        "Fire enemies take two hits. One spawns per second from the outer edges of the big boss room. Each enemy defeated adds one to the spawn rate per second. Fallen Fire enemies sometimes leave health drops.",
+        "♨",
+      ],
+      [
+        "Explore for abilities",
+        "Each teammate can hold three extra abilities alongside Icicle Burst and Drain. Touch a labelled rune to collect it, then select its top tab to use it. All 17 pickups are unique across the team and stay yours for the run, including after Revival. No runes appear in the starting or boss room.",
+        "+",
+      ],
+      [
+        "Choose your powers",
+        "Vog, Quicksand, Teleport, Lightning strikes, Flood, Portals, Explosion, Revival, Rebirth, Telekinesis, Rock shield, Speed burst, Invisibility, Healing, Chasm, Stone prison and Life spring. Rebirth and Invisibility are passive; Rock shield is held. Teleport and Chasm need a destination tap; Portals needs two placements. Life spring is once per run.",
+        "✦",
+      ],
+    ],
+  },
   gridiron: {
     name: "Gridiron",
     tag: "4v4 · 3 minutes · sudden death",
     slides: [
       [
         "Take the field",
-        "Eight fighters: each team has three Earth elementals and one randomly assigned Gravity elemental. Friendly fire is on. Pick up the midfield ball by touching it with your shield down.",
+        "Eight fighters, all starting as Earth. When a team first falls behind, its player with the most deaths becomes Gravity for the rest of the match, including respawns. Tied death counts choose randomly. Friendly fire is on. Pick up the midfield ball by touching it with your shield down.",
         "◇",
       ],
       [
@@ -60,7 +86,7 @@ export const MODES = {
       ],
       [
         "Touchdown",
-        "Bring the ball into the opposing end zone for one point. Players and the ball reset after each touchdown. Most points after three minutes wins; a tie goes to sudden death, with the next touchdown winning.",
+        "Bring the ball into the opposing end zone for one point. After a touchdown, players return to their starting positions and the team that conceded receives the ball. Its player with the most kills is the carrier; ties choose randomly. Most points after three minutes wins; a tie goes to sudden death, with the next touchdown winning.",
         "⚑",
       ],
     ],
@@ -107,7 +133,7 @@ export const MODES = {
       ],
       [
         "First to three",
-        "Three captures wins. Respawns take 10 seconds. Fusion is disabled; friendly fire is on.",
+        "First to three captures, or most captures after three minutes, wins. Tied time goes to sudden death: the next capture wins. Respawns take 10 seconds. Fusion is disabled; friendly fire is on.",
         "Ⅲ",
       ],
     ],
@@ -407,6 +433,7 @@ export const TEAM_MODES = [
   "gauntlet-team",
   "ctf",
   "gridiron",
+  "zombies",
 ];
 export const SOLO_MODES = [
   "turnpike",
