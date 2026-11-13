@@ -57,3 +57,62 @@ test("Light keeps a steady silhouette and four distinct running keys in every di
     ).toBeLessThanOrEqual(3);
   }
 });
+
+test("Dark renders four equally timed strides and distinct attacks, casts and victories", async ({
+  page,
+}) => {
+  await page.goto("/?mode=duel");
+  await page.waitForFunction(() => window.__app?.screen === "setup");
+  const results = await page.evaluate(async () => {
+    const { makeFighter } = await import("/src/combat.js");
+    const { drawCharacter, charactersReady } =
+      await import("/src/characters.js");
+    await charactersReady;
+    const canvas = document.createElement("canvas");
+    canvas.width = canvas.height = 260;
+    const c = canvas.getContext("2d");
+    const render = (a) => {
+      c.clearRect(0, 0, 260, 260);
+      c.save();
+      c.translate(130, 210);
+      c.scale(2.5, 2.5);
+      drawCharacter(c, a, 0);
+      c.restore();
+      return canvas.toDataURL();
+    };
+    return [
+      [0, 1],
+      [1, 0],
+      [0, -1],
+      [-1, 0],
+    ].map(([fx, fy]) => {
+      const a = makeFighter("dark-test", "dark", 0, 0, 0);
+      Object.assign(a, { fx, fy, vx: fx * 150, vy: fy * 150, movingTime: 1 });
+      const strides = Array.from({ length: 8 }, (_, phase) => {
+        a.gaitDistance = (phase * 75) / 8;
+        return render(a);
+      });
+      Object.assign(a, { vx: 0, vy: 0, movingTime: 0 });
+      const idle = render(a);
+      a.swing = 0.08;
+      const strike = render(a);
+      a.swing = 0;
+      a.castTime = 0.2;
+      a.castFx = fx;
+      a.castFy = fy;
+      const cast = render(a);
+      a.castTime = 0;
+      a.victory = true;
+      a.victoryTime = 0;
+      const win1 = render(a);
+      a.victoryTime = 0.7;
+      const win2 = render(a);
+      return { strides, actions: [idle, strike, cast, win1, win2] };
+    });
+  });
+  for (const { strides, actions } of results) {
+    expect(new Set(strides).size).toBe(4);
+    for (let i = 0; i < 8; i += 2) expect(strides[i]).toBe(strides[i + 1]);
+    expect(new Set(actions).size).toBe(5);
+  }
+});

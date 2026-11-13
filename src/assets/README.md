@@ -1,3 +1,7 @@
+## Dark redesign (v0.52.0)
+
+`dark-core.webp` losslessly encodes a generated 30-frame sheet based on the user’s purple-and-gold masked ninja reference. The original is `generated_images/exec-11462551-7cfb-4b94-8234-2810206d6eb1.png` in the workspace. Five columns and six rows form three facing groups (front/right/rear), each containing idle, four running keys, casting, attack, hurt and two victory poses. Left mirrors right. Metadata uses fixed per-facing body roots and floor baselines and a shared 210-pixel reference height for every pose. The four running keys share Ice and Light’s evenly timed distance-based cycle. All character rendering paths override the old Dark artwork when this atlas loads.
+
 ## Light continuity (v0.51.1)
 
 The refreshed `light-core.webp` brightens ivory cloth throughout the same 36-state identity sheet. Its metadata now uses constant body-root X and floor Y within each facing group, rather than following the lowest moving foot. `light-running.webp` supplies twelve coherent stride keys in three four-frame rows. Each row has a fixed body axis and baseline. Front/right use a 300-pixel reference height and rear uses 330 to match the standing character's proportions; those scales never vary during a stride. Light and Ice both select the four keys evenly from the eight-phase, distance-driven gait. Left mirrors right. Generated images are encoded losslessly; metadata performs alignment without deforming artwork.

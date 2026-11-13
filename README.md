@@ -1,4 +1,10 @@
-# Elemental — The Colosseum · v0.51.1
+# Elemental — The Colosseum · v0.52.0
+
+## v0.52.0 Dark redesign
+
+- Dark follows the supplied purple-and-gold masked ninja concept, retaining its bandana, violet hair and eyes, gold-trimmed clothing and twin daggers across 30 directional poses.
+- Four evenly timed running keys per direction use the same distance-driven cadence as Ice and Light. Fixed body axes, floor baselines and one shared scale keep movement steady; left mirrors right. Running, strikes and hand-out casting lean into the action.
+- Portraits, idle, recoil, death and two victory poses use the same new identity. Dark’s abilities are unchanged.
 
 ## v0.51.1 Light animation continuity
 
