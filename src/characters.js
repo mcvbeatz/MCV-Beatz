@@ -1,3 +1,4 @@
+import alternatingStrides from "./assets/alternating-strides.json" with { type: "json" };
 import darkCore from "./assets/dark-core.json" with { type: "json" };
 import lightRunning from "./assets/light-running.json" with { type: "json" };
 import lightCore from "./assets/light-core.json" with { type: "json" };
@@ -141,6 +142,10 @@ function loadAtlas(spec, url) {
   });
   return atlas;
 }
+const alternatingStrideAtlas = loadAtlas(
+  alternatingStrides,
+  new URL("./assets/alternating-strides.webp", import.meta.url).href,
+);
 const darkAtlas = loadAtlas(
   darkCore,
   new URL("./assets/dark-core.webp", import.meta.url).href,
@@ -439,6 +444,7 @@ const runByElement = Object.fromEntries(
 );
 export const charactersReady = Promise.all(
   [
+    alternatingStrideAtlas,
     darkAtlas,
     lightAtlas,
     lightRunAtlas,
@@ -593,36 +599,42 @@ function paintFrame(
   flash = 0,
 ) {
   let atlas =
-    running === "light-run"
-      ? lightRunAtlas
-      : running === "cold-victory"
-        ? coldVictoryAtlas
-        : running === "teleport"
-          ? teleportAtlas
-          : running === "outline"
-            ? divineBodyAtlas
-            : running === "dash"
-              ? dashAtlas
-              : running === "repair"
-                ? repairsByElement[element]
-                : running === "flight"
-                  ? flightsByElement[element]
-                  : running === "cast"
-                    ? castsByElement[element]
-                    : running === "contact"
-                      ? contactByElement[element]
-                      : running === "inbetween"
-                        ? inbetweenByElement[element]
-                        : running === "step"
-                          ? actionByElement[element]
-                          : running === "hurt"
-                            ? element === "mud"
-                              ? null
-                              : hurtByElement[element]
-                            : running
-                              ? runByElement[element]
-                              : byElement[element];
-  if (element === "dark" && darkAtlas.loaded) {
+    running === "alternating-stride"
+      ? alternatingStrideAtlas
+      : running === "light-run"
+        ? lightRunAtlas
+        : running === "cold-victory"
+          ? coldVictoryAtlas
+          : running === "teleport"
+            ? teleportAtlas
+            : running === "outline"
+              ? divineBodyAtlas
+              : running === "dash"
+                ? dashAtlas
+                : running === "repair"
+                  ? repairsByElement[element]
+                  : running === "flight"
+                    ? flightsByElement[element]
+                    : running === "cast"
+                      ? castsByElement[element]
+                      : running === "contact"
+                        ? contactByElement[element]
+                        : running === "inbetween"
+                          ? inbetweenByElement[element]
+                          : running === "step"
+                            ? actionByElement[element]
+                            : running === "hurt"
+                              ? element === "mud"
+                                ? null
+                                : hurtByElement[element]
+                              : running
+                                ? runByElement[element]
+                                : byElement[element];
+  if (
+    element === "dark" &&
+    darkAtlas.loaded &&
+    running !== "alternating-stride"
+  ) {
     atlas = darkAtlas;
     if (running !== "dark") {
       const facing =
@@ -632,7 +644,12 @@ function paintFrame(
         (running === "hurt" ? 7 : running === "cast" ? 5 : frame >= 3 ? 6 : 0);
     }
   }
-  if (element === "light" && lightAtlas.loaded && running !== "light-run") {
+  if (
+    element === "light" &&
+    lightAtlas.loaded &&
+    running !== "light-run" &&
+    running !== "alternating-stride"
+  ) {
     atlas = lightAtlas;
     if (running !== "light") {
       const facing =
@@ -905,18 +922,20 @@ function drawCharacterSprite(c, a, time) {
     spriteKind = false;
   const repairKey = `${a.element}:${pose.facing}`;
   if (a.element === "dark" && darkAtlas.loaded) {
-    spriteKind = "dark";
-    spriteFrame =
-      pose.facing * 10 +
-      (pose.reacting
-        ? 7
-        : pose.frame >= 3
-          ? 6
-          : pose.casting || a.shield
-            ? 5
-            : pose.groundedMoving
-              ? 1 + pose.fourStepFrame
-              : 0);
+    const correctedRun = pose.groundedMoving && alternatingStrideAtlas.loaded;
+    spriteKind = correctedRun ? "alternating-stride" : "dark";
+    spriteFrame = correctedRun
+      ? pose.facing * 4 + pose.fourStepFrame
+      : pose.facing * 10 +
+        (pose.reacting
+          ? 7
+          : pose.frame >= 3
+            ? 6
+            : pose.casting || a.shield
+              ? 5
+              : pose.groundedMoving
+                ? 1 + pose.fourStepFrame
+                : 0);
   } else if (a.element === "light" && lightAtlas.loaded) {
     const action = pose.reacting
       ? 9
@@ -926,8 +945,9 @@ function drawCharacterSprite(c, a, time) {
           ? 7
           : null;
     if (action === null && pose.groundedMoving && lightRunAtlas.loaded) {
-      spriteKind = "light-run";
-      spriteFrame = pose.facing * 4 + pose.fourStepFrame;
+      const correctedSide = pose.facing === 1 && alternatingStrideAtlas.loaded;
+      spriteKind = correctedSide ? "alternating-stride" : "light-run";
+      spriteFrame = (correctedSide ? 0 : pose.facing * 4) + pose.fourStepFrame;
     } else {
       spriteKind = "light";
       spriteFrame =

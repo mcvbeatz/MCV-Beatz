@@ -116,3 +116,53 @@ test("Dark renders four equally timed strides and distinct attacks, casts and vi
     expect(new Set(actions).size).toBe(5);
   }
 });
+
+test("Dark's front and rear running artwork alternates the supporting foot", async ({
+  page,
+}) => {
+  await page.goto("/?mode=duel");
+  await page.waitForFunction(() => window.__app?.screen === "setup");
+  const contacts = await page.evaluate(async () => {
+    const { makeFighter } = await import("/src/combat.js");
+    const { drawCharacter, charactersReady } =
+      await import("/src/characters.js");
+    await charactersReady;
+    const canvas = document.createElement("canvas");
+    canvas.width = canvas.height = 260;
+    const c = canvas.getContext("2d");
+    return [1, -1].map((fy) => {
+      const a = makeFighter("footfall", "dark", 0, 0, 0);
+      Object.assign(a, { fx: 0, fy, vx: 0, vy: fy * 150, movingTime: 1 });
+      return Array.from({ length: 4 }, (_, key) => {
+        a.gaitDistance = (key * 75) / 4;
+        c.clearRect(0, 0, 260, 260);
+        c.save();
+        c.translate(130, 210);
+        c.scale(2.5, 2.5);
+        drawCharacter(c, a, 0);
+        c.restore();
+        const data = c.getImageData(0, 0, 260, 260).data;
+        let bottom = 0;
+        for (let y = 0; y < 260; y++)
+          for (let x = 0; x < 260; x++)
+            if (data[(y * 260 + x) * 4 + 3] > 128) bottom = Math.max(bottom, y);
+        // The lowest 12 pixels contain the planted boot, not torso or weapons.
+        let sumX = 0,
+          count = 0;
+        for (let y = bottom - 11; y <= bottom; y++)
+          for (let x = 0; x < 260; x++)
+            if (data[(y * 260 + x) * 4 + 3] > 128) {
+              sumX += x;
+              count++;
+            }
+        return sumX / count - 130;
+      });
+    });
+  });
+  for (const feet of contacts) {
+    expect(feet[0]).toBeLessThan(-2);
+    expect(feet[1]).toBeLessThan(-2);
+    expect(feet[2]).toBeGreaterThan(2);
+    expect(feet[3]).toBeGreaterThan(2);
+  }
+});

@@ -1,3 +1,4 @@
+import strides from "../src/assets/alternating-strides.json" with { type: "json" };
 import test from "node:test";
 import assert from "node:assert/strict";
 import { makeFighter } from "../src/combat.js";
@@ -44,6 +45,20 @@ test("Light and Dark atlas frames retain a fixed body axis, baseline and scale w
             f.height || spec.height,
           ]);
         }
+      for (const root of roots) assert.deepEqual(root, roots[0]);
+    }
+  }
+});
+
+test("Corrected stride rows retain fixed roots and one scale throughout both footfalls", () => {
+  for (const spec of [strides.light, strides.dark]) {
+    for (let row = 0; row < spec.frames.length / 4; row++) {
+      const frames = spec.frames.slice(row * 4, row * 4 + 4);
+      const roots = frames.map((f, col) => [
+        f.x + f.anchorX - col * 312,
+        f.y + f.anchorY,
+        f.height,
+      ]);
       for (const root of roots) assert.deepEqual(root, roots[0]);
     }
   }

@@ -1,3 +1,7 @@
+## Alternating strides (v0.52.1)
+
+`alternating-strides.webp` is a lossless encoding of the generated correction sheet `exec-41bbb2b9-f06e-4d56-9e4e-20b1f2f2eb29.png` (original retained under `/workspace/generated_images`). Its four rows contain Light right-facing, Dark front, Dark right-facing and Dark rear, each with four sequential opposite-foot contact/passing poses. The corrected near/far leg ordering in side views was guided by the separate generated contact reference `exec-150f47de-e4e3-4a1e-aac0-a37d89698052.png`. Dark carries both blades behind its hips in side views. Metadata keeps the same body root, floor and scale throughout each four-frame row; no per-frame resizing or foot-following alignment. Light front/rear and all non-running states retain their existing atlases.
+
 ## Dark redesign (v0.52.0)
 
 `dark-core.webp` losslessly encodes a generated 30-frame sheet based on the user’s purple-and-gold masked ninja reference. The original is `generated_images/exec-11462551-7cfb-4b94-8234-2810206d6eb1.png` in the workspace. Five columns and six rows form three facing groups (front/right/rear), each containing idle, four running keys, casting, attack, hurt and two victory poses. Left mirrors right. Metadata uses fixed per-facing body roots and floor baselines and a shared 210-pixel reference height for every pose. The four running keys share Ice and Light’s evenly timed distance-based cycle. All character rendering paths override the old Dark artwork when this atlas loads.

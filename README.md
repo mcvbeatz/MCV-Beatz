@@ -1,4 +1,10 @@
-# Elemental — The Colosseum · v0.52.0
+# Elemental — The Colosseum · v0.52.1
+
+## v0.52.1 Alternating Light and Dark strides
+
+- Replaced Light’s sideways run and all three Dark running directions with corrected left-contact, left-support/right-pass, right-contact, right-support/left-pass poses. The opposing contacts use opposite legs, with four equal distance-driven intervals and fixed body roots. Leftward travel mirrors the rightward cycle.
+- Dark’s sideways sprint holds both arms and blades behind its body, with the blades angled down and back. Its front/back support foot now visibly alternates rather than repeating one leg.
+- Added rendered-foot regression coverage for Dark’s front/back cycles alongside the existing cadence, alignment and character-action checks.
 
 ## v0.52.0 Dark redesign
 
