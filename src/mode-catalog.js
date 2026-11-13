@@ -76,7 +76,7 @@ export const MODES = {
     slides: [
       [
         "Take the field",
-        "Eight fighters, all starting as Earth. When a team first falls behind, its player with the most deaths becomes Gravity for the rest of the match, including respawns. Tied death counts choose randomly. Friendly fire is on. Pick up the midfield ball by touching it with your shield down.",
+        "Eight fighters, all starting as Earth. When a team first falls behind, its player with the most deaths becomes Gravity for the rest of the match, including respawns. At a three-point deficit, the teammate with the fewest kills becomes Invincible for the rest of the match. Each comeback evolution is granted once per team; ties choose randomly. Friendly fire is on. Pick up the midfield ball by touching it with your shield down.",
         "◇",
       ],
       [

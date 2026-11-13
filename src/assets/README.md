@@ -1,3 +1,7 @@
+## Light redesign (v0.51.0)
+
+`light-core.webp` is the lossless encoding of the generated 36-sprite Light sheet, based on the supplied white-and-gold hooded spear-warrior reference. `light-core.json` contains component bounds and foot anchors measured from opaque pixels, with one shared 190-pixel reference height. The artwork is not stretched or recolored per state. Per-facing groups contain idle, six stride poses, hand-out casting, spear attack, hurt, and two victory poses (12 frames each, front/right/back). Left mirrors right. The renderer uses these for portraits, running, sidestepping, casts, melee, recoil, death and victory, overriding all older Light art when this atlas is loaded.
+
 # Elemental character atlases
 
 The original twenty characters derive from the user's six original concepts: Water's

@@ -101,6 +101,7 @@ export function initializeEvents(g) {
   if (g.mode === "gridiron") {
     g.ball = { x: g.map.cx, y: g.map.cy, carrier: null, pickupAt: 0 };
     g.gridGravityOwners = [null, null];
+    g.gridInvincibleOwners = [null, null];
   } else {
     g.raceDrops = [];
     g.nextRaceAbility = 2;
@@ -130,24 +131,41 @@ export function updateGridironEvolution(g) {
   if (g.mode !== "gridiron" || g.finished || g.scores[0] === g.scores[1])
     return;
   const team = g.scores[0] < g.scores[1] ? 0 : 1;
-  if (g.gridGravityOwners[team]) return;
   const members = g.fighters.filter((a) => a.team === team);
-  const deaths = Math.max(...members.map((a) => a.deaths || 0));
-  const a = pick(
-    g,
-    members.filter((a) => (a.deaths || 0) === deaths),
-  );
-  g.gridGravityOwners[team] = a.id;
-  a.element = "gravity";
-  a.parts = recipe("gravity");
-  a.nativeParts = [...a.parts];
-  a.forms = [...a.parts, "gravity"];
-  a.form = a.forms.indexOf("gravity");
-  a.spawn.element = "gravity";
-  a.charging = false;
-  a.chargeForm = null;
-  if (a.alive) g.cue("fusion", a, "#c59bff");
+  const evolve = (a, element, color) => {
+    a.element = element;
+    a.parts = recipe(element);
+    a.nativeParts = [...a.parts];
+    a.forms = [...a.parts, element];
+    a.form = a.forms.indexOf(element);
+    a.spawn.element = element;
+    a.charging = false;
+    a.chargeForm = null;
+    if (a.alive) g.cue("fusion", a, color);
+  };
+  if (!g.gridGravityOwners[team]) {
+    const deaths = Math.max(...members.map((a) => a.deaths || 0));
+    const a = pick(
+      g,
+      members.filter((a) => (a.deaths || 0) === deaths),
+    );
+    g.gridGravityOwners[team] = a.id;
+    evolve(a, "gravity", "#c59bff");
+  }
+  if (
+    Math.abs(g.scores[0] - g.scores[1]) >= 3 &&
+    !g.gridInvincibleOwners[team]
+  ) {
+    const kills = Math.min(...members.map((a) => a.kills || 0));
+    const a = pick(
+      g,
+      members.filter((a) => (a.kills || 0) === kills),
+    );
+    g.gridInvincibleOwners[team] = a.id;
+    evolve(a, "invincible", "#ffe1a1");
+  }
 }
+
 export function passTargets(g, a) {
   if (
     g.mode !== "gridiron" ||
@@ -591,6 +609,13 @@ export function gridironAI(g, a, dt) {
     g.strike(a, attackTarget);
   if (a.element === "gravity" && target && distance(a, target) < 300)
     g.telekinesis(a, target, target.x - a.x, target.y - a.y);
+  if (
+    a.element === "invincible" &&
+    nearest &&
+    distance(a, nearest) < EXPLOSION_RADIUS &&
+    !team.some((b) => b !== a && distance(a, b) <= EXPLOSION_RADIUS)
+  )
+    g.startCharge(a, "invincible");
 }
 export function setRaceForm(a, element) {
   a.element = element;

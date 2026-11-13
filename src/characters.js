@@ -1,3 +1,4 @@
+import lightCore from "./assets/light-core.json" with { type: "json" };
 import coldVictory from "./assets/ice-abyssal-victory.json" with { type: "json" };
 import iceCore from "./assets/ice-core.json" with { type: "json" };
 import abyssalCore from "./assets/abyssal-core.json" with { type: "json" };
@@ -72,6 +73,10 @@ const frames = {
   ...revised,
   ...tuned,
   ...newFusions,
+  light: {
+    ...lightCore.light,
+    frames: [0, 12, 24, 8, 20, 32].map((i) => lightCore.light.frames[i]),
+  },
   mirror: {
     ...mirrorCore.mirror,
     frames: [0, 6, 12, 2, 8, 14].map((i) => mirrorCore.mirror.frames[i]),
@@ -130,6 +135,10 @@ function loadAtlas(spec, url) {
   });
   return atlas;
 }
+const lightAtlas = loadAtlas(
+  lightCore,
+  new URL("./assets/light-core.webp", import.meta.url).href,
+);
 const iceAtlas = loadAtlas(
   iceCore,
   new URL("./assets/ice-core.webp", import.meta.url).href,
@@ -416,6 +425,7 @@ const runByElement = Object.fromEntries(
 );
 export const charactersReady = Promise.all(
   [
+    lightAtlas,
     victory,
     coldVictoryAtlas,
     teleportAtlas,
@@ -593,6 +603,16 @@ function paintFrame(
                           : running
                             ? runByElement[element]
                             : byElement[element];
+  if (element === "light" && lightAtlas.loaded) {
+    atlas = lightAtlas;
+    if (running !== "light") {
+      const facing =
+        running === "hurt" || running === "cast" ? frame : frame % 3;
+      frame =
+        facing * 12 +
+        (running === "hurt" ? 9 : running === "cast" ? 7 : frame >= 3 ? 8 : 0);
+    }
+  }
   if (coldAtlases[element]?.loaded && running !== "cold-victory") {
     atlas = coldAtlases[element];
     if (running !== "cold") {
@@ -721,6 +741,15 @@ export function drawCharacter(c, a, time) {
 }
 function drawCharacterSprite(c, a, time) {
   if (a.monsterKind) return drawDungeonMonster(c, a, time);
+  if (a.victory && a.element === "light" && lightAtlas.loaded)
+    return paintFrame(
+      c,
+      "light",
+      10 + (Math.floor((a.victoryTime || 0) / 0.65) % 2),
+      false,
+      64,
+      "light",
+    );
   if (a.victory && coldVictory[a.element] && coldVictoryAtlas.loaded) {
     const elapsed = a.victoryTime || 0;
     const frame =
@@ -837,7 +866,20 @@ function drawCharacterSprite(c, a, time) {
     spriteFrame = pose.frame,
     spriteKind = false;
   const repairKey = `${a.element}:${pose.facing}`;
-  if (coldAtlases[a.element]?.loaded) {
+  if (a.element === "light" && lightAtlas.loaded) {
+    spriteKind = "light";
+    spriteFrame =
+      pose.facing * 12 +
+      (pose.reacting
+        ? 9
+        : pose.frame >= 3
+          ? 8
+          : pose.casting || a.shield
+            ? 7
+            : pose.groundedMoving
+              ? [1, 2, 2, 3, 4, 5, 5, 6][pose.gaitFrame]
+              : 0);
+  } else if (coldAtlases[a.element]?.loaded) {
     spriteKind = "cold";
     spriteFrame =
       pose.facing * 8 +

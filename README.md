@@ -1,4 +1,9 @@
-# Elemental — The Colosseum · v0.50.0
+# Elemental — The Colosseum · v0.51.0
+
+## v0.51.0 Light redesign and Invincible comeback
+
+- When a Gridiron team first trails by three or more points, its teammate with the fewest kills evolves into Invincible for the rest of the match. Ties choose randomly; the evolution persists through deaths and touchdown resets. Either team can earn it once. The selected player can be the existing Gravity owner, which upgrades that fighter without granting another Gravity evolution. Invincible AI uses Explosion when no teammate is in its blast radius.
+- Light now follows the hooded white-and-gold spear-warrior concept, with chestnut hair, amber eyes, ivory armor, gold lining and sun motifs. One 36-frame atlas supplies front/right/back idle, six running steps, throwing/casting, spear strikes, hurt and victory poses; left-facing states mirror right. All frames share one scale and anatomically aligned foot anchors, preserving the same outfit and proportions during energetic forward-leaning actions. Portraits and death silhouettes use the same new identity.
 
 ## v0.50.0 Forward passing
 
