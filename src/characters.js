@@ -1,7 +1,3 @@
-import alternatingStrides from "./assets/alternating-strides.json" with { type: "json" };
-import darkCore from "./assets/dark-core.json" with { type: "json" };
-import lightRunning from "./assets/light-running.json" with { type: "json" };
-import lightCore from "./assets/light-core.json" with { type: "json" };
 import coldVictory from "./assets/ice-abyssal-victory.json" with { type: "json" };
 import iceCore from "./assets/ice-core.json" with { type: "json" };
 import abyssalCore from "./assets/abyssal-core.json" with { type: "json" };
@@ -76,14 +72,6 @@ const frames = {
   ...revised,
   ...tuned,
   ...newFusions,
-  dark: {
-    ...darkCore.dark,
-    frames: [0, 10, 20, 6, 16, 26].map((i) => darkCore.dark.frames[i]),
-  },
-  light: {
-    ...lightCore.light,
-    frames: [0, 12, 24, 8, 20, 32].map((i) => lightCore.light.frames[i]),
-  },
   mirror: {
     ...mirrorCore.mirror,
     frames: [0, 6, 12, 2, 8, 14].map((i) => mirrorCore.mirror.frames[i]),
@@ -142,22 +130,6 @@ function loadAtlas(spec, url) {
   });
   return atlas;
 }
-const alternatingStrideAtlas = loadAtlas(
-  alternatingStrides,
-  new URL("./assets/alternating-strides.webp", import.meta.url).href,
-);
-const darkAtlas = loadAtlas(
-  darkCore,
-  new URL("./assets/dark-core.webp", import.meta.url).href,
-);
-const lightRunAtlas = loadAtlas(
-  lightRunning,
-  new URL("./assets/light-running.webp", import.meta.url).href,
-);
-const lightAtlas = loadAtlas(
-  lightCore,
-  new URL("./assets/light-core.webp", import.meta.url).href,
-);
 const iceAtlas = loadAtlas(
   iceCore,
   new URL("./assets/ice-core.webp", import.meta.url).href,
@@ -444,10 +416,6 @@ const runByElement = Object.fromEntries(
 );
 export const charactersReady = Promise.all(
   [
-    alternatingStrideAtlas,
-    darkAtlas,
-    lightAtlas,
-    lightRunAtlas,
     victory,
     coldVictoryAtlas,
     teleportAtlas,
@@ -566,7 +534,6 @@ export function characterPose(a) {
       : null,
     groundedMoving,
     gaitFrame,
-    fourStepFrame: Math.floor(gaitFrame / 2),
     footContact,
     contactFrame: footContact ? facing * 2 + stride : null,
     runInbetween: groundedMoving && [3, 7].includes(gaitFrame),
@@ -599,66 +566,33 @@ function paintFrame(
   flash = 0,
 ) {
   let atlas =
-    running === "alternating-stride"
-      ? alternatingStrideAtlas
-      : running === "light-run"
-        ? lightRunAtlas
-        : running === "cold-victory"
-          ? coldVictoryAtlas
-          : running === "teleport"
-            ? teleportAtlas
-            : running === "outline"
-              ? divineBodyAtlas
-              : running === "dash"
-                ? dashAtlas
-                : running === "repair"
-                  ? repairsByElement[element]
-                  : running === "flight"
-                    ? flightsByElement[element]
-                    : running === "cast"
-                      ? castsByElement[element]
-                      : running === "contact"
-                        ? contactByElement[element]
-                        : running === "inbetween"
-                          ? inbetweenByElement[element]
-                          : running === "step"
-                            ? actionByElement[element]
-                            : running === "hurt"
-                              ? element === "mud"
-                                ? null
-                                : hurtByElement[element]
-                              : running
-                                ? runByElement[element]
-                                : byElement[element];
-  if (
-    element === "dark" &&
-    darkAtlas.loaded &&
-    running !== "alternating-stride"
-  ) {
-    atlas = darkAtlas;
-    if (running !== "dark") {
-      const facing =
-        running === "hurt" || running === "cast" ? frame : frame % 3;
-      frame =
-        facing * 10 +
-        (running === "hurt" ? 7 : running === "cast" ? 5 : frame >= 3 ? 6 : 0);
-    }
-  }
-  if (
-    element === "light" &&
-    lightAtlas.loaded &&
-    running !== "light-run" &&
-    running !== "alternating-stride"
-  ) {
-    atlas = lightAtlas;
-    if (running !== "light") {
-      const facing =
-        running === "hurt" || running === "cast" ? frame : frame % 3;
-      frame =
-        facing * 12 +
-        (running === "hurt" ? 9 : running === "cast" ? 7 : frame >= 3 ? 8 : 0);
-    }
-  }
+    running === "cold-victory"
+      ? coldVictoryAtlas
+      : running === "teleport"
+        ? teleportAtlas
+        : running === "outline"
+          ? divineBodyAtlas
+          : running === "dash"
+            ? dashAtlas
+            : running === "repair"
+              ? repairsByElement[element]
+              : running === "flight"
+                ? flightsByElement[element]
+                : running === "cast"
+                  ? castsByElement[element]
+                  : running === "contact"
+                    ? contactByElement[element]
+                    : running === "inbetween"
+                      ? inbetweenByElement[element]
+                      : running === "step"
+                        ? actionByElement[element]
+                        : running === "hurt"
+                          ? element === "mud"
+                            ? null
+                            : hurtByElement[element]
+                          : running
+                            ? runByElement[element]
+                            : byElement[element];
   if (coldAtlases[element]?.loaded && running !== "cold-victory") {
     atlas = coldAtlases[element];
     if (running !== "cold") {
@@ -787,24 +721,6 @@ export function drawCharacter(c, a, time) {
 }
 function drawCharacterSprite(c, a, time) {
   if (a.monsterKind) return drawDungeonMonster(c, a, time);
-  if (a.victory && a.element === "dark" && darkAtlas.loaded)
-    return paintFrame(
-      c,
-      "dark",
-      8 + (Math.floor((a.victoryTime || 0) / 0.65) % 2),
-      false,
-      64,
-      "dark",
-    );
-  if (a.victory && a.element === "light" && lightAtlas.loaded)
-    return paintFrame(
-      c,
-      "light",
-      10 + (Math.floor((a.victoryTime || 0) / 0.65) % 2),
-      false,
-      64,
-      "light",
-    );
   if (a.victory && coldVictory[a.element] && coldVictoryAtlas.loaded) {
     const elapsed = a.victoryTime || 0;
     const frame =
@@ -921,41 +837,7 @@ function drawCharacterSprite(c, a, time) {
     spriteFrame = pose.frame,
     spriteKind = false;
   const repairKey = `${a.element}:${pose.facing}`;
-  if (a.element === "dark" && darkAtlas.loaded) {
-    const correctedRun = pose.groundedMoving && alternatingStrideAtlas.loaded;
-    spriteKind = correctedRun ? "alternating-stride" : "dark";
-    spriteFrame = correctedRun
-      ? pose.facing * 4 + pose.fourStepFrame
-      : pose.facing * 10 +
-        (pose.reacting
-          ? 7
-          : pose.frame >= 3
-            ? 6
-            : pose.casting || a.shield
-              ? 5
-              : pose.groundedMoving
-                ? 1 + pose.fourStepFrame
-                : 0);
-  } else if (a.element === "light" && lightAtlas.loaded) {
-    const action = pose.reacting
-      ? 9
-      : pose.frame >= 3
-        ? 8
-        : pose.casting || a.shield
-          ? 7
-          : null;
-    if (action === null && pose.groundedMoving && lightRunAtlas.loaded) {
-      const correctedSide = pose.facing === 1 && alternatingStrideAtlas.loaded;
-      spriteKind = correctedSide ? "alternating-stride" : "light-run";
-      spriteFrame = (correctedSide ? 0 : pose.facing * 4) + pose.fourStepFrame;
-    } else {
-      spriteKind = "light";
-      spriteFrame =
-        pose.facing * 12 +
-        (action ??
-          (pose.groundedMoving ? [1, 2, 4, 5][pose.fourStepFrame] : 0));
-    }
-  } else if (coldAtlases[a.element]?.loaded) {
+  if (coldAtlases[a.element]?.loaded) {
     spriteKind = "cold";
     spriteFrame =
       pose.facing * 8 +
@@ -966,7 +848,7 @@ function drawCharacterSprite(c, a, time) {
           : pose.casting || a.shield
             ? 5
             : pose.groundedMoving
-              ? 1 + pose.fourStepFrame
+              ? 1 + Math.floor(pose.gaitFrame / 2)
               : 0);
   } else if (dashSprite) {
     spriteKind = "dash";

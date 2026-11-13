@@ -1,4 +1,10 @@
-# Elemental — The Colosseum · v0.52.1
+# Elemental — The Colosseum · v0.52.2
+
+## v0.52.2 Restore original Light and Dark
+
+- Restored Light and Dark’s appearances and animation selection from before the v0.51.0 redesigns, including portraits, running, attacks, casting, recoil and victory. Their guide images again show the original designs.
+- The newer redesign and stride assets remain saved in the repository, but are no longer loaded by the game.
+- Gameplay changes remain intact, including Gridiron’s Invincible comeback evolution and forward passing.
 
 ## v0.52.1 Alternating Light and Dark strides
 

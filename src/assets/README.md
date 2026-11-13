@@ -1,3 +1,7 @@
+## Original Light and Dark restored (v0.52.2)
+
+The renderer again uses the pre-v0.51.0 Light and Dark atlas selection. `light-core`, `light-running`, `dark-core` and `alternating-strides` artwork and metadata are retained as inactive alternatives; the game no longer imports or loads them. Existing origins, movement, casting, hurt and victory atlases supply their original designs. The historical notes below document the preserved alternatives.
+
 ## Alternating strides (v0.52.1)
 
 `alternating-strides.webp` is a lossless encoding of the generated correction sheet `exec-41bbb2b9-f06e-4d56-9e4e-20b1f2f2eb29.png` (original retained under `/workspace/generated_images`). Its four rows contain Light right-facing, Dark front, Dark right-facing and Dark rear, each with four sequential opposite-foot contact/passing poses. The corrected near/far leg ordering in side views was guided by the separate generated contact reference `exec-150f47de-e4e3-4a1e-aac0-a37d89698052.png`. Dark carries both blades behind its hips in side views. Metadata keeps the same body root, floor and scale throughout each four-frame row; no per-frame resizing or foot-following alignment. Light front/rear and all non-running states retain their existing atlases.
