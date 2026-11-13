@@ -1,4 +1,10 @@
-# Elemental — The Colosseum · v0.51.0
+# Elemental — The Colosseum · v0.51.1
+
+## v0.51.1 Light animation continuity
+
+- Light now uses a dedicated twelve-frame running atlas: four sequential grounded stride keys in front, side and back, with left mirrored. It shares Ice's four-key, evenly timed distance-based cycle for running and guarded sidesteps. The hood, torso, spear grip and cloak remain steady while the legs alternate.
+- Fixed per-direction body axes and floor baselines replace changing foot-based anchors throughout Light's core and movement atlases. One scale per running direction matches the standing design; no frame is stretched or resized during the cycle.
+- Light's hood, cloak and tunic fabric is slightly brighter ivory-white across idle, movement, casting, attack, hurt, death and victory sprites, retaining its gold details and brown accessories.
 
 ## v0.51.0 Light redesign and Invincible comeback
 

@@ -1,3 +1,4 @@
+import lightRunning from "./assets/light-running.json" with { type: "json" };
 import lightCore from "./assets/light-core.json" with { type: "json" };
 import coldVictory from "./assets/ice-abyssal-victory.json" with { type: "json" };
 import iceCore from "./assets/ice-core.json" with { type: "json" };
@@ -135,6 +136,10 @@ function loadAtlas(spec, url) {
   });
   return atlas;
 }
+const lightRunAtlas = loadAtlas(
+  lightRunning,
+  new URL("./assets/light-running.webp", import.meta.url).href,
+);
 const lightAtlas = loadAtlas(
   lightCore,
   new URL("./assets/light-core.webp", import.meta.url).href,
@@ -426,6 +431,7 @@ const runByElement = Object.fromEntries(
 export const charactersReady = Promise.all(
   [
     lightAtlas,
+    lightRunAtlas,
     victory,
     coldVictoryAtlas,
     teleportAtlas,
@@ -544,6 +550,7 @@ export function characterPose(a) {
       : null,
     groundedMoving,
     gaitFrame,
+    fourStepFrame: Math.floor(gaitFrame / 2),
     footContact,
     contactFrame: footContact ? facing * 2 + stride : null,
     runInbetween: groundedMoving && [3, 7].includes(gaitFrame),
@@ -576,34 +583,36 @@ function paintFrame(
   flash = 0,
 ) {
   let atlas =
-    running === "cold-victory"
-      ? coldVictoryAtlas
-      : running === "teleport"
-        ? teleportAtlas
-        : running === "outline"
-          ? divineBodyAtlas
-          : running === "dash"
-            ? dashAtlas
-            : running === "repair"
-              ? repairsByElement[element]
-              : running === "flight"
-                ? flightsByElement[element]
-                : running === "cast"
-                  ? castsByElement[element]
-                  : running === "contact"
-                    ? contactByElement[element]
-                    : running === "inbetween"
-                      ? inbetweenByElement[element]
-                      : running === "step"
-                        ? actionByElement[element]
-                        : running === "hurt"
-                          ? element === "mud"
-                            ? null
-                            : hurtByElement[element]
-                          : running
-                            ? runByElement[element]
-                            : byElement[element];
-  if (element === "light" && lightAtlas.loaded) {
+    running === "light-run"
+      ? lightRunAtlas
+      : running === "cold-victory"
+        ? coldVictoryAtlas
+        : running === "teleport"
+          ? teleportAtlas
+          : running === "outline"
+            ? divineBodyAtlas
+            : running === "dash"
+              ? dashAtlas
+              : running === "repair"
+                ? repairsByElement[element]
+                : running === "flight"
+                  ? flightsByElement[element]
+                  : running === "cast"
+                    ? castsByElement[element]
+                    : running === "contact"
+                      ? contactByElement[element]
+                      : running === "inbetween"
+                        ? inbetweenByElement[element]
+                        : running === "step"
+                          ? actionByElement[element]
+                          : running === "hurt"
+                            ? element === "mud"
+                              ? null
+                              : hurtByElement[element]
+                            : running
+                              ? runByElement[element]
+                              : byElement[element];
+  if (element === "light" && lightAtlas.loaded && running !== "light-run") {
     atlas = lightAtlas;
     if (running !== "light") {
       const facing =
@@ -867,18 +876,23 @@ function drawCharacterSprite(c, a, time) {
     spriteKind = false;
   const repairKey = `${a.element}:${pose.facing}`;
   if (a.element === "light" && lightAtlas.loaded) {
-    spriteKind = "light";
-    spriteFrame =
-      pose.facing * 12 +
-      (pose.reacting
-        ? 9
-        : pose.frame >= 3
-          ? 8
-          : pose.casting || a.shield
-            ? 7
-            : pose.groundedMoving
-              ? [1, 2, 2, 3, 4, 5, 5, 6][pose.gaitFrame]
-              : 0);
+    const action = pose.reacting
+      ? 9
+      : pose.frame >= 3
+        ? 8
+        : pose.casting || a.shield
+          ? 7
+          : null;
+    if (action === null && pose.groundedMoving && lightRunAtlas.loaded) {
+      spriteKind = "light-run";
+      spriteFrame = pose.facing * 4 + pose.fourStepFrame;
+    } else {
+      spriteKind = "light";
+      spriteFrame =
+        pose.facing * 12 +
+        (action ??
+          (pose.groundedMoving ? [1, 2, 4, 5][pose.fourStepFrame] : 0));
+    }
   } else if (coldAtlases[a.element]?.loaded) {
     spriteKind = "cold";
     spriteFrame =
@@ -890,7 +904,7 @@ function drawCharacterSprite(c, a, time) {
           : pose.casting || a.shield
             ? 5
             : pose.groundedMoving
-              ? 1 + Math.floor(pose.gaitFrame / 2)
+              ? 1 + pose.fourStepFrame
               : 0);
   } else if (dashSprite) {
     spriteKind = "dash";

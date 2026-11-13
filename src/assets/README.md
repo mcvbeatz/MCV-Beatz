@@ -1,3 +1,7 @@
+## Light continuity (v0.51.1)
+
+The refreshed `light-core.webp` brightens ivory cloth throughout the same 36-state identity sheet. Its metadata now uses constant body-root X and floor Y within each facing group, rather than following the lowest moving foot. `light-running.webp` supplies twelve coherent stride keys in three four-frame rows. Each row has a fixed body axis and baseline. Front/right use a 300-pixel reference height and rear uses 330 to match the standing character's proportions; those scales never vary during a stride. Light and Ice both select the four keys evenly from the eight-phase, distance-driven gait. Left mirrors right. Generated images are encoded losslessly; metadata performs alignment without deforming artwork.
+
 ## Light redesign (v0.51.0)
 
 `light-core.webp` is the lossless encoding of the generated 36-sprite Light sheet, based on the supplied white-and-gold hooded spear-warrior reference. `light-core.json` contains component bounds and foot anchors measured from opaque pixels, with one shared 190-pixel reference height. The artwork is not stretched or recolored per state. Per-facing groups contain idle, six stride poses, hand-out casting, spear attack, hurt, and two victory poses (12 frames each, front/right/back). Left mirrors right. The renderer uses these for portraits, running, sidestepping, casts, melee, recoil, death and victory, overriding all older Light art when this atlas is loaded.
