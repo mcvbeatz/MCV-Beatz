@@ -153,3 +153,126 @@ export function ctfWaypoint(g, a, goal) {
     next = map.cells[route.cells[1]];
   return map.lineClear(a, next, 14) ? next : map.route(a, here);
 }
+
+const occupiesFloor = (a) => a.alive && !a.ghost && !a.blink && inWorld(a);
+const contactPair = (a, b) =>
+  a.team !== b.team && (a.parts.includes("fire") || b.parts.includes("fire"));
+const bodyGap = (a, b) => {
+  if (a.team !== b.team) return contactPair(a, b) ? 28 : 52;
+  // Teammates meeting head-on need room to pass in the maze's narrow lanes.
+  const opposite =
+    a.ctfHeading &&
+    b.ctfHeading &&
+    a.ctfHeading.x * b.ctfHeading.x + a.ctfHeading.y * b.ctfHeading.y < -0.3;
+  return opposite ? 48 : 66;
+};
+function away(g, a, b) {
+  const d = distance(a, b);
+  if (d > 0.01) return { x: (a.x - b.x) / d, y: (a.y - b.y) / d, d };
+  // Coincident spawns need nonzero, opposing directions, not random jitter.
+  const i = g.fighters.indexOf(a),
+    j = g.fighters.indexOf(b);
+  const angle = (Math.min(i, j) * 7 + Math.max(i, j) * 13) * 2.39996;
+  const sign = i < j ? 1 : -1;
+  return { x: Math.cos(angle) * sign, y: Math.sin(angle) * sign, d: 0 };
+}
+export function ctfMove(g, a, goal, dt) {
+  const waypoint = ctfWaypoint(g, a, goal);
+  let dx = waypoint.x - a.x,
+    dy = waypoint.y - a.y;
+  const length = Math.hypot(dx, dy),
+    nx = dx / (length || 1),
+    ny = dy / (length || 1);
+  a.ctfHeading = { x: nx, y: ny };
+  dx /= Math.max(30, length);
+  dy /= Math.max(30, length);
+  // Fight from striking distance instead of aiming at the opponent's center.
+  if (
+    a.ctfTarget &&
+    goal.id === a.ctfTarget &&
+    distance(a, goal) < bodyGap(a, goal) + 7 &&
+    g.map.lineClear(a, goal)
+  )
+    dx = dy = 0;
+  for (const b of g.fighters) {
+    if (b === a || !occupiesFloor(b) || !g.map.lineClear(a, b)) continue;
+    const v = away(g, a, b),
+      clearance = bodyGap(a, b) + 22;
+    if (v.d >= clearance) continue;
+    // One teammate keeps the route while followers yield. Symmetric steering
+    // otherwise deadlocks two bots around the same narrow-corridor waypoint.
+    const leads =
+      b.team === a.team &&
+      b.id !== "player" &&
+      g.fighters.indexOf(a) < g.fighters.indexOf(b);
+    const pressure = ((clearance - v.d) / clearance) * (leads ? 0.15 : 3);
+    dx += v.x * pressure;
+    dy += v.y * pressure;
+    // Keep right when a peer blocks the corridor; opposite travel directions
+    // choose opposite sides, while followers give the leader room.
+    const ahead = -v.x * nx - v.y * ny;
+    if (a.team === b.team && length > 10 && ahead > 0.45) {
+      dx += ny * pressure * 0.65;
+      dy -= nx * pressure * 0.65;
+    }
+  }
+  g.move(a, dx, dy, dt);
+}
+
+// Resolve the small overlaps left after every fighter has moved. Only bots
+// yield: the player's position, immobilization, and maze walls remain intact.
+export function separateCTF(g, dt) {
+  if (g.mode !== "ctf" || !g.map || !(dt > 0)) return;
+  const living = g.fighters.filter(occupiesFloor);
+  const budget = new Map(
+    living.map((a) => [
+      a,
+      a.id !== "player" && a.prisonHp <= 0 && !g.isShocked(a)
+        ? Math.min(12, dt * 200)
+        : 0,
+    ]),
+  );
+  const nudge = (a, b, x, y, amount) => {
+    const step = Math.min(amount, budget.get(a));
+    if (!(step > 0)) return;
+    const old = { x: a.x, y: a.y },
+      gap = distance(a, b);
+    for (const turn of [
+      0,
+      Math.PI / 4,
+      -Math.PI / 4,
+      Math.PI / 2,
+      -Math.PI / 2,
+    ]) {
+      const p = {
+        x: a.x + (x * Math.cos(turn) - y * Math.sin(turn)) * step,
+        y: a.y + (x * Math.sin(turn) + y * Math.cos(turn)) * step,
+      };
+      if (
+        distance(p, b) <= gap + 0.001 ||
+        !g.map.walkable(p) ||
+        !g.map.lineClear(a, p, 13)
+      )
+        continue;
+      g.map.move(a, p.x, p.y);
+      budget.set(a, budget.get(a) - distance(old, a));
+      return;
+    }
+  };
+  for (let pass = 0; pass < 3; pass++)
+    for (let i = 0; i < living.length; i++)
+      for (let j = i + 1; j < living.length; j++) {
+        const a = living[i],
+          b = living[j],
+          v = away(g, a, b),
+          overlap = bodyGap(a, b) - v.d;
+        if (overlap <= 0.01 || !g.map.lineClear(a, b)) continue;
+        const aMoves = budget.get(a) > 0,
+          bMoves = budget.get(b) > 0;
+        if (aMoves) nudge(a, b, v.x, v.y, overlap / (bMoves ? 2 : 1));
+        if (bMoves) {
+          const next = away(g, b, a);
+          nudge(b, a, next.x, next.y, Math.max(0, bodyGap(a, b) - next.d));
+        }
+      }
+}

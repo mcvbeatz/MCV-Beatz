@@ -1,4 +1,10 @@
-# Elemental — The Colosseum · v0.53.0
+# Elemental — The Colosseum · v0.53.1
+
+## v0.53.1 Capture the Flag crowd spacing
+
+- CTF bots now apply spacing after choosing their maze route, yield behind a teammate in narrow corridors, and stop at striking distance rather than moving onto their target’s center.
+- A bounded correction after movement separates residual overlaps for both teams while respecting tree walls, the human player’s position, and immobilized or off-field fighters. Fire can still reach contact-damage range.
+- Tests cover coincident groups at both flag bases and in corridors, continued travel and combat, wall separation, control restrictions, and live browser controls.
 
 ## v0.53.0 Capture the Flag defenses and tactics
 

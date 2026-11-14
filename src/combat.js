@@ -1,4 +1,4 @@
-import { ctfObjective, ctfWaypoint } from "./ctf-ai.js";
+import { ctfObjective, ctfMove, separateCTF } from "./ctf-ai.js";
 import {
   initializeZombies,
   separateZombies,
@@ -2948,8 +2948,7 @@ export class Combat {
       dy = distance(a, objective) > 10 ? objective.y - a.y : 0;
     }
     if (ctfGoal) {
-      const waypoint = ctfWaypoint(this, a, ctfGoal);
-      this.move(a, waypoint.x - a.x, waypoint.y - a.y, dt);
+      ctfMove(this, a, ctfGoal, dt);
     } else if (
       this.map &&
       this.map.kind !== "corruption" &&
@@ -3535,7 +3534,10 @@ export class Combat {
     }
     this.tokens = this.tokens.filter((t) => !t.removed);
     for (const a of this.fighters) if (!a.zombieFar) this.autoLock(a);
-    if (runAI) separateZombies(this, dt);
+    if (runAI) {
+      separateZombies(this, dt);
+      separateCTF(this, dt);
+    }
     this.resolveStrikes();
     this.updateProjectiles(dt);
     this.updateWaves(dt);

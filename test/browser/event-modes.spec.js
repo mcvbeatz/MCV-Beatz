@@ -245,3 +245,39 @@ test("CTF carrier keeps the flag behind Rock Shield and Shadow Step controls", a
   }
   expect(errors).toEqual([]);
 });
+
+test("CTF bots unstack beside the flag without pushing the human player or crossing trees", async ({
+  page,
+}) => {
+  const errors = [];
+  page.on("pageerror", (e) => errors.push(e.message));
+  await start(page, "ctf");
+  const result = await page.evaluate(async () => {
+    const { Combat, makeFighter, distance } = await import("/src/combat.js");
+    const g = __arena.game;
+    Object.assign(g, new Combat({ mode: "ctf", random: () => 0.3 }));
+    g.countdown = 0;
+    const origin = { ...g.flags[0].home };
+    for (const a of g.fighters)
+      Object.assign(a, makeFighter(a.id, "earth", a.team, origin.x, origin.y), {
+        spawn: { ...origin, element: "earth" },
+      });
+    // Keep everyone present to inspect the crowded flag approach, not a corpse.
+    g.damage = () => 0;
+    for (let i = 0; i < 200; i++) Combat.prototype.update.call(g, 0.02);
+    return {
+      min: Math.min(
+        ...g.fighters.flatMap((a, i) =>
+          g.fighters.slice(i + 1).map((b) => distance(a, b)),
+        ),
+      ),
+      walkable: g.fighters.every((a) => g.map.walkable(a)),
+      humanMoved: distance(g.player, origin),
+    };
+  });
+  expect(result.walkable).toBe(true);
+  expect(result.humanMoved).toBe(0);
+  expect(result.min).toBeGreaterThan(43);
+  await page.screenshot({ path: "/tmp/ctf-spacing.png" });
+  expect(errors).toEqual([]);
+});
