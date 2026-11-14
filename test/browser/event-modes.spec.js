@@ -194,3 +194,54 @@ test("Gridiron unstacks a crowded midfield and both teams attack in the browser"
   await page.screenshot({ path: "/tmp/gridiron-unstacked.png" });
   expect(errors).toEqual([]);
 });
+
+test("CTF carrier keeps the flag behind Rock Shield and Shadow Step controls", async ({
+  page,
+}) => {
+  const errors = [];
+  page.on("pageerror", (e) => errors.push(e.message));
+  await start(page, "ctf");
+  for (const element of ["earth", "dark"]) {
+    await page.evaluate(async (element) => {
+      const { makeFighter } = await import("/src/combat.js");
+      const g = __arena.game,
+        p = g.map.cells[80];
+      Object.assign(g.player, makeFighter("player", element, 0, p.x, p.y));
+      g.player.spawn = { ...p, element };
+      g.fighters = [g.player, makeFighter("attacker", "air", 1, p.x + 40, p.y)];
+      g.flags[1].carrier = g.player.id;
+      g.flags[1].dropped = false;
+    }, element);
+    await expect(page.locator("#utility-name")).toHaveText(
+      element === "earth" ? "Rock shield" : "Shadow step",
+    );
+    await page.locator("#utility-btn").hover();
+    await page.mouse.down();
+    await expect
+      .poll(() =>
+        page.evaluate(() => {
+          const a = __arena.game.player;
+          return a.shield > 0 || a.dodge > 0;
+        }),
+      )
+      .toBe(true);
+    const protectedHit = await page.evaluate(() => {
+      const g = __arena.game;
+      g.damage(g.fighters[1], g.player, 4);
+      return { alive: g.player.alive, carrier: g.flags[1].carrier };
+    });
+    expect(protectedHit).toEqual({ alive: true, carrier: "player" });
+    await page.mouse.up();
+    const exposedHit = await page.evaluate(() => {
+      const g = __arena.game;
+      g.damage(g.fighters[1], g.player, 4);
+      return {
+        alive: g.player.alive,
+        carrier: g.flags[1].carrier,
+        dropped: g.flags[1].dropped,
+      };
+    });
+    expect(exposedHit).toEqual({ alive: false, carrier: null, dropped: true });
+  }
+  expect(errors).toEqual([]);
+});

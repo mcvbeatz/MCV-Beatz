@@ -1,4 +1,10 @@
-# Elemental — The Colosseum · v0.52.2
+# Elemental — The Colosseum · v0.53.0
+
+## v0.53.0 Capture the Flag defenses and tactics
+
+- Carrier detonation now happens only after damage passes Shadow Step and Rock Shield. Fully absorbed hits and successful dodges retain the flag. Shield overflow causes an immediate drop; an exact shield break exposes the carrier to the next hit. Shadow Step retains its normal one-hit dodge and Light counter.
+- Both AI teams assign a runner, home defender and supporting attackers. Attackers pressure vulnerable flag defenders, switch to stealing when the flag is exposed, and screen nearby threats for allied carriers. Stolen home flags still take recovery priority. AI melee checks the actual friendly strike arc rather than refusing to fight because an unrelated ally is closer.
+- Maze routes are committed between decisions, vary with weighted corridor choices, avoid recent approaches and teammates’ routes, and steer runners away from visible threats. They use the shared walkable graph and replan after displacement or a stall. Route history survives respawns.
 
 ## v0.52.2 Restore original Light and Dark
 

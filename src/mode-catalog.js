@@ -128,7 +128,7 @@ export const MODES = {
       ],
       [
         "Protect home",
-        "Your flag must be at home to score. Touch a dropped friendly flag to return it. Any attack on a flag carrier makes them explode, drop the flag and wait to respawn—even if shielded.",
+        "Your flag must be at home to score. Touch a dropped friendly flag to return it. A hit that gets through Rock Shield or Shadow Step makes a flag carrier explode, drop the flag and wait to respawn. An absorbed or dodged hit keeps the flag safe.",
         "⌂",
       ],
       [

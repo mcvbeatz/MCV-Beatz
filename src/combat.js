@@ -1,3 +1,4 @@
+import { ctfObjective, ctfWaypoint } from "./ctf-ai.js";
 import {
   initializeZombies,
   separateZombies,
@@ -1263,7 +1264,6 @@ export class Combat {
       deathTerrain,
     );
     if (zombieHit !== null) return zombieHit;
-    if (amount > 0 && ctfCarrierHit(this, a, b)) return b.maxHp;
     if (b.dodge > 0 && !a.parts.includes("light")) {
       b.dodge = 0;
       this.cue("dodge", b, "#b8a1df");
@@ -1331,6 +1331,8 @@ export class Combat {
         this.cue("shatter", b, "#b79669");
       }
     }
+    // Only damage that passes Shadow Step and Rock Shield detonates a carrier.
+    if (hit > 0 && ctfCarrierHit(this, a, b)) return b.maxHp;
     if (amount > 0) gridironHit(this, a, b);
     b.hp = Math.max(0, b.hp - hit);
     if (hit > 0) {
@@ -2304,7 +2306,7 @@ export class Combat {
   safeAttack(a, target, kind = "melee", form = activeForm(a)) {
     if (!target) return false;
     if (!this.friendlyFire) return true;
-    if (this.mode === "gridiron" && kind === "melee") {
+    if (["gridiron", "ctf"].includes(this.mode) && kind === "melee") {
       // A teammate behind us is not in the strike arc. Still protect allies
       // who would actually be hit, both when winding up and resolving a strike.
       return !this.fighters.some(
@@ -2805,7 +2807,10 @@ export class Combat {
       distance(a, b) +
       b.hp * 0.3 -
       (allies.some((c) => c.hp < 60 && distance(c, b) < 110) ? 90 : 0);
-    const target = enemies.sort((b, c) => score(b) - score(c))[0];
+    const ctfGoal = this.mode === "ctf" ? this.flagObjective(a) : null;
+    const target =
+      enemies.find((b) => b.id === a.ctfTarget) ||
+      enemies.sort((b, c) => score(b) - score(c))[0];
     const patient = this.healingTarget(a);
     if (
       a.element === "sanctuary" &&
@@ -2823,8 +2828,9 @@ export class Combat {
       if (target.prisonHp <= 0 && distance(a, target) <= 245)
         this.utility(a, true, "terraformer");
     }
-    const tactical = this.aiTactic(a, target);
-    const route = tactical || this.aiMobility(a, target, patient);
+    const tactical = ctfGoal ? null : this.aiTactic(a, target);
+    const route =
+      tactical || (ctfGoal ? null : this.aiMobility(a, target, patient));
     if (route) {
       const direction = tactical
         ? this.aiRoute(a, route)
@@ -2936,12 +2942,15 @@ export class Combat {
         dy += nx * side * 2;
       }
     }
-    const objective = this.flagObjective(a);
+    const objective = ctfGoal || this.flagObjective(a);
     if (objective) {
       dx = distance(a, objective) > 10 ? objective.x - a.x : 0;
       dy = distance(a, objective) > 10 ? objective.y - a.y : 0;
     }
-    if (
+    if (ctfGoal) {
+      const waypoint = ctfWaypoint(this, a, ctfGoal);
+      this.move(a, waypoint.x - a.x, waypoint.y - a.y, dt);
+    } else if (
       this.map &&
       this.map.kind !== "corruption" &&
       (objective || target) &&
@@ -2949,7 +2958,9 @@ export class Combat {
     )
       this.moveToward(a, objective || target, dt);
     else this.move(a, dx, dy, dt);
-    if (a.shield && a.shieldTime > 0.8) this.utility(a, false);
+    const carryingFlag =
+      this.mode === "ctf" && this.flags.some((f) => f.carrier === a.id);
+    if (a.shield && a.shieldTime > 0.8 && !carryingFlag) this.utility(a, false);
     a.aiTimer -= dt;
     if (a.aiTimer > 0) return;
     a.aiTimer = 0.18 + this.random() * 0.16;
@@ -3981,27 +3992,7 @@ export class Combat {
       );
     }
     if (this.mode !== "ctf" || a.echo) return null;
-    const own = this.flags[a.team],
-      enemy = this.flags[1 - a.team];
-    if (enemy.carrier === a.id) return own.dropped ? own : own.home;
-    const thief = this.fighters.find(
-      (b) => b.id === own.carrier && b.alive && inWorld(b),
-    );
-    if (thief) return thief;
-    if (own.dropped) return own;
-    const squad = this.fighters.filter((b) => b.team === a.team && !b.echo);
-    const defender = squad[squad.length - 1] === a;
-    if (defender) {
-      const intruder = this.enemies(a)
-        .filter((b) => distance(b, own.home) < 190)
-        .sort((b, c) => distance(b, own.home) - distance(c, own.home))[0];
-      return (
-        intruder || { x: own.home.x + (a.team === 0 ? 65 : -65), y: own.home.y }
-      );
-    }
-    return enemy.carrier
-      ? this.fighters.find((b) => b.id === enemy.carrier)
-      : enemy;
+    return ctfObjective(this, a);
   }
   celebrate(ids) {
     this.audioEvents.length = 0;

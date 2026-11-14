@@ -47,15 +47,13 @@ test("CTF is always four versus four in a distinct connected evergreen maze", ()
   for (const a of g.fighters)
     for (const flag of g.flags) assert.ok(g.map.path(a, flag).length);
 });
-test("any hit on a CTF carrier defeats them even through a shield and drops the flag", () => {
+test("an unprotected hit on a CTF carrier defeats them and drops the flag", () => {
   const g = new Combat({ mode: "ctf", element: "earth" }),
     a = g.player,
     b = g.fighters[1];
   Object.assign(a, g.map.cells[80]);
   Object.assign(b, { x: a.x + 40, y: a.y });
   g.flags[1].carrier = a.id;
-  a.shield = 1;
-  a.shieldHp = 65;
   g.damage(b, a, 1);
   assert.equal(a.alive, false);
   assert.equal(g.flags[1].carrier, null);
