@@ -7,14 +7,17 @@ async function ready(page) {
       JSON.stringify({ music: 0.4, sfx: 0, orientation: "landscape" }),
     );
   });
+  const requests = [];
+  page.on("request", (r) => requests.push(r.url()));
   await page.goto("/");
   await page.waitForFunction(() => window.__app?.screen === "home");
   await page.locator('[data-screen="play"]').click();
   await expect
     .poll(() => page.evaluate(() => !!__app.sound.menuSource))
     .toBe(true);
+  expect(requests.some((url) => url.includes("/music/solace2.mp3"))).toBe(true);
 }
-test("Solace loops at the audio-buffer boundary, with no added silent samples or playback restart", async ({
+test("Solace2 loops at the audio-buffer boundary, with no added silent samples or playback restart", async ({
   page,
 }) => {
   await ready(page);

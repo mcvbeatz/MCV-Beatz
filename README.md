@@ -1,4 +1,11 @@
-# Fusion Throwdown · v0.55.1
+# Fusion Throwdown · v0.55.2
+
+## v0.55.2 Uploaded menu and ice audio
+
+- Solace2 replaces the menu soundtrack at its original speed, using the existing seamless audio-buffer loop and independent music volume control.
+- Selection replaces the synthesized menu click. The exact uploaded recording is preloaded, plays at its original pitch without extra reverb, respects SFX volume/mute and retains a four-voice limit during rapid selection.
+- Ice Spike accompanies Icicle Burst volleys for both Ice and Abyssal. Its recording uses the spatial combat mixer, a 0.6-second audio retrigger limit and at most two overlapping clips; projectile cadence and damage are unchanged. Blocked or released abilities stay silent, and pause/results stop battle sounds.
+- Menu cross-dissolves now last 400ms (previously 240ms); the older-browser fade lasts 350ms. Reduced-motion settings still disable animation.
 
 ## v0.55.1 Sharper menus, dissolves and string clicks
 

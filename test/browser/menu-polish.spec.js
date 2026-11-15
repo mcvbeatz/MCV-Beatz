@@ -96,55 +96,52 @@ for (const variant of ["fallback", "reduced"])
       ),
     ).toBe(0);
   });
-test("String click is high pitched, has a short reverberant tail, and limits overlapping voices", async ({
+test("Selection recording plays unchanged, limits rapid clicks, and honors mute", async ({
   page,
 }) => {
   await ready(page);
-  const rendered = await page.evaluate(async () => {
-    const { MenuClickSfx, menuStringBuffer } = await import("/src/menu-sfx.js");
-    const context = new OfflineAudioContext(2, 48000, 48000);
-    const string = menuStringBuffer(context).getChannelData(0);
-    // The dominant autocorrelation peak is a high-register string period.
-    let best = -Infinity,
-      lag = 0;
-    for (let n = 20; n < 60; n++) {
-      let score = 0;
-      for (let i = 240; i < 2400; i++) score += string[i] * string[i + n];
-      if (score > best) {
-        best = score;
-        lag = n;
-      }
+  await page.locator('[data-screen="settings"]').click();
+  const result = await page.evaluate(async () => {
+    const { SELECTION_URL } = await import("/src/menu-sfx.js");
+    const sfx = __app.sound.menuSfx,
+      context = __app.sound.context;
+    const loaded = await sfx.ready;
+    const expected = await context.decodeAudioData(
+      await (await fetch(SELECTION_URL)).arrayBuffer(),
+    );
+    let error = 0;
+    for (let c = 0; c < expected.numberOfChannels; c++) {
+      const a = expected.getChannelData(c),
+        b = sfx.buffer.getChannelData(c);
+      for (let i = 0; i < a.length; i++)
+        error = Math.max(error, Math.abs(a[i] - b[i]));
     }
-    const sfx = new MenuClickSfx(context, 1);
-    sfx.play();
-    const audio = await context.startRendering(),
-      data = audio.getChannelData(0);
-    const rms = (start, end) =>
-      Math.sqrt(
-        data.slice(start * 48000, end * 48000).reduce((s, v) => s + v * v, 0) /
-          ((end - start) * 48000),
-      );
-    const burst = new MenuClickSfx(new AudioContext(), 0.6);
-    for (let i = 0; i < 20; i++) burst.play();
-    const voices = burst.voices.size;
-    burst.volume(0);
+    sfx.stop();
+    for (let i = 0; i < 20; i++) sfx.play();
+    const voices = sfx.voices.size;
+    const unchanged = [...sfx.voices].every(
+      (v) =>
+        v.buffer === sfx.buffer &&
+        v.playbackRate.value === 1 &&
+        v.detune.value === 0,
+    );
+    __app.sound.volume("sfx", 0);
     return {
-      pitch: 48000 / lag,
-      attack: rms(0.005, 0.06),
-      tail: rms(0.2, 0.3),
-      late: rms(0.6, 0.9),
-      peak: data.reduce((m, v) => Math.max(m, Math.abs(v)), 0),
+      loaded,
+      error,
+      unchanged,
       voices,
-      muted: burst.voices.size,
+      muted: sfx.voices.size,
+      duration: expected.duration,
+      silent: sfx.play() === false,
     };
   });
-  expect(rendered.pitch).toBeGreaterThan(1000);
-  expect(rendered.pitch).toBeLessThan(2000);
-  expect(rendered.attack).toBeGreaterThan(0.001);
-  expect(rendered.tail).toBeGreaterThan(0.000001);
-  expect(rendered.tail).toBeLessThan(rendered.attack);
-  expect(rendered.late).toBe(0);
-  expect(rendered.peak).toBeLessThan(0.3);
-  expect(rendered.voices).toBeLessThanOrEqual(4);
-  expect(rendered.muted).toBe(0);
+  expect(result.loaded).toBe(true);
+  expect(result.error).toBe(0);
+  expect(result.unchanged).toBe(true);
+  expect(result.duration).toBeGreaterThan(2.8);
+  expect(result.duration).toBeLessThan(3);
+  expect(result.voices).toBe(4);
+  expect(result.muted).toBe(0);
+  expect(result.silent).toBe(true);
 });

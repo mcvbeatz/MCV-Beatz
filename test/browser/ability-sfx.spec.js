@@ -38,7 +38,7 @@ test("all uploaded effects decode and play through the SFX mixer", async ({
   });
   expect(result.ready).toBe(true);
   expect(result.loadErrors).toEqual([]);
-  expect(result.clips).toHaveLength(14);
+  expect(result.clips).toHaveLength(15);
   for (const clip of result.clips) {
     expect(clip.played).toBe(true);
     expect(clip.correct).toBe(true);
@@ -132,4 +132,51 @@ test("deciding a winner stops active battle effects and drains pending sounds du
   await expect
     .poll(() => page.evaluate(() => __app.sound.track.paused))
     .toBe(false);
+});
+
+test("Icicle Burst uses Ice Spike for Ice and Abyssal with bounded sustained playback", async ({
+  page,
+}) => {
+  await page.goto("/");
+  await page.waitForFunction(() => window.__app?.screen === "home");
+  await page.locator('[data-screen="play"]').click();
+  const results = await page.evaluate(async () => {
+    const { Combat } = await import("/src/combat.js");
+    const { RECORDED_SFX } = await import("/src/combat-sfx.js");
+    const sound = __app.sound;
+    await sound.sfx.ready;
+    const expected = await sound.context.decodeAudioData(
+      await (await fetch(RECORDED_SFX.icicle)).arrayBuffer(),
+    );
+    const results = [];
+    for (const element of ["ice", "abyssal"]) {
+      sound.sfx.stop();
+      sound.sfx.last.clear();
+      const g = new Combat({ element, mode: "duel", mapId: "classic" });
+      g.startCharge(g.player);
+      g.updateIcicles(g.player, 0.1);
+      sound.combat(g, true);
+      const voice = [...sound.sfx.voices].find((v) => v.sfxKind === "icicle");
+      for (let i = 0; i < 30; i++) sound.sfx.play("icicle");
+      results.push({
+        element,
+        played: !!voice,
+        buffer: voice?.buffer === sound.sfx.buffers.get("icicle"),
+        duration: voice?.buffer.duration,
+        expected: expected.duration,
+        voices: sound.sfx.voices.size,
+      });
+      sound.combat(g, false);
+      results.at(-1).stopped = sound.sfx.voices.size;
+    }
+    return results;
+  });
+  for (const result of results) {
+    expect(result.played).toBe(true);
+    expect(result.buffer).toBe(true);
+    expect(result.duration).toBe(result.expected);
+    expect(result.duration).toBeGreaterThan(1.6);
+    expect(result.voices).toBeLessThanOrEqual(2);
+    expect(result.stopped).toBe(0);
+  }
 });

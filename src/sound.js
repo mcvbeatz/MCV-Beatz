@@ -1,5 +1,5 @@
 import { BattlePlaylist, TRACK_URLS } from "./music-catalog.js";
-import { MenuClickSfx } from "./menu-sfx.js";
+import { MenuClickSfx, prepareSelectionRecording } from "./menu-sfx.js";
 import { CombatSfx } from "./combat-sfx.js";
 const SCENE_TRACKS = {
   corruption: "no-escape",
@@ -12,6 +12,7 @@ const clamp = (n) => Math.max(0, Math.min(1, Number(n) || 0));
 export class Soundtrack {
   constructor(settings) {
     this.settings = settings;
+    prepareSelectionRecording().catch(() => {});
     this.context = null;
     this.music = null;
     this.scene = null;
@@ -45,6 +46,7 @@ export class Soundtrack {
         this.music.gain.value = this.settings.music;
       }
       this.sfx ||= new CombatSfx(this.context, this.settings.sfx);
+      this.menuSfx ||= new MenuClickSfx(this.context, this.settings.sfx);
       this.playBlocked = false;
       this.sync();
     } catch {}
@@ -128,7 +130,7 @@ export class Soundtrack {
   prepareMenu() {
     if (!this.context || this.menuBuffer || this.menuLoading) return;
     this.menuLoading = fetch(
-      new URL("./assets/music/solace.mp3", import.meta.url).href,
+      new URL("./assets/music/solace2.mp3", import.meta.url).href,
     )
       .then((response) => {
         if (!response.ok) throw new Error("Menu music could not load");
@@ -175,6 +177,7 @@ export class Soundtrack {
     source.start(0, this.menuOffset);
   }
   sync() {
+    if (document.hidden) this.menuSfx?.stop();
     if (
       this.paused ||
       document.hidden ||

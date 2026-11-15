@@ -527,13 +527,13 @@ body[data-screen="setup"] .element-option.selected {
 
 /* Menus cross-dissolve without moving controls or delaying gameplay. */
 ::view-transition-group(root) {
-  animation-duration: 240ms;
+  animation-duration: 400ms;
 }
 ::view-transition-old(root) {
-  animation: menu-dissolve-out 240ms ease both;
+  animation: menu-dissolve-out 400ms ease both;
 }
 ::view-transition-new(root) {
-  animation: menu-dissolve-in 240ms ease both;
+  animation: menu-dissolve-in 400ms ease both;
 }
 ::view-transition {
   pointer-events: none;

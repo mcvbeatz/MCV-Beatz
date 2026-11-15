@@ -1,5 +1,6 @@
 // Short synthesized melee cues and preloaded recordings share the SFX mixer.
 export const RECORDED_SFX = {
+  icicle: new URL("./assets/sfx/ice-spike.mp3", import.meta.url).href,
   "rock-shield": new URL("./assets/sfx/rock-shield.mp3", import.meta.url).href,
   death: new URL("./assets/sfx/death.mp3", import.meta.url).href,
   gravity: new URL("./assets/sfx/gravity.mp3", import.meta.url).href,
@@ -150,13 +151,15 @@ export class CombatSfx {
       return false;
     const now = this.context.currentTime,
       interval =
-        kind === "heal"
-          ? 0.65
-          : RECORDED_SFX[kind]
-            ? 0.15
-            : kind === "clash"
-              ? 0.08
-              : 0.045;
+        kind === "icicle"
+          ? 0.6
+          : kind === "heal"
+            ? 0.65
+            : RECORDED_SFX[kind]
+              ? 0.15
+              : kind === "clash"
+                ? 0.08
+                : 0.045;
     if (
       now - (this.last.get(kind) ?? -Infinity) < interval ||
       (RECORDED_SFX[kind] &&
@@ -186,7 +189,7 @@ export class CombatSfx {
     level.gain.value =
       Math.max(0, Math.min(1, gain)) *
       (RECORDED_SFX[kind] ? 0.55 : kind === "swing" ? 0.55 : 0.85) *
-      (kind === "heal" ? 0.5 : 1) *
+      (kind === "heal" ? 0.5 : kind === "icicle" ? 0.65 : 1) *
       (1 + variation);
     panner.pan.value = Math.max(-0.75, Math.min(0.75, pan));
     source.connect(level);

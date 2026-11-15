@@ -19,7 +19,7 @@ export function createMenuDissolve() {
         if (node) {
           node.getAnimations().forEach((a) => a.cancel());
           node.animate([{ opacity: 0.2 }, { opacity: 1 }], {
-            duration: 200,
+            duration: 350,
             easing: "ease-out",
           });
         }

@@ -202,3 +202,24 @@ test("match results clear queued combat audio and reject late sound events", () 
     assert.deepEqual(sounds(g), []);
   }
 });
+
+test("Icicle sounds follow fired volleys for Ice and Abyssal, not release or blocked attempts", () => {
+  for (const element of ["ice", "abyssal"]) {
+    const g = duel(element),
+      a = g.player;
+    assert.ok(g.startCharge(a));
+    g.updateIcicles(a, 0.1);
+    assert.deepEqual(sounds(g), ["icicle"]);
+    g.updateIcicles(a, 0.05);
+    assert.deepEqual(sounds(g), []);
+    g.updateIcicles(a, 0.05);
+    assert.deepEqual(sounds(g), ["icicle"]);
+    g.releaseCharge(a);
+    g.updateIcicles(a, 0.2);
+    assert.deepEqual(sounds(g), []);
+    assert.ok(g.startCharge(a));
+    a.prisonHp = 10;
+    g.updateIcicles(a, 0.2);
+    assert.deepEqual(sounds(g), []);
+  }
+});

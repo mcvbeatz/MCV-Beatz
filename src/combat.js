@@ -3123,6 +3123,7 @@ export class Combat {
           life: ICICLE_RANGE / ICICLE_SPEED,
         }),
       );
+      this.emitSound("icicle", a);
       this.animateCast(a);
       a.reveal = 0.3;
       a.icicleTimer = ICICLE_INTERVAL;
