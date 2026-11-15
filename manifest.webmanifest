@@ -1,13 +1,13 @@
 {
   "id": "./",
-  "name": "Elemental — The Colosseum",
-  "short_name": "Elemental",
+  "name": "Fusion Throwdown",
+  "short_name": "Fusion Throwdown",
   "start_url": "./",
   "scope": "./",
   "display": "fullscreen",
   "orientation": "any",
-  "background_color": "#101719",
-  "theme_color": "#101719",
+  "background_color": "#102b30",
+  "theme_color": "#102b30",
   "icons": [
     {
       "src": "icon.svg",
