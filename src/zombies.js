@@ -164,7 +164,8 @@ export function beginZombiesFrame(g, dt) {
   g.fighters = g.fighters.filter((a) => !a.zombieEnemy || a.alive);
   refreshZombieTeams(g);
   buildCrowdGrid(g);
-  g.zombies.credit += dt;
+  if (g.time < g.zombieSpawnResumeAt) g.zombies.credit = 0;
+  else g.zombies.credit += dt;
   while (g.zombies.credit >= 5 - 1e-9) {
     g.zombies.credit -= 5;
     for (let i = 0; i < Math.min(100, g.zombies.rate); i++)

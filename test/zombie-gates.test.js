@@ -29,7 +29,7 @@ test("All six Zombies rooms have reachable reusable switches, including start an
   const s = pull(g, 0);
   assert.equal(s.state, "locked");
   assert.equal(s.blastAt, 60);
-  assert.equal(s.unlockAt, 67);
+  assert.equal(s.unlockAt, 120);
   assert.equal(pullZombieGate(g, g.player, s), false);
 });
 test("Boss-room lock suppresses early batches without banking extra spawns", () => {
@@ -39,6 +39,8 @@ test("Boss-room lock suppresses early batches without banking extra spawns", () 
   beginZombiesFrame(g, 15);
   assert.equal(g.zombies.spawned, 0);
   assert.equal(g.zombies.credit, 0);
+  g.time = 60;
+  updateZombieGates(g);
   g.time = 67;
   updateZombieGates(g);
   beginZombiesFrame(g, 5);
@@ -56,46 +58,91 @@ test("After spreading across the dungeon, neither direct nor fallback spawn slot
   }
   g.time = 60;
   updateZombieGates(g);
-  for (let i = 0; i < 60; i++)
-    assert.equal(zombieSpawnBlocked(g, spawnZombie(g)), false);
+  for (let i = 0; i < 60; i++) assert.equal(spawnZombie(g), null);
+  g.time = 67;
+  for (let i = 0; i < 60; i++) assert.ok(spawnZombie(g));
 });
-test("At sixty seconds the blast kills every Fire in that room only, then holds spawns for exactly seven seconds", () => {
+test("Blast clears Fire in every room, corridors and portals, with seven seconds of global spawn suppression", () => {
   const g = game();
-  const inside = spawnZombie(g),
-    outside = spawnZombie(g),
+  const enemies = g.map.rooms.map((r) => {
+    const a = spawnZombie(g);
+    Object.assign(a, { x: r.x + r.w / 2, y: r.y + r.h / 2 });
+    return a;
+  });
+  const corridor = spawnZombie(g),
     hidden = spawnZombie(g);
-  Object.assign(outside, { x: 400, y: 1700 });
+  const edge = g.zombieEdges.find((p) => zombieRoomAt(g, p) < 0);
+  assert.ok(edge);
+  Object.assign(corridor, edge);
   hidden.transit = {};
+  enemies.push(corridor, hidden);
   const gate = pull(g, 4),
     hp = g.player.hp;
   g.time = 59.999;
   updateZombieGates(g);
-  assert.ok(inside.alive);
+  assert.ok(enemies.every((a) => a.alive));
   g.time = 60;
   beginZombiesFrame(g, 0);
-  assert.equal(inside.alive, false);
-  assert.equal(outside.alive, true);
-  assert.equal(hidden.alive, true);
+  assert.ok(enemies.every((a) => !a.alive));
+  assert.ok(g.fighters.filter((a) => a.team === 0).every((a) => a.alive));
   assert.equal(g.player.hp, hp);
-  assert.equal(gate.state, "escape");
-  assert.equal(g.zombies.kills, 1);
-  assert.equal(g.player.kills, 1);
-  assert.equal(g.healthDrops.length, 1);
-  assert.equal(g.healthDrops[0].bornAt, 60);
+  assert.equal(gate.state, "overheated");
+  assert.equal(g.zombies.kills, enemies.length);
+  assert.equal(g.player.kills, enemies.length);
+  assert.equal(g.healthDrops.length, enemies.length);
   updateZombieGates(g);
-  assert.equal(g.zombies.kills, 1);
-  g.time = 66.999;
-  updateZombieGates(g);
-  assert.ok(zombieSpawnBlocked(g, gate));
-  assert.equal(spawnZombie(g), null);
+  assert.equal(g.zombies.kills, enemies.length);
+  // Both spawn stages, every room and corridor are held, with no banked waves.
+  for (const rate of [1, 50, 100]) {
+    g.zombies.rate = rate;
+    for (const time of [60, 63, 66.999]) {
+      g.time = time;
+      beginZombiesFrame(g, 5);
+      for (const p of g.zombieEdges) assert.ok(zombieSpawnBlocked(g, p));
+      assert.equal(spawnZombie(g), null);
+      assert.equal(g.zombies.credit, 0);
+    }
+  }
   g.time = 67;
   updateZombieGates(g);
-  assert.equal(gate.state, "ready");
+  assert.equal(gate.state, "overheated");
   assert.equal(zombieSpawnBlocked(g, gate), false);
   assert.ok(spawnZombie(g));
+  assert.equal(pullZombieGate(g, g.player, gate), false);
+  g.time = 119.999;
+  updateZombieGates(g);
+  assert.equal(pullZombieGate(g, g.player, gate), false);
+  g.time = 120;
+  updateZombieGates(g);
+  assert.equal(gate.state, "ready");
   assert.ok(pullZombieGate(g, g.player, gate));
-  assert.equal(gate.blastAt, 127);
-  assert.equal(gate.unlockAt, 134);
+  assert.equal(gate.blastAt, 180);
+  assert.equal(gate.unlockAt, 240);
+});
+test("Overlapping blasts extend the global escape window and retain separate switch cooldowns", () => {
+  const g = game(),
+    first = pull(g, 0);
+  g.time = 5;
+  const second = pull(g, 1);
+  g.time = 60;
+  beginZombiesFrame(g, 0);
+  assert.equal(g.zombieSpawnResumeAt, 67);
+  g.time = 65;
+  beginZombiesFrame(g, 5);
+  assert.equal(g.zombieSpawnResumeAt, 72);
+  assert.equal(first.unlockAt, 120);
+  assert.equal(second.unlockAt, 125);
+  g.time = 67;
+  assert.equal(spawnZombie(g), null);
+  // A fresh room remains usable during the escape window.
+  const third = pull(g, 2);
+  assert.equal(third.blastAt, 127);
+  g.time = 72;
+  assert.ok(spawnZombie(g));
+  g.time = 120;
+  updateZombieGates(g);
+  assert.equal(first.state, "ready");
+  assert.equal(second.state, "overheated");
 });
 test("Switches cannot be extended, remotely pulled or activated while felled, paused by countdown, or off-field", () => {
   const g = game(),
@@ -130,7 +177,7 @@ test("Independent room timers keep gates nonblocking and respect finished matche
   pull(g, 1);
   g.time = 60;
   updateZombieGates(g);
-  assert.equal(g.zombieGates[0].state, "escape");
+  assert.equal(g.zombieGates[0].state, "overheated");
   assert.equal(g.zombieGates[1].state, "locked");
   assert.equal(JSON.stringify(g.map.shapes), shapes);
   g.finished = true;

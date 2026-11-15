@@ -1,4 +1,10 @@
-# Elemental — The Colosseum · v0.54.0
+# Elemental — The Colosseum · v0.54.1
+
+## v0.54.1 Map-wide electric blasts
+
+- Zombies gate blasts now defeat all Fire enemies across the map, including other rooms, corridors and portal travelers. Ice teammates remain safe.
+- Each blast pauses every Fire spawn for seven seconds, without banking missed batches. Overlapping blasts extend the global pause.
+- Used switches glow orange, vent heat and display a 60-second cooldown measured from the blast. Other room switches remain usable. The initial 60-second room spawn lock is unchanged.
 
 ## v0.54.0 Reusable Zombies room gates
 

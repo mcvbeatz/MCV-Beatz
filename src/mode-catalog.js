@@ -60,7 +60,7 @@ export const MODES = {
       ],
       [
         "Electric room gates",
-        "Each room has a reusable switch. Stand nearby and tap its lever or press E. It blocks spawns in that room for 60 seconds, then blasts every Fire elemental inside. The room stays spawn-free for 7 more seconds before its switch resets. Existing enemies can still enter; corridors remain open.",
+        "Each room has a reusable switch. Stand nearby and tap its lever or press E. It blocks spawns in that room for 60 seconds, then blasts every Fire elemental across the entire map. All Fire spawns pause for 7 seconds. The used switch overheats for 60 seconds after the blast; move to another room while it cools. Existing enemies can still enter; corridors remain open.",
         "ϟ",
       ],
       [

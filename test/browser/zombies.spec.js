@@ -207,7 +207,7 @@ test("Gridiron Pass button and teammate taps launch forward passes", async ({
   }
 });
 
-test("Electric gate lever supports touch and keyboard, blasts its room, and resets after the escape window", async ({
+test("Electric gate lever supports touch and keyboard, blasts across rooms, pauses spawns, and remains overheated for one minute", async ({
   page,
 }) => {
   const errors = [];
@@ -238,27 +238,51 @@ test("Electric gate lever supports touch and keyboard, blasts its room, and rese
     const { spawnZombie } = await import("/src/zombies.js");
     const { updateZombieGates } = await import("/src/zombie-gates.js");
     const g = __arena.game,
-      z = spawnZombie(g);
+      z = spawnZombie(g),
+      outside = spawnZombie(g);
     Object.assign(z, { x: 450, y: 1700 });
     g.time = 60;
     updateZombieGates(g);
     return {
       alive: z.alive,
+      outsideAlive: outside.alive,
+      spawnsPaused: spawnZombie(g) === null,
       state: g.zombieGates[0].state,
       playerAlive: g.player.alive,
     };
   });
-  expect(blast).toEqual({ alive: false, state: "escape", playerAlive: true });
+  expect(blast).toEqual({
+    alive: false,
+    outsideAlive: false,
+    spawnsPaused: true,
+    state: "overheated",
+    playerAlive: true,
+  });
   await expect(page.locator("#arena-hint")).toContainText("7s");
   await page.evaluate(async () => {
     const g = __arena.game;
     g.time = 67;
     (await import("/src/zombie-gates.js")).updateZombieGates(g);
   });
+  await expect(page.locator("#arena-hint")).toContainText("OVERHEATING · 53s");
+  await page.screenshot({ path: "/tmp/zombies-overheated-gate.png" });
+  await page.keyboard.press("e");
+  expect(await page.evaluate(() => __arena.game.zombieGates[0].state)).toBe(
+    "overheated",
+  );
+  expect(
+    await page.evaluate(
+      async () => !!(await import("/src/zombies.js")).spawnZombie(__arena.game),
+    ),
+  ).toBe(true);
+  await page.evaluate(async () => {
+    __arena.game.time = 120;
+    (await import("/src/zombie-gates.js")).updateZombieGates(__arena.game);
+  });
   await expect(page.locator("#arena-hint")).toContainText("ELECTRIC GATE");
   await page.keyboard.press("e");
   expect(await page.evaluate(() => __arena.game.zombieGates[0].blastAt)).toBe(
-    127,
+    180,
   );
   expect(errors).toEqual([]);
 });
