@@ -1,4 +1,11 @@
-# Elemental — The Colosseum · v0.54.1
+# Fusion Throwdown · v0.55.0
+
+## v0.55.0 Fusion Throwdown menu makeover
+
+- Renamed the game to Fusion Throwdown in the menu branding, browser title and installable app name. Existing save keys, account data, game modes and navigation destinations are unchanged.
+- Uses the supplied concept artwork directly: its logo is framed above live, gold-edged icon buttons, and its elemental champions fill the landscape showcase. Portrait puts the champions above a full-width menu; compact and rotated phones retain reachable controls.
+- Carried the deep teal, warm gold, illustrated icons and stone-temple backdrop into battle categories, mode lists, tutorials, settings, accounts, leaderboards and setup. Gameplay rendering and character sprites remain unchanged.
+- Original concept artwork is retained at `public/menu/fusion-throwdown-concept.jpg`; CSS/SVG frame it without embedding the concept's fictional menu labels into navigation.
 
 ## v0.54.1 Map-wide electric blasts
 

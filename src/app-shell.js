@@ -54,7 +54,7 @@ export function createApp(api) {
     request = 0;
   const root = document.createElement("section");
   root.id = "app-shell";
-  root.innerHTML = `<header class="shell-header"><button id="shell-back" aria-label="Back to home">← Back</button><div><span class="shell-wordmark">◇ ELEMENTAL</span><span id="shell-title">THE COLOSSEUM</span></div><button id="shell-account">Guest</button></header><main id="shell-content"></main><div id="intro-screen" hidden><video id="logo-video" playsinline muted preload="auto" aria-label="Opening logo video"></video><button id="intro-play" hidden>Play intro</button><button id="intro-skip">Skip intro →</button></div>`;
+  root.innerHTML = `<div class="menu-scenery" aria-hidden="true"><div class="concept-art"></div></div><header class="shell-header"><button id="shell-back" aria-label="Back to home">← Back</button><div><span class="shell-wordmark">◇ FUSION THROWDOWN</span><span id="shell-title">CHOOSE YOUR NEXT FORM</span></div><button id="shell-account">Guest</button></header><main id="shell-content"></main><div id="intro-screen" hidden><video id="logo-video" playsinline muted preload="auto" aria-label="Opening logo video"></video><button id="intro-play" hidden>Play intro</button><button id="intro-skip">Skip intro →</button></div>`;
   document.getElementById("orientation-root").prepend(root);
   const dialog = document.createElement("dialog");
   dialog.id = "slides-dialog";
@@ -97,7 +97,7 @@ export function createApp(api) {
     $("shell-back").hidden = next === "home";
     $("shell-title").textContent =
       {
-        home: "THE COLOSSEUM",
+        home: "CHOOSE YOUR NEXT FORM",
         play: "PLAY",
         "team-battles": "TEAM BATTLES",
         "solo-battles": "SOLO BATTLES",
@@ -119,7 +119,7 @@ export function createApp(api) {
     setScreen(next);
     const c = $("shell-content");
     if (next === "home")
-      c.innerHTML = `<section class="home-hero"><span class="eyebrow">THE COLOSSEUM · v0.54.1</span><h1>Power is elemental.</h1><p>Choose your arena. Find your next form.</p><div class="home-elements" aria-label="Light, Dark, Water, Air, Earth and Fire">${Object.keys(
+      c.innerHTML = `<section class="home-hero"><h1 class="fusion-logo"><svg viewBox="0 0 470 232" aria-hidden="true"><defs><clipPath id="menu-logo-frame"><rect width="470" height="232" /></clipPath></defs><image href="menu/fusion-throwdown-concept.jpg" width="1280" height="720" clip-path="url(#menu-logo-frame)" /></svg><span>Fusion Throwdown</span></h1><p>Choose your arena. Find your next form.</p></section><section class="home-showcase" aria-label="Elemental champions and their fusion possibilities"><div class="showcase-caption"><span class="eyebrow">SIX ORIGINS. ENDLESS POSSIBILITIES.</span><div class="home-elements" aria-label="Light, Dark, Water, Air, Earth and Fire">${Object.keys(
         ELEMENTS,
       )
         .map(
@@ -128,7 +128,20 @@ export function createApp(api) {
         )
         .join(
           "",
-        )}</div></section><nav class="home-menu"><button data-screen="play"><strong>Play</strong><span>Enter the colosseum →</span></button><button data-screen="practice"><strong>Practice</strong><span>Learn. Experiment. Improve.</span></button><button data-screen="leaderboard"><strong>Leaderboard</strong><span>Compare your records</span></button><button data-screen="account"><strong>My Account</strong><span>Sign in & view stats</span></button><button data-screen="settings"><strong>Settings</strong><span>Sound & orientation</span></button></nav><p class="shell-note">Single-player battles with adaptive AI. Online multiplayer comes later.</p>`;
+        )}</div></div></section><nav class="home-menu" aria-label="Main menu">${[
+        ["play", "Play", "Enter the colosseum", "strike"],
+        ["practice", "Practice", "Learn. Experiment. Improve.", "practice"],
+        ["leaderboard", "Leaderboard", "Compare your records", "trophy"],
+        ["account", "My Account", "Sign in & view stats", "account"],
+        ["settings", "Settings", "Sound & orientation", "settings"],
+      ]
+        .map(
+          ([target, label, description, symbol]) =>
+            `<button data-screen="${target}"><span class="menu-icon">${icon(symbol)}</span><span class="menu-copy"><strong>${label}</strong><small>${description}</small></span><span class="menu-chevron" aria-hidden="true">›</span></button>`,
+        )
+        .join(
+          "",
+        )}</nav><p class="shell-note">Single-player battles with adaptive AI. Online multiplayer comes later.</p>`;
     else if (next === "play") {
       category = "play";
       c.innerHTML = `<div class="screen-intro"><h1>Choose your battles.</h1><p>Find your team. Face the arena alone. Or let Quick Match decide.</p></div><nav class="battle-categories"><button data-screen="team-battles"><strong>Team Battles</strong><span>Fight and survive together →</span></button><button data-screen="solo-battles"><strong>Solo Battles</strong><span>Test yourself in solo battles →</span></button><button id="quick-match"><strong>Quick Match</strong><span>A random Team or Solo mode →</span></button></nav>`;
@@ -142,6 +155,39 @@ export function createApp(api) {
     else if (next === "settings") renderSettings();
     else if (next === "account") renderAccount();
     else if (next === "leaderboard") renderLeaderboard();
+    const menuSymbols = {
+      "team-battles": "team",
+      "solo-battles": "strike",
+      play: "strike",
+      practice: "practice",
+      leaderboard: "trophy",
+      account: "account",
+      settings: "settings",
+      tutorial: "book",
+      elements: "fusion",
+    };
+    c.querySelectorAll(
+      ".battle-categories button,.mode-card > button:first-child,.tutorial-menu > button",
+    ).forEach((button) => {
+      const symbol =
+        menuSymbols[button.dataset.screen] ||
+        (button.id === "quick-match"
+          ? "random"
+          : next === "tutorial"
+            ? "book"
+            : "strike");
+      button.classList.add("illustrated-menu-button");
+      button.insertAdjacentHTML(
+        "afterbegin",
+        `<i class="menu-icon">${icon(symbol)}</i>`,
+      );
+    });
+    const intro = c.querySelector(".screen-intro");
+    if (intro)
+      intro.insertAdjacentHTML(
+        "afterbegin",
+        `<div class="intro-emblem" aria-hidden="true">${icon(menuSymbols[next] || "fusion")}</div>`,
+      );
     c.querySelectorAll("[data-screen]").forEach(
       (b) =>
         (b.onclick = () => {
@@ -661,7 +707,7 @@ export function createApp(api) {
     applyOrientation();
     setScreen("loading");
     $("shell-content").innerHTML =
-      '<div class="home-hero"><span class="shell-wordmark">◇ ELEMENTAL</span><p>Opening the colosseum…</p></div>';
+      '<div class="home-hero"><span class="shell-wordmark">◇ FUSION THROWDOWN</span><p>Opening the colosseum…</p></div>';
     let config = {};
     try {
       const response = await fetch(
