@@ -23,7 +23,6 @@ await page.evaluate(async () => {
 const modes = [
   "boss",
   "ctf",
-  "domination",
   "gauntlet",
   "gauntlet-team",
   "roulette",
@@ -86,12 +85,7 @@ for (const [i, mode] of modes.entries()) {
       g.corrupt(g.fighters[1]);
       g.player.hp = 1;
     }
-    if (mode === "domination") {
-      g.flags[2].progress = 6;
-      g.flags[2].capturing = 0;
-      g.player.x = g.flags[2].x;
-      g.player.y = g.flags[2].y;
-    }
+
     if (mode === "ctf") {
       g.player.x = g.flags[1].x;
       g.player.y = g.flags[1].y;

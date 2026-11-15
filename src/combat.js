@@ -428,6 +428,7 @@ export class Combat {
     mapId,
     enemyElement,
   } = {}) {
+    if (mode === "domination") mode = "duel"; // Retired mode: old callers fall back safely.
     this.random = random;
     this.time = 0;
     this.audioEvents = [];
@@ -500,27 +501,14 @@ export class Combat {
     this.deathUsed = new Set();
     this.rebirthUsed = new Set();
     this.springUsed = new Set();
-    this.friendlyFire = ![
-      "corruption",
-      "boss",
-      "domination",
-      "dungeon",
-    ].includes(mode);
+    this.friendlyFire = !["corruption", "boss", "dungeon"].includes(mode);
     this.fusionEnabled = !["ctf", "corruption", "boss", "roulette"].includes(
       mode,
     );
     this.timeLimit =
       mode === "corruption"
         ? 120
-        : [
-              "ctf",
-              "tdm",
-              "war",
-              "domination",
-              "rush",
-              "roulette",
-              "ffa",
-            ].includes(mode)
+        : ["ctf", "tdm", "war", "rush", "roulette", "ffa"].includes(mode)
           ? 180
           : null;
     this.respawnDelay = [
@@ -528,7 +516,6 @@ export class Combat {
       "tdm",
       "war",
       "corruption",
-      "domination",
       "rush",
       "roulette",
       "ffa",
@@ -546,16 +533,6 @@ export class Combat {
             dropped: false,
           }))
         : [];
-    if (mode === "domination")
-      this.flags = [0, 1, 2, 3].map((i) => ({
-        team: i < 2 ? 0 : 1,
-        x: i < 2 ? 285 : 739,
-        y: i % 2 ? 470 : 230,
-        home: { x: i < 2 ? 285 : 739, y: i % 2 ? 470 : 230 },
-        progress: 0,
-        capturing: null,
-        contested: false,
-      }));
     this.finishReason = null;
     this.events = [];
     this.effects = [];
@@ -572,7 +549,7 @@ export class Combat {
     const n =
         mode === "war"
           ? Math.max(3, Math.min(5, Math.floor(size) || 3))
-          : ["team", "ctf", "tdm", "domination", "rush"].includes(mode)
+          : ["team", "ctf", "tdm", "rush"].includes(mode)
             ? Math.max(
                 mode === "rush" ? 3 : 2,
                 Math.min(4, Math.floor(size) || 2),
@@ -2366,17 +2343,6 @@ export class Combat {
     return true;
   }
   aiProgress(a) {
-    // Holding a capture point is useful progress, not an idle combat loop.
-    if (
-      this.mode === "domination" &&
-      this.flags.some(
-        (f) => f.team !== a.team && !f.contested && distance(a, f) <= 42,
-      )
-    ) {
-      a.aiStalled = 0;
-      a.aiProgressSample = null;
-      return;
-    }
     if (this.time < (a.aiProgressAt || 0)) return;
     a.aiProgressAt = this.time + 1;
     const previous = a.aiProgressSample;
@@ -3610,7 +3576,6 @@ export class Combat {
     updateGridiron(this);
     updateRace(this);
     this.updateFlags();
-    this.updateDomination(dt);
     updateWar(this, dt);
     updateDungeon(this);
     updateZombies(this);
@@ -3859,33 +3824,6 @@ export class Combat {
       else if (!a.charging && !a.abilityCd) this.startCharge(a, "light");
     }
   }
-  updateDomination(dt) {
-    if (this.mode !== "domination") return;
-    const living = this.fighters.filter(
-      (a) => a.alive && !a.echo && inWorld(a),
-    );
-    for (const flag of this.flags) {
-      // Score the elapsed interval for its existing owner before changing hands.
-      this.scores[flag.team] += dt;
-      const nearby = living.filter((a) => distance(a, flag) <= 42);
-      const attackers = nearby.filter((a) => a.team !== flag.team);
-      const defenders = nearby.filter((a) => a.team === flag.team);
-      flag.contested = attackers.length > 0 && defenders.length > 0;
-      flag.capturing = attackers.length ? 1 - flag.team : null;
-      if (flag.contested) continue;
-      if (!attackers.length) {
-        flag.progress = Math.max(0, flag.progress - dt);
-        continue;
-      }
-      flag.progress += dt * 2 ** (attackers.length - 1);
-      if (flag.progress >= 10 - 1e-9) {
-        flag.team = 1 - flag.team;
-        flag.progress = 0;
-        flag.capturing = null;
-        this.cue("revive", flag, flag.team === 0 ? "#82d7eb" : "#ed947d");
-      }
-    }
-  }
   respawn(a) {
     if (!a.spawn || a.echo) return false;
     const raceState = raceSnapshot(this, a);
@@ -3973,26 +3911,6 @@ export class Combat {
     }
   }
   flagObjective(a) {
-    if (this.mode === "domination" && !a.echo) {
-      const threatened = this.flags.filter(
-        (f) => f.team === a.team && f.progress > 0,
-      );
-      const candidates = threatened.length
-        ? threatened
-        : this.flags.filter((f) => f.team !== a.team);
-      const allies = this.fighters.filter(
-        (b) => b !== a && b.alive && b.team === a.team && !b.echo,
-      );
-      return (
-        candidates.sort(
-          (b, c) =>
-            distance(a, b) +
-            allies.filter((f) => distance(f, b) < 70).length * 90 -
-            (distance(a, c) +
-              allies.filter((f) => distance(f, c) < 70).length * 90),
-        )[0] || this.flags[0]
-      );
-    }
     if (this.mode !== "ctf" || a.echo) return null;
     return ctfObjective(this, a);
   }
@@ -4092,14 +4010,6 @@ export class Combat {
         : "defeat";
       this.finishReason = `Light survival: ${lights.map(label).join(", ")} (${Math.min(longest, 120).toFixed(1)}s). Dark infections: ${darkWinners.map(label).join(", ")} (${high})`;
       return true;
-    }
-    if (this.mode === "domination") {
-      if (this.time < this.timeLimit) return false;
-      const diff = this.scores[0] - this.scores[1];
-      return this.finish(
-        Math.abs(diff) < 0.001 ? null : diff > 0 ? 0 : 1,
-        "Flag-control time decided the match",
-      );
     }
     if (this.mode === "ctf") {
       const winner = this.scores.findIndex((score) => score >= 3);

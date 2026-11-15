@@ -13,6 +13,10 @@ async function start(page, mode, element) {
   await page.locator("#begin-btn").click();
   await page.evaluate(() => {
     const g = __arena.game;
+    // Fixed classic arena: these coordinate tests predate shuffled maps.
+    g.map = null;
+    g.mapId = "classic";
+    g.countdown = 0;
     g.ai = () => {};
     g.update = () => {};
     g.portals.portals = [];
@@ -68,9 +72,10 @@ test("Play has ordered Team/Solo lists, native scrolling and Quick Match across 
     "war",
     "rush",
     "boss",
-    "domination",
     "gauntlet-team",
     "ctf",
+    "gridiron",
+    "zombies",
   ]);
   expect(
     await page
@@ -94,7 +99,14 @@ test("Play has ordered Team/Solo lists, native scrolling and Quick Match across 
     await page
       .locator("[data-launch]")
       .evaluateAll((es) => es.map((e) => e.dataset.launch)),
-  ).toEqual(["ffa", "roulette", "gauntlet", "corruption"]);
+  ).toEqual([
+    "turnpike",
+    "ffa",
+    "roulette",
+    "gauntlet",
+    "dungeon",
+    "corruption",
+  ]);
   await expect(page.locator('[data-launch="gauntlet"] strong')).toHaveText(
     "Solo Waves",
   );
@@ -259,7 +271,7 @@ test("element library opens only the chosen chapter; Controls uses distinct acti
   expect(symbols.map((s) => s.shape)).toEqual(expected);
   await page.evaluate(() => __app.show("tutorial"));
   await page.locator("#tutorial-elements").click();
-  await expect(page.locator("[data-chapter]")).toHaveCount(23);
+  await expect(page.locator("[data-chapter]")).toHaveCount(25);
   await page.locator('[data-chapter="lightning"]').click();
   await expect(page.locator("#slide-title")).toHaveText("Lightning");
   while (await page.locator("#slide-next").isEnabled()) {
@@ -456,9 +468,9 @@ test("rotated character pickers, chapter lists and chapter swipes remain usable 
   ).toBeGreaterThan(100);
   expect(await page.evaluate(() => __app.slidesOpen)).toBe(false);
   await page.locator('[data-chapter="lightning"]').tap();
-  await expect(page.locator("#slide-count")).toHaveText("1 / 4");
+  await expect(page.locator("#slide-count")).toHaveText("1 / 5");
   await swipe("#slide-card", "x");
-  await expect(page.locator("#slide-count")).toHaveText("2 / 4");
+  await expect(page.locator("#slide-count")).toHaveText("2 / 5");
   await page.locator("#slides-close").tap();
   await client.detach();
   await context.close();

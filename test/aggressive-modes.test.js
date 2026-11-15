@@ -138,8 +138,13 @@ test("AI boss hunts the closest healer first, retargets when felled, then hunts 
     assert.ok(g.strike(boss));
   }
 });
-test("Domination allied attacks, statuses, contact passives and Death never hurt teammates", () => {
-  const g = new Combat({ mode: "domination", size: 2, element: "light" }),
+test("Boss allied attacks, statuses, contact passives and Death never hurt teammates", () => {
+  const g = new Combat({
+      mode: "boss",
+      size: 2,
+      element: "light",
+      random: () => 0.99,
+    }),
     a = g.player,
     ally = g.fighters[2];
   Object.assign(ally, { x: a.x + 20, y: a.y });
@@ -164,21 +169,26 @@ test("Domination allied attacks, statuses, contact passives and Death never hurt
   g.updateHazards(0.02);
   assert.equal(ally.element, "divine");
 });
-test("Domination AI attacks through a closer ally while friendly-fire modes still decline", () => {
-  for (const mode of ["domination", "team"]) {
-    const g = new Combat({ mode, size: 2, element: "earth" }),
+test("Boss AI attacks through a closer ally while friendly-fire modes still decline", () => {
+  for (const mode of ["boss", "team"]) {
+    const g = new Combat({
+        mode,
+        size: 2,
+        element: "earth",
+        random: () => 0.99,
+      }),
       a = g.fighters[2],
       ally = g.player,
       enemy = g.fighters[1];
     Object.assign(a, makeFighter(a.id, "earth", 0, 500, 350));
     Object.assign(ally, { x: 510, y: 350 });
-    Object.assign(enemy, { x: 550, y: 350 });
+    Object.assign(enemy, { x: 550, y: 350, team: 1 });
     g.autoLock(a);
-    assert.equal(g.safeAttack(a, enemy), mode === "domination");
+    assert.equal(g.safeAttack(a, enemy), mode === "boss");
     g.ai(a, 0.02);
     assert.equal(
       g.pending.some((p) => p.who === a),
-      mode === "domination",
+      mode === "boss",
     );
   }
 });

@@ -157,15 +157,7 @@ export function ctfWaypoint(g, a, goal) {
 const occupiesFloor = (a) => a.alive && !a.ghost && !a.blink && inWorld(a);
 const contactPair = (a, b) =>
   a.team !== b.team && (a.parts.includes("fire") || b.parts.includes("fire"));
-const bodyGap = (a, b) => {
-  if (a.team !== b.team) return contactPair(a, b) ? 28 : 52;
-  // Teammates meeting head-on need room to pass in the maze's narrow lanes.
-  const opposite =
-    a.ctfHeading &&
-    b.ctfHeading &&
-    a.ctfHeading.x * b.ctfHeading.x + a.ctfHeading.y * b.ctfHeading.y < -0.3;
-  return opposite ? 48 : 66;
-};
+const bodyGap = (a, b) => (contactPair(a, b) ? 28 : 34);
 function away(g, a, b) {
   const d = distance(a, b);
   if (d > 0.01) return { x: (a.x - b.x) / d, y: (a.y - b.y) / d, d };
@@ -178,57 +170,43 @@ function away(g, a, b) {
 }
 export function ctfMove(g, a, goal, dt) {
   const waypoint = ctfWaypoint(g, a, goal);
-  let dx = waypoint.x - a.x,
+  const dx = waypoint.x - a.x,
     dy = waypoint.y - a.y;
-  const length = Math.hypot(dx, dy),
-    nx = dx / (length || 1),
-    ny = dy / (length || 1);
-  a.ctfHeading = { x: nx, y: ny };
-  dx /= Math.max(30, length);
-  dy /= Math.max(30, length);
-  // Fight from striking distance instead of aiming at the opponent's center.
-  if (
-    a.ctfTarget &&
-    goal.id === a.ctfTarget &&
-    distance(a, goal) < bodyGap(a, goal) + 7 &&
-    g.map.lineClear(a, goal)
-  )
-    dx = dy = 0;
-  for (const b of g.fighters) {
-    if (b === a || !occupiesFloor(b) || !g.map.lineClear(a, b)) continue;
-    const v = away(g, a, b),
-      clearance = bodyGap(a, b) + 22;
-    if (v.d >= clearance) continue;
-    // One teammate keeps the route while followers yield. Symmetric steering
-    // otherwise deadlocks two bots around the same narrow-corridor waypoint.
-    const leads =
-      b.team === a.team &&
-      b.id !== "player" &&
-      g.fighters.indexOf(a) < g.fighters.indexOf(b);
-    const pressure = ((clearance - v.d) / clearance) * (leads ? 0.15 : 3);
-    dx += v.x * pressure;
-    dy += v.y * pressure;
-    // Keep right when a peer blocks the corridor; opposite travel directions
-    // choose opposite sides, while followers give the leader room.
-    const ahead = -v.x * nx - v.y * ny;
-    if (a.team === b.team && length > 10 && ahead > 0.45) {
-      dx += ny * pressure * 0.65;
-      dy -= nx * pressure * 0.65;
-    }
-  }
-  g.move(a, dx, dy, dt);
+  const length = Math.max(30, Math.hypot(dx, dy));
+  // Fighters are pass-through. Do not impose a personal-space collision radius.
+  g.move(a, dx / length, dy / length, dt);
 }
 
-// Resolve the small overlaps left after every fighter has moved. Only bots
+// Resolve only persistent overlaps, beginning early enough to clear within a second. Only bots
 // yield: the player's position, immobilization, and maze walls remain intact.
 export function separateCTF(g, dt) {
   if (g.mode !== "ctf" || !g.map || !(dt > 0)) return;
   const living = g.fighters.filter(occupiesFloor);
+  g.ctfOverlaps ||= new Map();
+  const active = new Set(),
+    seen = new Set();
+  for (let i = 0; i < living.length; i++)
+    for (const b of living.slice(i + 1)) {
+      const a = living[i],
+        key = [a.id, b.id].sort().join(":");
+      const previous = g.ctfOverlaps.get(key) || 0;
+      if (
+        distance(a, b) >= (previous >= 0.4 ? bodyGap(a, b) : 24) ||
+        !g.map.lineClear(a, b)
+      )
+        continue;
+      seen.add(key);
+      const elapsed = previous + dt;
+      g.ctfOverlaps.set(key, elapsed);
+      if (elapsed >= 0.4) active.add(key);
+    }
+  for (const key of g.ctfOverlaps.keys())
+    if (!seen.has(key)) g.ctfOverlaps.delete(key);
   const budget = new Map(
     living.map((a) => [
       a,
       a.id !== "player" && a.prisonHp <= 0 && !g.isShocked(a)
-        ? Math.min(12, dt * 200)
+        ? Math.min(16, dt * 300)
         : 0,
     ]),
   );
@@ -266,7 +244,12 @@ export function separateCTF(g, dt) {
           b = living[j],
           v = away(g, a, b),
           overlap = bodyGap(a, b) - v.d;
-        if (overlap <= 0.01 || !g.map.lineClear(a, b)) continue;
+        if (
+          !active.has([a.id, b.id].sort().join(":")) ||
+          overlap <= 0.01 ||
+          !g.map.lineClear(a, b)
+        )
+          continue;
         const aMoves = budget.get(a) > 0,
           bMoves = budget.get(b) > 0;
         if (aMoves) nudge(a, b, v.x, v.y, overlap / (bMoves ? 2 : 1));

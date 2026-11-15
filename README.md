@@ -1,4 +1,11 @@
-# Elemental — The Colosseum · v0.53.1
+# Elemental — The Colosseum · v0.54.0
+
+## v0.54.0 Reusable Zombies room gates
+
+- Each Zombies room now has an electric lever. Approach and tap it (or press E) to prevent Fire spawns in that room for 60 seconds. The timed blast defeats all Fire inside that room, then keeps its spawns disabled for a seven-second escape window. The lever becomes reusable immediately afterward. Existing enemies can still enter; allies and corridors are unaffected.
+- Room timers, electric boundary indicators and a visible blast show the gate cycle. Spawn selection respects locks at both the boss-room and whole-map spawn stages, without banking blocked waves.
+- Removed Domination from game setup, Quick Match, tutorials and combat rules. Old mode requests fall back to Duel.
+- CTF fighters can cross through each other freely. Only sustained overlaps trigger a brief, wall-aware separation; bots do not treat players as movement barriers. Tests check that crowded, mobile bots separate within one second while preserving human control and maze routes.
 
 ## v0.53.1 Capture the Flag crowd spacing
 

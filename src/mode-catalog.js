@@ -59,6 +59,11 @@ export const MODES = {
         "♨",
       ],
       [
+        "Electric room gates",
+        "Each room has a reusable switch. Stand nearby and tap its lever or press E. It blocks spawns in that room for 60 seconds, then blasts every Fire elemental inside. The room stays spawn-free for 7 more seconds before its switch resets. Existing enemies can still enter; corridors remain open.",
+        "ϟ",
+      ],
+      [
         "Explore for abilities",
         "Each teammate can hold three extra abilities alongside Icicle Burst and Drain. Touch a labelled rune to collect it, then use its ability button beside Icicle Burst on Ice. All 17 pickups are unique across the team and stay yours for the run, including after Revival. No runes appear in the starting or boss room.",
         "+",
@@ -135,27 +140,6 @@ export const MODES = {
         "First to three",
         "First to three captures, or most captures after three minutes, wins. Tied time goes to sudden death: the next capture wins. Respawns take 10 seconds. Fusion is disabled; friendly fire is on.",
         "Ⅲ",
-      ],
-    ],
-  },
-  domination: {
-    name: "Domination",
-    tag: "Four flags · 3 minutes",
-    slides: [
-      [
-        "Capture and hold",
-        "Both teams start with two flags. Stand in an enemy flag ring for 10 seconds to capture it.",
-        "⚑ ⚑",
-      ],
-      [
-        "Bring backup",
-        "Each extra attacker doubles capture speed. A defender in the ring pauses capture. Abandoned progress drains.",
-        "↗",
-      ],
-      [
-        "Every second matters",
-        "Each owned flag scores one point per second. Highest total at three minutes wins. 10-second respawns; friendly fire is off.",
-        "◷",
       ],
     ],
   },
@@ -429,7 +413,6 @@ export const TEAM_MODES = [
   "war",
   "rush",
   "boss",
-  "domination",
   "gauntlet-team",
   "ctf",
   "gridiron",

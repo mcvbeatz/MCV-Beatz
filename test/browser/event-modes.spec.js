@@ -190,7 +190,7 @@ test("Gridiron unstacks a crowded midfield and both teams attack in the browser"
   });
   expect(result.hits[0]).toBeGreaterThan(3);
   expect(result.hits[1]).toBeGreaterThan(3);
-  expect(result.min).toBeGreaterThan(20);
+  expect(result.longestOverlap).toBeLessThanOrEqual(1);
   await page.screenshot({ path: "/tmp/gridiron-unstacked.png" });
   expect(errors).toEqual([]);
 });
@@ -264,20 +264,32 @@ test("CTF bots unstack beside the flag without pushing the human player or cross
       });
     // Keep everyone present to inspect the crowded flag approach, not a corpse.
     g.damage = () => 0;
-    for (let i = 0; i < 200; i++) Combat.prototype.update.call(g, 0.02);
+    const overlaps = new Map();
+    let longestOverlap = 0;
+    for (let tick = 0; tick < 200; tick++) {
+      Combat.prototype.update.call(g, 0.02);
+      for (let i = 0; i < g.fighters.length; i++) {
+        const a = g.fighters[i];
+        for (const b of g.fighters.slice(i + 1)) {
+          const key = `${a.id}:${b.id}`;
+          const duration =
+            distance(a, b) < 23 && g.map.lineClear(a, b)
+              ? (overlaps.get(key) || 0) + 0.02
+              : 0;
+          overlaps.set(key, duration);
+          longestOverlap = Math.max(longestOverlap, duration);
+        }
+      }
+    }
     return {
-      min: Math.min(
-        ...g.fighters.flatMap((a, i) =>
-          g.fighters.slice(i + 1).map((b) => distance(a, b)),
-        ),
-      ),
+      longestOverlap,
       walkable: g.fighters.every((a) => g.map.walkable(a)),
       humanMoved: distance(g.player, origin),
     };
   });
   expect(result.walkable).toBe(true);
   expect(result.humanMoved).toBe(0);
-  expect(result.min).toBeGreaterThan(43);
+  expect(result.longestOverlap).toBeLessThanOrEqual(1);
   await page.screenshot({ path: "/tmp/ctf-spacing.png" });
   expect(errors).toEqual([]);
 });

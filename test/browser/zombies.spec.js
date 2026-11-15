@@ -206,3 +206,70 @@ test("Gridiron Pass button and teammate taps launch forward passes", async ({
     expect(b.y + b.height).toBeLessThanOrEqual(height);
   }
 });
+
+test("Electric gate lever supports touch and keyboard, blasts its room, and resets after the escape window", async ({
+  page,
+}) => {
+  const errors = [];
+  page.on("pageerror", (e) => errors.push(e.message));
+  await start(page);
+  await page.evaluate(() => {
+    const g = __arena.game,
+      s = g.zombieGates[0];
+    Object.assign(g.player, { x: s.x, y: s.y + 70 });
+    g.fighters
+      .filter((a) => a !== g.player)
+      .forEach((a, i) => Object.assign(a, { x: 350 + i * 80, y: 1700 }));
+  });
+  await expect(page.locator("#arena-hint")).toContainText("ELECTRIC GATE");
+  const point = await page.evaluate(() => {
+    const s = __arena.game.zombieGates[0],
+      v = __arena.renderer.view;
+    return { x: s.x * v.scale + v.tx, y: (s.y - 25) * v.scale + v.ty };
+  });
+  const box = await page.locator("#game").boundingBox();
+  await page.mouse.click(box.x + point.x, box.y + point.y);
+  await expect
+    .poll(() => page.evaluate(() => __arena.game.zombieGates[0].state))
+    .toBe("locked");
+  await expect(page.locator("#arena-hint")).toContainText("60s");
+  await page.screenshot({ path: "/tmp/zombies-electric-gate.png" });
+  const blast = await page.evaluate(async () => {
+    const { spawnZombie } = await import("/src/zombies.js");
+    const { updateZombieGates } = await import("/src/zombie-gates.js");
+    const g = __arena.game,
+      z = spawnZombie(g);
+    Object.assign(z, { x: 450, y: 1700 });
+    g.time = 60;
+    updateZombieGates(g);
+    return {
+      alive: z.alive,
+      state: g.zombieGates[0].state,
+      playerAlive: g.player.alive,
+    };
+  });
+  expect(blast).toEqual({ alive: false, state: "escape", playerAlive: true });
+  await expect(page.locator("#arena-hint")).toContainText("7s");
+  await page.evaluate(async () => {
+    const g = __arena.game;
+    g.time = 67;
+    (await import("/src/zombie-gates.js")).updateZombieGates(g);
+  });
+  await expect(page.locator("#arena-hint")).toContainText("ELECTRIC GATE");
+  await page.keyboard.press("e");
+  expect(await page.evaluate(() => __arena.game.zombieGates[0].blastAt)).toBe(
+    127,
+  );
+  expect(errors).toEqual([]);
+});
+test("Domination is unavailable in menus and old mode requests fall back to Duel", async ({
+  page,
+}) => {
+  await page.goto("/?mode=duel");
+  await page.waitForFunction(() => window.__app?.screen === "setup");
+  expect(await page.locator('[data-mode="domination"]').count()).toBe(0);
+  await page.evaluate(() => __app.chooseMode("domination"));
+  await expect(page.locator("#setup-mode-title")).toHaveText("Duel");
+  await page.locator("#begin-btn").click();
+  expect(await page.evaluate(() => __arena.game.mode)).toBe("duel");
+});

@@ -698,23 +698,7 @@ export class Renderer {
       c.moveTo(flag.home.x, flag.home.y - 8);
       c.lineTo(flag.home.x, flag.home.y + 8);
       c.stroke();
-      if (game.mode === "domination") {
-        c.strokeStyle = flag.contested
-          ? "#ffffff"
-          : flag.capturing === game.player.team
-            ? "#75d8f3"
-            : "#f18e76";
-        c.lineWidth = 5;
-        c.beginPath();
-        c.arc(
-          flag.x,
-          flag.y,
-          42,
-          -Math.PI / 2,
-          -Math.PI / 2 + Math.PI * 2 * (flag.progress / 10),
-        );
-        c.stroke();
-      }
+
       const carrier = game.fighters.find((a) => a.id === flag.carrier);
       const x = (carrier?.x ?? flag.x) + (carrier ? 22 : 0),
         y = carrier?.y ?? flag.y;

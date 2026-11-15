@@ -73,12 +73,15 @@ test("app menus, account, settings and scrollable mode lists fit phones without 
     "war",
     "rush",
     "boss",
-    "domination",
     "gauntlet-team",
     "ctf",
+    "gridiron",
+    "zombies",
+    "turnpike",
     "ffa",
     "roulette",
     "gauntlet",
+    "dungeon",
     "corruption",
   ]);
   await context.close();

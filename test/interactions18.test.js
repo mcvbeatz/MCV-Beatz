@@ -159,7 +159,6 @@ test("Team Battles use the requested order", () => {
     "war",
     "rush",
     "boss",
-    "domination",
     "gauntlet-team",
     "ctf",
     "gridiron",

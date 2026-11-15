@@ -13,7 +13,6 @@ const modes = [
   "tdm",
   "ffa",
   "boss",
-  "domination",
   "rush",
   "roulette",
   "gauntlet",
@@ -200,7 +199,7 @@ for (const mapId of BATTLE_MAP_IDS) {
     assert.ok(g.revive(spirit, 1));
     assert.ok(g.map.walkable(fallen));
   });
-  test(`${mapId}: CTF captures and Domination capture timers work at map objectives`, () => {
+  test(`${mapId}: CTF captures work at map objectives`, () => {
     const g = new Combat({ mode: "ctf", mapId }),
       a = g.player;
     Object.assign(a, g.flags[1].home);
@@ -209,12 +208,5 @@ for (const mapId of BATTLE_MAP_IDS) {
     Object.assign(a, g.flags[0].home);
     g.updateFlags();
     assert.equal(g.scores[0], 1);
-    const d = new Combat({ mode: "domination", mapId });
-    d.fighters = [d.player];
-    Object.assign(d.player, d.flags[2]);
-    // Keep player team distinct from the target objective's owner.
-    d.player.team = 0;
-    tick(d, 11);
-    assert.equal(d.flags[2].team, 0);
   });
 }

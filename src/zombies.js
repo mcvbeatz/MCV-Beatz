@@ -1,3 +1,9 @@
+import {
+  initializeZombieGates,
+  updateZombieGates,
+  zombieSpawnBlocked,
+  drawZombieGates,
+} from "./zombie-gates.js";
 import { makeFighter, distance, inWorld } from "./combat.js";
 export const ZOMBIE_ABILITIES = [
   ["vog", "Vog", "smoke", "ability", 7],
@@ -71,6 +77,7 @@ export function initializeZombies(g, players) {
     };
   });
   g.zombieEdges = dungeonEdges(g.map);
+  initializeZombieGates(g);
   refreshZombieTeams(g);
 }
 export function refreshZombieTeams(g) {
@@ -109,10 +116,11 @@ export function spawnZombie(g) {
   }
   if (!g.zombieCrowd) buildCrowdGrid(g);
   // Choose an unoccupied perimeter slot when a batch enters the map.
-  const slots =
-    g.zombies.rate >= 50
-      ? g.zombieEdges
-      : g.zombieEdges.filter((e) => e.room === 4);
+  const slots = g.zombieEdges.filter(
+    (e) => (g.zombies.rate >= 50 || e.room === 4) && !zombieSpawnBlocked(g, e),
+  );
+  if (!slots.length) return null;
+  if (zombieSpawnBlocked(g, p)) p = slots[0];
   const start = Math.floor(g.random() * slots.length);
   let best = p,
     bestGap = -1;
@@ -151,6 +159,7 @@ export function spawnZombie(g) {
 }
 export function beginZombiesFrame(g, dt) {
   if (g.mode !== "zombies") return;
+  updateZombieGates(g);
   // Remove spent enemies, retaining fallen allies for Revival and scorekeeping.
   g.fighters = g.fighters.filter((a) => !a.zombieEnemy || a.alive);
   refreshZombieTeams(g);
@@ -158,7 +167,8 @@ export function beginZombiesFrame(g, dt) {
   g.zombies.credit += dt;
   while (g.zombies.credit >= 5 - 1e-9) {
     g.zombies.credit -= 5;
-    for (let i = 0; i < Math.min(100, g.zombies.rate); i++) spawnZombie(g);
+    for (let i = 0; i < Math.min(100, g.zombies.rate); i++)
+      if (!spawnZombie(g)) break;
   }
   for (const a of g.zombieTeams[1]) {
     a.zombieFar =
@@ -558,6 +568,7 @@ export function zombieAI(g, a, dt) {
 }
 export function drawZombies(c, g, t) {
   if (g.mode !== "zombies") return;
+  drawZombieGates(c, g, t);
   for (const d of g.zombieDrops) {
     if (d.owner) continue;
     const s = zombieAbility(d.id),

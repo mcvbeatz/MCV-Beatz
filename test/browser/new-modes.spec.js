@@ -68,44 +68,6 @@ test("Boss setup selects an origin and randomly assigns one boss among eight fig
   );
   await expect(page.locator("#round-mode")).toContainText("BOSS");
 });
-test("Domination exposes team sizes, capture progress and flag-control scoring", async ({
-  page,
-}) => {
-  await page.goto("/?mode=duel");
-  await page.waitForFunction(() => window.__app?.screen === "setup");
-  await page.evaluate(() => __app.chooseMode("domination"));
-  await expect(page.locator("#team-sizes")).toBeVisible();
-  await expect(page.locator("#friendly-fire-state")).toHaveText("OFF");
-  await page.locator('[data-size="4"]').click();
-  await page.locator("#begin-btn").click();
-  const state = await page.evaluate(() => {
-    const g = __arena.game;
-    g.update = () => {};
-    g.scores = [0, 0];
-    const f = g.flags[2];
-    g.player.x = f.x;
-    g.player.y = f.y;
-    g.updateDomination(5);
-    return {
-      flags: g.flags.length,
-      progress: f.progress,
-      count: g.fighters.length,
-    };
-  });
-  expect(state).toEqual({ flags: 4, progress: 5, count: 8 });
-  await expect(page.locator("#objective-score")).toHaveText(
-    "10 – 10 FLAG-SECONDS",
-  );
-  await page.evaluate(() => {
-    const g = __arena.game;
-    g.time = 180;
-    g.scores = [300, 200];
-    g.checkMatchEnd();
-  });
-  await expect(page.locator("#overlay-text")).toContainText(
-    "Flag-control time decided the match · 300 – 200",
-  );
-});
 test("Lightning HUD counts down a three-second recharge", async ({ page }) => {
   await page.goto("/?mode=duel");
   await page.waitForFunction(() => window.__app?.screen === "setup");
@@ -122,7 +84,7 @@ test("Lightning HUD counts down a three-second recharge", async ({ page }) => {
   await expect(page.locator("#ability-status")).toHaveText("3.0s");
 });
 
-for (const mode of ["corruption", "boss", "domination"]) {
+for (const mode of ["corruption", "boss"]) {
   test(`${mode} scores and controls fit a phone in portrait fallback and landscape`, async ({
     browser,
   }) => {
