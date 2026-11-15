@@ -125,9 +125,11 @@ test("Selection recording plays unchanged, limits rapid clicks, and honors mute"
         v.playbackRate.value === 1 &&
         v.detune.value === 0,
     );
+    const selectionGain = sfx.output.gain.value;
     __app.sound.volume("sfx", 0);
     return {
       loaded,
+      selectionGain,
       error,
       unchanged,
       voices,
@@ -137,6 +139,7 @@ test("Selection recording plays unchanged, limits rapid clicks, and honors mute"
     };
   });
   expect(result.loaded).toBe(true);
+  expect(result.selectionGain).toBeCloseTo(0.6 * 0.35 * 0.8, 4);
   expect(result.error).toBe(0);
   expect(result.unchanged).toBe(true);
   expect(result.duration).toBeGreaterThan(2.8);

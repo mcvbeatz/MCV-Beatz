@@ -134,7 +134,7 @@ test("deciding a winner stops active battle effects and drains pending sounds du
     .toBe(false);
 });
 
-test("Icicle Burst uses Ice Spike for Ice and Abyssal with bounded sustained playback", async ({
+test("Every Ice and Abyssal icicle starts Ice Spike, including sustained firing", async ({
   page,
 }) => {
   await page.goto("/");
@@ -157,9 +157,22 @@ test("Icicle Burst uses Ice Spike for Ice and Abyssal with bounded sustained pla
       g.updateIcicles(g.player, 0.1);
       sound.combat(g, true);
       const voice = [...sound.sfx.voices].find((v) => v.sfxKind === "icicle");
-      for (let i = 0; i < 30; i++) sound.sfx.play("icicle");
+      let accepted = 1;
+      const play = sound.sfx.play.bind(sound.sfx);
+      sound.sfx.play = (kind, options) => {
+        const result = play(kind, options);
+        if (kind === "icicle" && result) accepted++;
+        return result;
+      };
+      for (let i = 0; i < 40; i++) {
+        g.updateIcicles(g.player, 0.1);
+        sound.combat(g, true);
+      }
+      sound.sfx.play = play;
       results.push({
         element,
+        accepted,
+        projectiles: g.projectiles.length,
         played: !!voice,
         buffer: voice?.buffer === sound.sfx.buffers.get("icicle"),
         duration: voice?.buffer.duration,
@@ -176,7 +189,70 @@ test("Icicle Burst uses Ice Spike for Ice and Abyssal with bounded sustained pla
     expect(result.buffer).toBe(true);
     expect(result.duration).toBe(result.expected);
     expect(result.duration).toBeGreaterThan(1.6);
-    expect(result.voices).toBeLessThanOrEqual(2);
+    expect(result.projectiles).toBe(41);
+    expect(result.accepted).toBe(result.projectiles);
+    expect(result.voices).toBeLessThanOrEqual(32);
     expect(result.stopped).toBe(0);
   }
+});
+
+test("Simultaneous icicle casters never silence each other or compete with the normal effect slots", async ({
+  page,
+}) => {
+  await page.goto("/");
+  await page.waitForFunction(() => window.__app?.screen === "home");
+  await page.locator('[data-screen="play"]').click();
+  const result = await page.evaluate(async () => {
+    const { Combat, makeFighter } = await import("/src/combat.js");
+    const sound = __app.sound;
+    await sound.sfx.ready;
+    sound.sfx.stop();
+    sound.sfx.last.clear();
+    for (const kind of [
+      "fireball",
+      "flash",
+      "rock",
+      "heal",
+      "gravity",
+      "flood",
+      "lightning",
+      "token",
+    ])
+      sound.sfx.play(kind);
+    const g = new Combat({ element: "ice", mode: "duel", mapId: "classic" });
+    g.fighters = [
+      g.player,
+      makeFighter("ally", "abyssal", 0, g.player.x + 25, g.player.y),
+      makeFighter("enemy", "ice", 1, g.player.x + 80, g.player.y),
+    ];
+    for (const a of g.fighters) g.startCharge(a);
+    let accepted = 0;
+    const play = sound.sfx.play.bind(sound.sfx);
+    sound.sfx.play = (kind, options) => {
+      const result = play(kind, options);
+      if (kind === "icicle" && result) accepted++;
+      return result;
+    };
+    for (let frame = 0; frame < 20; frame++) {
+      for (const a of g.fighters) g.updateIcicles(a, 0.1);
+      sound.combat(g, true);
+    }
+    sound.sfx.play = play;
+    const result = {
+      accepted,
+      projectiles: g.projectiles.length,
+      regular: [...sound.sfx.voices].filter((v) => v.sfxKind !== "icicle")
+        .length,
+      ice: [...sound.sfx.voices].filter((v) => v.sfxKind === "icicle").length,
+    };
+    g.finished = true;
+    sound.combat(g, true);
+    result.stopped = sound.sfx.voices.size;
+    return result;
+  });
+  expect(result.projectiles).toBe(60);
+  expect(result.accepted).toBe(60);
+  expect(result.regular).toBe(8);
+  expect(result.ice).toBeLessThanOrEqual(32);
+  expect(result.stopped).toBe(0);
 });

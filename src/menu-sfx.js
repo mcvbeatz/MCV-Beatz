@@ -55,7 +55,7 @@ export class MenuClickSfx {
   volume(value) {
     this.level = Math.max(0, Math.min(1, Number(value) || 0));
     this.output.gain.setTargetAtTime(
-      this.level * 0.35,
+      this.level * 0.35 * 0.8,
       this.context.currentTime,
       0.008,
     );

@@ -1,4 +1,11 @@
-# Fusion Throwdown · v0.55.2
+# Fusion Throwdown · v0.55.3
+
+## v0.55.3 Sound for every icicle
+
+- Every fired Icicle Burst projectile now starts Ice Spike, including concurrent Ice and Abyssal casters. Removed the icicle audio retrigger delay and the two-clip rejection rule. A separate 32-voice pool retires old tails when full while admitting every new shot; the normal eight combat-effect slots remain available.
+- Replaced Solace2 with the latest uploaded MP3, retaining its seamless loop and normal playback speed.
+- Reduced Selection sound gain by exactly 20%, preserving the existing SFX slider, mute and rapid-click limits.
+- Browser checks count successful audio starts against actual projectile counts during sustained and simultaneous firing, including a full normal effect mixer.
 
 ## v0.55.2 Uploaded menu and ice audio
 

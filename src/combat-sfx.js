@@ -149,33 +149,40 @@ export class CombatSfx {
       this.context.state !== "running"
     )
       return false;
-    const now = this.context.currentTime,
-      interval =
-        kind === "icicle"
-          ? 0.6
-          : kind === "heal"
-            ? 0.65
-            : RECORDED_SFX[kind]
-              ? 0.15
-              : kind === "clash"
-                ? 0.08
-                : 0.045;
-    if (
-      now - (this.last.get(kind) ?? -Infinity) < interval ||
-      (RECORDED_SFX[kind] &&
-        [...this.voices].filter((v) => v.sfxKind === kind).length >= 2) ||
-      (kind === "swing" && this.voices.size >= 5)
-    )
-      return false;
-    if (this.voices.size >= 8) {
-      const replace =
-        RECORDED_SFX[kind] &&
-        [...this.voices].find((v) =>
-          ["swing", "slice", "impact"].includes(v.sfxKind),
-        );
-      if (!replace) return false;
-      replace.stop();
-      this.voices.delete(replace);
+    const now = this.context.currentTime;
+    if (kind === "icicle") {
+      // Every visual projectile must start its own recording, even when other
+      // casters or combat effects are sounding. Retire old tails, never a new shot.
+      const icicles = [...this.voices].filter((v) => v.sfxKind === "icicle");
+      if (icicles.length >= 32) {
+        icicles[0].stop();
+        this.voices.delete(icicles[0]);
+      }
+    } else {
+      const regular = [...this.voices].filter((v) => v.sfxKind !== "icicle");
+      const interval =
+        kind === "heal"
+          ? 0.65
+          : RECORDED_SFX[kind]
+            ? 0.15
+            : kind === "clash"
+              ? 0.08
+              : 0.045;
+      if (
+        now - (this.last.get(kind) ?? -Infinity) < interval ||
+        (RECORDED_SFX[kind] &&
+          regular.filter((v) => v.sfxKind === kind).length >= 2) ||
+        (kind === "swing" && regular.length >= 5)
+      )
+        return false;
+      if (regular.length >= 8) {
+        const replace =
+          RECORDED_SFX[kind] &&
+          regular.find((v) => ["swing", "slice", "impact"].includes(v.sfxKind));
+        if (!replace) return false;
+        replace.stop();
+        this.voices.delete(replace);
+      }
     }
     this.last.set(kind, now);
     const source = this.context.createBufferSource(),
