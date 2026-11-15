@@ -16,7 +16,7 @@
 .concept-art {
   position: absolute;
   inset: 0 0 0 -54%;
-  background: url("/menu/fusion-throwdown-concept.jpg") right center / cover
+  background: url("/menu/fusion-throwdown-hd.webp") right center / cover
     no-repeat;
 }
 .menu-scenery::after {
@@ -212,10 +212,6 @@ body[data-screen="home"] #shell-content {
     sans-serif;
   letter-spacing: 0.6px;
 }
-.home-menu small {
-  color: #c4d0c9;
-  font-size: 10px;
-}
 .menu-icon {
   display: inline-flex;
   flex: 0 0 auto;
@@ -397,9 +393,6 @@ body[data-screen="setup"] .element-option.selected {
   .home-menu strong {
     font-size: 22px;
   }
-  .home-menu small {
-    font-size: 9px;
-  }
   body[data-screen="home"] .shell-note {
     grid-column: 1;
     grid-row: 4;
@@ -457,9 +450,6 @@ body[data-screen="setup"] .element-option.selected {
   .home-menu strong {
     font-size: 19px;
   }
-  .home-menu small {
-    display: none;
-  }
   .menu-icon svg {
     width: 23px;
     height: 23px;
@@ -514,9 +504,6 @@ body[data-screen="setup"] .element-option.selected {
   .home-menu strong {
     font-size: 19px;
   }
-  .home-menu small {
-    display: none;
-  }
 }
 @media (prefers-reduced-motion: reduce) {
   #app-shell button {
@@ -535,5 +522,58 @@ body[data-screen="setup"] .element-option.selected {
   .settings-panel,
   .account-form {
     margin-left: 0;
+  }
+}
+
+/* Menus cross-dissolve without moving controls or delaying gameplay. */
+::view-transition-group(root) {
+  animation-duration: 240ms;
+}
+::view-transition-old(root) {
+  animation: menu-dissolve-out 240ms ease both;
+}
+::view-transition-new(root) {
+  animation: menu-dissolve-in 240ms ease both;
+}
+::view-transition {
+  pointer-events: none;
+}
+@keyframes menu-dissolve-out {
+  to {
+    opacity: 0;
+  }
+}
+@keyframes menu-dissolve-in {
+  from {
+    opacity: 0;
+  }
+}
+.home-menu .menu-copy {
+  gap: 0;
+}
+.home-menu strong {
+  color: #f5d48f;
+  font-size: clamp(23px, 2.6cqw, 33px);
+}
+@container app (orientation: portrait) {
+  .home-menu strong {
+    font-size: 26px;
+  }
+}
+@container app (max-height: 500px) and (orientation: landscape) {
+  .home-menu strong {
+    font-size: 22px;
+  }
+}
+@container app (max-height: 630px) and (orientation: portrait) {
+  .home-menu strong {
+    font-size: 23px;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  ::view-transition-group(root),
+  ::view-transition-old(root),
+  ::view-transition-new(root) {
+    animation: none;
   }
 }

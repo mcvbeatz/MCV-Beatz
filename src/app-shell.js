@@ -1,3 +1,4 @@
+import { createMenuDissolve } from "./menu-transition.js";
 import { musicScene } from "./music-catalog.js";
 import { icon } from "./icons.js";
 import { portraitMarkup, paintPortraits } from "./characters.js";
@@ -87,6 +88,7 @@ export function createApp(api) {
   document.querySelector(".setup-panel").append(change);
   change.onclick = () => show(category);
   function setScreen(next) {
+    if (next === "battle") dissolve.cancel();
     screen = next;
     document.body.dataset.screen = next;
     sound.setScene(
@@ -110,7 +112,16 @@ export function createApp(api) {
         setup: "BATTLE SETUP",
       }[next] || "THE ARENA";
   }
+  const dissolve = createMenuDissolve();
   function show(next) {
+    return dissolve(
+      () => renderScreen(next),
+      !["loading", "battle"].includes(screen) &&
+        next !== "battle" &&
+        next !== screen,
+    );
+  }
+  function renderScreen(next) {
     request++;
     if (next !== "battle" && api.started()) {
       api.pause();
@@ -119,7 +130,7 @@ export function createApp(api) {
     setScreen(next);
     const c = $("shell-content");
     if (next === "home")
-      c.innerHTML = `<section class="home-hero"><h1 class="fusion-logo"><svg viewBox="0 0 470 232" aria-hidden="true"><defs><clipPath id="menu-logo-frame"><rect width="470" height="232" /></clipPath></defs><image href="menu/fusion-throwdown-concept.jpg" width="1280" height="720" clip-path="url(#menu-logo-frame)" /></svg><span>Fusion Throwdown</span></h1><p>Choose your arena. Find your next form.</p></section><section class="home-showcase" aria-label="Elemental champions and their fusion possibilities"><div class="showcase-caption"><span class="eyebrow">SIX ORIGINS. ENDLESS POSSIBILITIES.</span><div class="home-elements" aria-label="Light, Dark, Water, Air, Earth and Fire">${Object.keys(
+      c.innerHTML = `<section class="home-hero"><h1 class="fusion-logo"><svg viewBox="0 0 470 232" aria-hidden="true"><defs><clipPath id="menu-logo-frame"><rect width="470" height="232" /></clipPath></defs><image href="menu/fusion-throwdown-hd.webp" width="1280" height="720" clip-path="url(#menu-logo-frame)" /></svg><span>Fusion Throwdown</span></h1><p>Choose your arena. Find your next form.</p></section><section class="home-showcase" aria-label="Elemental champions and their fusion possibilities"><div class="showcase-caption"><span class="eyebrow">SIX ORIGINS. ENDLESS POSSIBILITIES.</span><div class="home-elements" aria-label="Light, Dark, Water, Air, Earth and Fire">${Object.keys(
         ELEMENTS,
       )
         .map(
@@ -129,15 +140,15 @@ export function createApp(api) {
         .join(
           "",
         )}</div></div></section><nav class="home-menu" aria-label="Main menu">${[
-        ["play", "Play", "Enter the colosseum", "strike"],
-        ["practice", "Practice", "Learn. Experiment. Improve.", "practice"],
-        ["leaderboard", "Leaderboard", "Compare your records", "trophy"],
-        ["account", "My Account", "Sign in & view stats", "account"],
-        ["settings", "Settings", "Sound & orientation", "settings"],
+        ["play", "Play", "strike"],
+        ["practice", "Practice", "practice"],
+        ["leaderboard", "Leaderboard", "trophy"],
+        ["account", "My Account", "account"],
+        ["settings", "Settings", "settings"],
       ]
         .map(
-          ([target, label, description, symbol]) =>
-            `<button data-screen="${target}"><span class="menu-icon">${icon(symbol)}</span><span class="menu-copy"><strong>${label}</strong><small>${description}</small></span><span class="menu-chevron" aria-hidden="true">›</span></button>`,
+          ([target, label, symbol]) =>
+            `<button data-screen="${target}"><span class="menu-icon">${icon(symbol)}</span><span class="menu-copy"><strong>${label}</strong></span><span class="menu-chevron" aria-hidden="true">›</span></button>`,
         )
         .join(
           "",
@@ -254,6 +265,12 @@ export function createApp(api) {
     paintPortraits();
   }
   function chooseMode(id) {
+    return dissolve(
+      () => configureMode(id),
+      !["loading", "battle", "setup"].includes(screen),
+    );
+  }
+  function configureMode(id) {
     if (id === "random")
       id = PLAY_MODES[Math.floor(Math.random() * PLAY_MODES.length)];
     if (!MODES[id]) id = "duel";
@@ -413,7 +430,6 @@ export function createApp(api) {
         $(`${kind}-value`).textContent = `${e.target.value}%`;
         saveSettings();
       };
-    $("sfx-volume").onchange = () => sound.tone(320);
     $("orientation-setting").onchange = (e) => {
       settings.orientation = e.target.value;
       applyOrientation();
@@ -599,13 +615,27 @@ export function createApp(api) {
     passive: true,
   });
   document.addEventListener("keydown", () => sound.unlock());
+  document.addEventListener(
+    "click",
+    (event) => {
+      if (["battle", "loading"].includes(screen)) return;
+      const control = event.target.closest?.("button, a, input, select");
+      if (
+        !control ||
+        control.disabled ||
+        !control.closest("#app-shell, #app, #slides-dialog")
+      )
+        return;
+      sound.menuClick();
+    },
+    true,
+  );
   function start() {
     sound.setScene(musicScene("battle", api.game()), false, true);
     setScreen("battle");
     sound.unlock();
     matchTicket = account.startMatch(api.game().mode, category === "practice");
     $("save-status").textContent = "";
-    sound.tone(300);
   }
   function battleExit() {
     show("setup");

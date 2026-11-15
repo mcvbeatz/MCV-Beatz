@@ -1,4 +1,11 @@
-# Fusion Throwdown · v0.55.0
+# Fusion Throwdown · v0.55.1
+
+## v0.55.1 Sharper menus, dissolves and string clicks
+
+- Added a restored, sharper 1672×941 menu background in WebP (the previous concept was 1280×720). Both the scene and framed logo use the HD art; the original reference is retained.
+- Menu navigation cross-dissolves over 240ms, including battle setup. Rapid navigation supersedes stale destinations; entering battle cancels any pending dissolve. Older browsers fade in the destination, and reduced-motion preferences bypass animation.
+- Menu controls play a brief high-register plucked string with stereo reverb, slight pitch variation and at most four simultaneous voices. The existing SFX slider controls volume and mute independently of music; menu music continues through navigation.
+- Main-menu buttons now contain only their icons, larger gold labels and chevrons. Button names and destinations remain unchanged.
 
 ## v0.55.0 Fusion Throwdown menu makeover
 

@@ -63,6 +63,7 @@ test("Play has ordered Team/Solo lists, native scrolling and Quick Match across 
   await page.locator('[data-screen="play"]').click();
   await expect(page.locator(".battle-categories button")).toHaveCount(3);
   await page.locator('[data-screen="team-battles"]').click();
+  await expect(page.locator("[data-launch]")).toHaveCount(8);
   expect(
     await page
       .locator("[data-launch]")
@@ -95,6 +96,7 @@ test("Play has ordered Team/Solo lists, native scrolling and Quick Match across 
   await expect(page.locator('[data-launch="boss"]')).toHaveCount(1);
   await page.locator("#shell-back").click();
   await page.locator('[data-screen="solo-battles"]').click();
+  await expect(page.locator("[data-launch]")).toHaveCount(6);
   expect(
     await page
       .locator("[data-launch]")
@@ -120,10 +122,11 @@ test("Play has ordered Team/Solo lists, native scrolling and Quick Match across 
       Math.random = () => v;
     }, random);
     await page.locator("#quick-match").click();
+    await expect.poll(() => page.evaluate(() => __app.screen)).toBe("setup");
     await page.evaluate(() => (Math.random = window.savedRandom));
     expect(await page.evaluate(() => __arena.game.mode)).toBe(mode);
     await page.locator("#change-mode-btn").click();
-    expect(await page.evaluate(() => __app.screen)).toBe(group);
+    await expect.poll(() => page.evaluate(() => __app.screen)).toBe(group);
   }
 });
 test("Leave is prominent from battle start and returns to the same setup before and after victory", async ({

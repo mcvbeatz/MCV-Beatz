@@ -1,4 +1,5 @@
 import { BattlePlaylist, TRACK_URLS } from "./music-catalog.js";
+import { MenuClickSfx } from "./menu-sfx.js";
 import { CombatSfx } from "./combat-sfx.js";
 const SCENE_TRACKS = {
   corruption: "no-escape",
@@ -220,7 +221,10 @@ export class Soundtrack {
   }
   volume(kind, value) {
     this.settings[kind] = clamp(value);
-    if (kind === "sfx") this.sfx?.volume(this.settings.sfx);
+    if (kind === "sfx") {
+      this.sfx?.volume(this.settings.sfx);
+      this.menuSfx?.volume(this.settings.sfx);
+    }
     if (kind === "music" && this.music)
       this.music.gain.setTargetAtTime(
         this.settings.music,
@@ -251,6 +255,13 @@ export class Soundtrack {
         pan: (event.x - listener.x) / 700,
       });
     }
+  }
+  menuClick() {
+    if (!this.settings.sfx || document.hidden) return;
+    this.unlock();
+    if (!this.context) return;
+    this.menuSfx ||= new MenuClickSfx(this.context, this.settings.sfx);
+    this.menuSfx.play();
   }
   tone(frequency = 180) {
     if (!this.settings.sfx) return;
