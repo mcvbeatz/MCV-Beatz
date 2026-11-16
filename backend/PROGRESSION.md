@@ -54,7 +54,7 @@ Version 0 journals migrate to version 1. Malformed entries are rejected. Unreada
 
 ## Optional Supabase setup
 
-The checked-in `public/app-config.json` has no backend connection; guest/local progression is fully functional without one.
+The checked-in `public/app-config.json` points to the configured Supabase project using its public publishable key. The database scripts and Auth redirect settings must also be configured in that project. Guest/local progression remains fully functional without a backend.
 
 1. For a **new project**, configure authentication and run `backend/supabase.sql` using `backend/README.md`. Do not rerun the initial schema against an existing account database.
 2. For **both new and existing projects**, run **`backend/progression.sql`** in Supabase's SQL editor. It adds private `progression_matches` and `progression_preferences` tables and `save_progression_cosmetics`. It does not change/delete profiles, existing totals or leaderboard history.

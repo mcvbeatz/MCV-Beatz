@@ -269,6 +269,11 @@ test("configured logo video precedes Home and supports completion and autoplay f
 test("guest and unconfigured account views never show invented stats or usable sign-in", async ({
   page,
 }) => {
+  await page.route("**/app-config.json", (route) =>
+    route.fulfill({
+      json: { supabaseUrl: "", supabasePublishableKey: "", introVideo: "" },
+    }),
+  );
   await ready(page);
   await page.locator('[data-screen="account"]').click();
   await expect(page.locator(".progress-storage")).toContainText(
