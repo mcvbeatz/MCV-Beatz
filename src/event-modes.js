@@ -1,3 +1,4 @@
+import { trackObjective, trackLap } from "./match-statistics.js";
 import { makeFighter, recipe, ELEMENTS, distance } from "./combat.js";
 import { inWorld, segmentDistance } from "./portals.js";
 export const EXPLOSION_RADIUS = 150;
@@ -251,6 +252,9 @@ function updatePassFlight(g) {
     .filter((c) => c.gap < 26)
     .sort((a, b) => a.u - b.u || a.gap - b.gap);
   if (catches.length) {
+    const passer = g.fighters.find((a) => a.id === p.from);
+    if (passer && passer.team !== catches[0].a.team)
+      trackObjective(g, catches[0].a, "interceptions");
     ball.carrier = catches[0].a.id;
     ball.x = catches[0].a.x;
     ball.y = catches[0].a.y;
@@ -290,6 +294,8 @@ export function updateGridiron(g) {
   if (zone) {
     const team = 1 - zone.team;
     g.scores[team]++;
+    const scorer = carrier || g.fighters.find((a) => a.id === ball.lastCarrier);
+    if (scorer?.team === team) trackObjective(g, scorer, "touchdowns");
     if (g.suddenDeath) {
       g.finish(team, "Sudden-death touchdown");
       return;
@@ -314,6 +320,7 @@ export function updateGridiron(g) {
       lastCarrier: null,
       pass: null,
     });
+    g.emitSound("whistle", g.player);
     g.cue("heal", ball, "#f5d28b");
     return;
   }
@@ -684,6 +691,7 @@ export function updateRace(g) {
       a.raceNext++;
       if (a.raceNext > 16) {
         a.raceLaps++;
+        trackLap(g, a);
         a.raceNext = 1;
         g.cue("heal", a, "#f5e5aa");
       }

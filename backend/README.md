@@ -1,12 +1,13 @@
 # Hosted accounts and stats
 
-The game works without an account backend. Guest and Practice results are never written or queued. Until configured, account forms and the leaderboard clearly show that the service is unavailable.
+The game works without an account backend. Guest progression is saved privately on the device; guest and Practice results are never submitted to the public leaderboard. Practice does not earn progression. Until configured, account forms and the leaderboard clearly show that the service is unavailable.
 
 1. Create a Supabase project, enable email/password authentication and email confirmation, and configure an email sender for confirmation and password recovery.
 2. Run `supabase.sql` in its SQL editor. This creates public usernames/stats, private match history, row-level security, and an authenticated, idempotent result RPC. Back up an existing database before applying migrations; this file is for a new project.
 3. Set Site URL and allowed email redirect URL to `https://mcvbeatz.github.io/MCV-Beatz/` (also allow localhost for development).
 4. Put the project HTTPS URL and **publishable/anon key** in `public/app-config.json`. Never put a secret/service-role key in the game.
-5. Deploy. Test email verification, sign-in, recovery links, password update, sign-out, duplicate result submission, and isolation between two accounts.
+5. Run `progression.sql` to add private progression storage (also safe for existing accounts). See [PROGRESSION.md](PROGRESSION.md) for attribution, caps, migrations and account isolation.
+6. Deploy. Test email verification, sign-in, recovery links, password update, sign-out, duplicate result submission, and isolation between two accounts.
 
 Supabase Auth handles password hashing and recovery. The game never stores plaintext passwords; it only passes them to Auth over HTTPS and clears form fields. Session tokens use sessionStorage. Usernames and cumulative stats are public; email addresses and auth records are not exposed by the leaderboard.
 

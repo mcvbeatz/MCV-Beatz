@@ -1,3 +1,4 @@
+import { trackDamage } from "./match-statistics.js";
 import {
   initializeZombieGates,
   updateZombieGates,
@@ -212,6 +213,7 @@ export function zombieDamage(
     if ((b.zombieTicks[key] ?? -Infinity) > g.time) return 0;
     b.zombieTicks[key] = g.time + 1;
   }
+  trackDamage(g, a, b, Math.min(b.hp, 1));
   b.hp = Math.max(0, b.hp - 1);
   b.lastDamager = a;
   b.lastDamagedAt = g.time;

@@ -97,5 +97,5 @@ test("synthesized effects have distinct, finite, bounded audio with quiet tails"
     assert.ok(Math.abs(data.at(-1)) < 0.001);
     signatures.add(data.length + ":" + sum.toFixed(5));
   }
-  assert.equal(signatures.size, 5);
+  assert.equal(signatures.size, SFX_KINDS.length);
 });

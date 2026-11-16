@@ -861,6 +861,19 @@ export class Renderer {
       }
       const a = body.a;
       c.save();
+      if (a === game.player && a.alive && game.cosmeticAura) {
+        const colors = { gold: "#ffd16d", ice: "#87eaff", emerald: "#7be6a9" };
+        c.save();
+        c.globalAlpha = body.alpha * 0.55;
+        c.strokeStyle = colors[game.cosmeticAura] || "#ffd16d";
+        c.shadowColor = c.strokeStyle;
+        c.shadowBlur = 9;
+        c.lineWidth = 2;
+        c.beginPath();
+        c.ellipse(a.x, a.y + 6, 29, 12, 0, 0, Math.PI * 2);
+        c.stroke();
+        c.restore();
+      }
       const immersion = a.victory ? 0 : immersionFor(game, a);
       if (
         a.id === game.player.id &&

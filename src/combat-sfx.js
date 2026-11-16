@@ -16,7 +16,14 @@ export const RECORDED_SFX = {
   revival: new URL("./assets/sfx/revival.mp3", import.meta.url).href,
   rock: new URL("./assets/sfx/rock-formation.mp3", import.meta.url).href,
 };
-export const SFX_KINDS = ["swing", "slice", "impact", "clash", "token"];
+export const SFX_KINDS = [
+  "swing",
+  "slice",
+  "impact",
+  "clash",
+  "token",
+  "whistle",
+];
 const armed = new Set([
   "ice",
   "dark",
@@ -36,6 +43,7 @@ export const contactSound = (element) =>
   armed.has(element) ? "slice" : "impact";
 export function synthesizeSfx(kind, sampleRate = 44100, seed = 1) {
   const length = {
+    whistle: 0.48,
     swing: 0.18,
     slice: 0.19,
     impact: 0.2,
@@ -55,6 +63,15 @@ export function synthesizeSfx(kind, sampleRate = 44100, seed = 1) {
     low += 0.12 * (noise - low);
     const high = noise - low;
     let v = 0;
+    if (kind === "whistle") {
+      phase += (TAU * (2550 + 95 * Math.sin(TAU * 32 * t))) / sampleRate;
+      v =
+        (Math.sin(phase) * 0.23 +
+          Math.sin(phase * 1.21) * 0.08 +
+          high * 0.025) *
+        Math.min(1, t / 0.025) *
+        Math.min(1, (length - t) / 0.08);
+    }
     if (kind === "swing")
       v = (low * 0.85 + high * 0.08) * Math.sin(Math.PI * p) ** 1.8;
     if (kind === "slice")
@@ -150,7 +167,14 @@ export class CombatSfx {
     )
       return false;
     const now = this.context.currentTime;
-    if (kind === "icicle") {
+    if (kind === "whistle") {
+      // A new-round cue must remain audible even when the combat pool is full.
+      const regular = [...this.voices].filter((v) => v.sfxKind !== "icicle");
+      if (regular.length >= 8) {
+        regular[0].stop();
+        this.voices.delete(regular[0]);
+      }
+    } else if (kind === "icicle") {
       // Every visual projectile must start its own recording, even when other
       // casters or combat effects are sounding. Retire old tails, never a new shot.
       const icicles = [...this.voices].filter((v) => v.sfxKind === "icicle");

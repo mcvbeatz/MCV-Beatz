@@ -177,10 +177,27 @@ test("Gridiron unstacks a crowded midfield and both teams attack in the browser"
         hits[a.team]++;
       return value;
     };
-    for (let i = 0; i < 400; i++) Combat.prototype.update.call(g, 0.02);
+    const overlaps = new Map();
+    let longestOverlap = 0;
+    for (let i = 0; i < 400; i++) {
+      Combat.prototype.update.call(g, 0.02);
+      for (let j = 0; j < g.fighters.length; j++)
+        for (let k = j + 1; k < g.fighters.length; k++) {
+          const a = g.fighters[j],
+            b = g.fighters[k],
+            key = `${j}:${k}`;
+          const duration =
+            a.alive && b.alive && distance(a, b) < 12
+              ? (overlaps.get(key) || 0) + 0.02
+              : 0;
+          overlaps.set(key, duration);
+          longestOverlap = Math.max(longestOverlap, duration);
+        }
+    }
     const living = g.fighters.filter((a) => a.alive);
     return {
       hits,
+      longestOverlap,
       min: Math.min(
         ...living.flatMap((a, i) =>
           living.slice(i + 1).map((b) => distance(a, b)),

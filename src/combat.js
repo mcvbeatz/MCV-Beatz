@@ -1,3 +1,13 @@
+import {
+  beginStatistics,
+  trackTime,
+  trackDamage,
+  trackHealing,
+  trackElimination,
+  trackBoss,
+  trackFusion,
+  trackObjective,
+} from "./match-statistics.js";
 import { ctfObjective, ctfMove, separateCTF } from "./ctf-ai.js";
 import {
   initializeZombies,
@@ -672,6 +682,7 @@ export class Combat {
     });
     initializeDungeon(this, element);
     initializeZombies(this, players);
+    beginStatistics(this);
   }
   placeMapFighters() {
     if (!this.map || this.map.kind === "corruption") return;
@@ -970,10 +981,11 @@ export class Combat {
     });
     if (this.audioEvents.length > 64) this.audioEvents.shift();
   }
-  restoreHealth(a, amount, continuous = false) {
+  restoreHealth(a, amount, continuous = false, healer = a) {
     if (!a.alive || amount <= 0 || a.hp >= a.maxHp) return 0;
     const restored = Math.min(amount, a.maxHp - a.hp);
     a.hp += restored;
+    trackHealing(this, healer, restored);
     if (!continuous || this.time >= (a.nextHealingSoundAt ?? -Infinity)) {
       this.emitSound("heal", a);
       a.nextHealingSoundAt = this.time + 2.6;
@@ -1063,6 +1075,7 @@ export class Combat {
       !this.rebirthUsed.has(a.id)
     ) {
       this.rebirthUsed.add(a.id);
+      trackHealing(this, a, Math.max(0, a.maxHp * 0.5 - a.hp));
       Object.assign(a, {
         hp: a.maxHp * 0.5,
         alive: true,
@@ -1133,6 +1146,7 @@ export class Combat {
         if (["tdm", "war", "rush"].includes(this.mode))
           this.scores[credited.team]++;
       }
+      trackElimination(this, a, credited);
       recordWarDeath(this, a, credited);
       if (this.respawnDelay) a.respawnAt = this.time + this.respawnDelay;
       for (const flag of this.flags)
@@ -1158,6 +1172,16 @@ export class Combat {
     }
     a.prisonHp = 0;
     a.chasmReady = false;
+    trackDamage(this, killer, a, Math.max(0, a.hp));
+    if (
+      wasAlive &&
+      this.mode === "boss" &&
+      !a.echo &&
+      a.element === "invincible" &&
+      a.team === 1 &&
+      this.player.team === 0
+    )
+      trackBoss(this, this.player);
     a.hp = 0;
     a.clash = a.reflect = a.hitReact = a.castTime = 0;
     a.blink = null;
@@ -1311,6 +1335,7 @@ export class Combat {
     // Only damage that passes Shadow Step and Rock Shield detonates a carrier.
     if (hit > 0 && ctfCarrierHit(this, a, b)) return b.maxHp;
     if (amount > 0) gridironHit(this, a, b);
+    trackDamage(this, a, b, Math.min(b.hp, Math.max(0, hit)));
     b.hp = Math.max(0, b.hp - hit);
     if (hit > 0) {
       b.lastDamager = a;
@@ -1520,6 +1545,7 @@ export class Combat {
     if (this.respawnDelay) {
       this.respawn(fallen);
       fallen.hp = Math.min(fallen.maxHp, 50 * power);
+      trackHealing(this, a, fallen.hp);
       this.cue("revive", fallen, "#bee9bf");
       this.emitSound("revival", fallen);
       return true;
@@ -1557,6 +1583,7 @@ export class Combat {
     );
     if (fallen === this.player) this.spectatorFocus = null;
     fallen.hp = Math.min(fallen.maxHp, 45 + 15 * power);
+    trackHealing(this, a, fallen.hp);
     Object.assign(
       fallen,
       this.floorPoint({ x: a.x - a.fx * 45, y: a.y - a.fy * 45 }),
@@ -1682,7 +1709,7 @@ export class Combat {
           : [this.healingTarget(a)].filter(Boolean);
       if (!recipients.length) return false;
       for (const recipient of recipients) {
-        this.restoreHealth(recipient, 23 * p);
+        this.restoreHealth(recipient, 23 * p, false, a);
         this.effects.push({
           kind: "ring",
           x: recipient.x,
@@ -2113,6 +2140,8 @@ export class Combat {
     a.element = fused;
     a.form = a.forms.length - 1;
     fusionScore(this, a, oldTier);
+    trackFusion(this, a);
+    trackHealing(this, a, Math.min(30, a.maxHp - a.hp));
     a.hp = Math.min(a.maxHp, a.hp + 30);
     a.charging = false;
     a.shield = 0;
@@ -3255,7 +3284,7 @@ export class Combat {
             distance(h, b) <= h.r &&
             (this.mode !== "zombies" || b.team === h.owner.team)
           )
-            this.restoreHealth(b, 8 * dt, true);
+            this.restoreHealth(b, 8 * dt, true, h.owner);
         continue;
       }
       if (h.kind === "chasm") {
@@ -3386,6 +3415,11 @@ export class Combat {
     )
       return;
     this.time += dt;
+    trackTime(this, dt);
+    if (this.mode === "gridiron" && !this.gridWhistleStarted) {
+      this.gridWhistleStarted = true;
+      this.emitSound("whistle", this.player);
+    }
     beginZombiesFrame(this, dt);
     updateAdvanced(this);
     if (
@@ -3544,6 +3578,7 @@ export class Combat {
           this.damage(a, b, dt * DRAIN_DPS, true, false, "ice", false);
           const stolen = Math.max(0, health - b.hp);
           if (stolen > 0 && a.alive) {
+            trackHealing(this, a, Math.min(stolen, a.maxHp - a.hp));
             a.hp = Math.min(a.maxHp, a.hp + stolen);
             a.draining = 1;
             b.drained = 1;
@@ -3635,6 +3670,8 @@ export class Combat {
   corrupt(a, source = null) {
     if (!a || !a.alive || a.team !== 0) return false;
     if (source && this.rebirth(a)) return false;
+    if (a === this.player && this.matchStats) this.matchStats.converted = true;
+    trackObjective(this, source, "conversions");
     if (source) source.infections = (source.infections || 0) + 1;
     this.nightForm(a, "dark", 1);
     a.infectedAt = this.time;
@@ -3882,11 +3919,13 @@ export class Combat {
     );
     // Return friendly dropped flags before checking captures, regardless of team order.
     for (const flag of this.flags) {
-      if (
+      const returner =
         flag.dropped &&
-        living.some((a) => a.team === flag.team && distance(a, flag) < 30)
-      )
+        living.find((a) => a.team === flag.team && distance(a, flag) < 30);
+      if (returner) {
+        trackObjective(this, returner, "returns");
         this.returnFlag(flag);
+      }
     }
     for (const flag of this.flags) {
       let carrier = this.fighters.find((a) => a.id === flag.carrier);
@@ -3906,6 +3945,7 @@ export class Combat {
       const own = this.flags[carrier.team];
       if (!own.carrier && !own.dropped && distance(carrier, own.home) < 34) {
         this.scores[carrier.team]++;
+        trackObjective(this, carrier, "captures");
         this.returnFlag(flag);
         this.cue("heal", carrier, "#f3da92");
       }

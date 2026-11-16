@@ -7,7 +7,12 @@ async function fits(page, selector) {
   for (const e of await page.locator(selector).all()) {
     if (
       !(await e.isVisible()) ||
-      (await e.evaluate((el) => !!el.closest(".mode-scroll,.element-library")))
+      (await e.evaluate(
+        (el) =>
+          !!el.closest(
+            ".mode-scroll,.element-library,body[data-screen=account] #shell-content",
+          ),
+      ))
     )
       continue;
     const r = await e.boundingBox(),
@@ -266,6 +271,10 @@ test("guest and unconfigured account views never show invented stats or usable s
 }) => {
   await ready(page);
   await page.locator('[data-screen="account"]').click();
+  await expect(page.locator(".progress-storage")).toContainText(
+    "saved on this device",
+  );
+  await page.locator("[data-auth]").click();
   await expect(
     page.locator("#account-form button[type=submit]"),
   ).toBeDisabled();

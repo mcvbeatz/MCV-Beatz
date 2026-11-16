@@ -1,4 +1,12 @@
-# Fusion Throwdown · v0.55.3
+# Fusion Throwdown · v0.56.0
+
+## v0.56.0 Player progression and rewards
+
+- Independent Level 1–20 mastery for all 25 origins/fusions, capped match XP, actual combat/objective statistics and dated per-mode personal bests.
+- My Account now supports guests and includes Overview, Elemental Mastery, Records, Achievements and Cosmetics. Eighteen achievements and four mastery milestones per form unlock usable badges, frames, halos, titles and animated decorations.
+- Post-match reports retain the existing celebration/music and add performance, XP breakdowns, level increases, unlocks and personal-best highlights, with Fight Again, Change Mode and View Records.
+- Versioned local saves keep guests and accounts separate, deduplicate stable match IDs, preserve unlocks, and handle corrupt/offline saves. Optional private Supabase journal sync uses a non-destructive migration; existing public leaderboard totals remain intact. [Progression/database details](backend/PROGRESSION.md).
+- Gridiron starts each round with a synthesized referee whistle through the existing SFX volume control. No combat balance, AI, map or sprite changes.
 
 ## v0.55.3 Sound for every icicle
 

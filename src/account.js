@@ -45,11 +45,12 @@ export class AccountService {
     if (error) throw error;
     this.user = data.session?.user || null;
     this.ready = true;
+    this.listeners.forEach((f) => f());
   }
   require() {
     if (!this.client)
       throw new Error(
-        "Accounts are not connected yet. You can play as a guest; guest stats are not saved.",
+        "Accounts are not connected yet. You can play as a guest; progress is saved locally on this device.",
       );
     return this.client;
   }

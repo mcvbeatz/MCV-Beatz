@@ -1,3 +1,4 @@
+import { trackDamage } from "./match-statistics.js";
 import { ELEMENTS, combination } from "./combat.js";
 import { inWorld, segmentDistance } from "./portals.js";
 
@@ -92,6 +93,7 @@ export function updateWar(g, dt) {
     for (const a of g.fighters) {
       if (!a.alive || !inWorld(a) || a.element !== "water") continue;
       // Environmental heat is exactly 1 HP/second, independent of defenses.
+      trackDamage(g, null, a, Math.min(a.hp, dt));
       a.hp = Math.max(0, a.hp - dt);
       if (a.hp <= 0) g.fell(a);
     }
@@ -190,6 +192,7 @@ function updateWarTraps(g) {
       trap.nextHit.set(a.id, g.time + 1);
       trap.triggeredAt = g.time;
       // Neutral mechanical damage affects either army, including fused fighters.
+      trackDamage(g, null, a, Math.min(a.hp, 18));
       a.hp = Math.max(0, a.hp - 18);
       a.hitReact = 0.24;
       a.hitDx = 0;

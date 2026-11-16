@@ -1,0 +1,409 @@
+.progress-tabs,
+.progress-toolbar,
+.report-actions {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  align-items: center;
+  margin: 14px 0;
+}
+.progress-tabs button[aria-current="page"] {
+  background: #735d34;
+  color: #fff1bd;
+  border-color: #efcf88;
+}
+.progress-tabs button,
+.progress-toolbar button,
+.progress-card button,
+.report-actions button {
+  min-height: 44px;
+  padding: 10px 17px;
+}
+.progress-storage {
+  color: #b8cec6;
+  font-size: 13px;
+}
+.progress-content {
+  max-width: 1200px;
+  margin: auto;
+  text-align: left;
+}
+.progress-content h2,
+.progress-content h3,
+#match-report h3 {
+  font-family: "Barlow Condensed", sans-serif;
+  color: #f3d28e;
+}
+.progress-content h2 {
+  font-size: 30px;
+}
+.progress-content p,
+#match-report p {
+  line-height: 1.5;
+}
+.progress-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(245px, 100%), 1fr));
+  gap: 16px;
+  margin: 18px 0;
+}
+.progress-card {
+  padding: 20px;
+  background: linear-gradient(145deg, #152d2aee, #10211fee);
+  border: 1px solid #8c795345;
+  border-radius: 10px;
+  text-align: left;
+  min-width: 0;
+}
+.progress-card h3 {
+  margin: 8px 0;
+  font-size: 24px;
+}
+.progress-card small {
+  color: #bbc8bd;
+}
+.progress-card.unlocked {
+  border-color: #d4b77999;
+}
+.progress-card.locked {
+  background: #10211fe6;
+}
+.progress-card.locked .cosmetic-symbol {
+  opacity: 0.4;
+}
+.progress-card progress,
+.report-mastery progress {
+  width: 100%;
+  height: 10px;
+  display: block;
+  margin: 12px 0;
+  accent-color: #e9c77d;
+}
+.progress-card progress::-webkit-progress-bar,
+.report-mastery progress::-webkit-progress-bar {
+  background: #071614;
+  border-radius: 8px;
+}
+.progress-card progress::-webkit-progress-value,
+.report-mastery progress::-webkit-progress-value {
+  background: linear-gradient(90deg, #a58649, #ffe0a1);
+  border-radius: 8px;
+}
+.mastery-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 6px;
+}
+.mastery-card .character-portrait,
+.profile-portrait .character-portrait {
+  width: 90px;
+  height: 90px;
+}
+.mastery-card strong {
+  font-size: 20px;
+  color: #f6d78e;
+}
+.progress-stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(125px, 1fr));
+  gap: 10px;
+  margin: 16px 0;
+}
+.progress-stats > div {
+  padding: 13px;
+  background: #0b201dbb;
+  border: 1px solid #b5a27030;
+  border-radius: 6px;
+}
+.progress-stats dt {
+  font-size: 12px;
+  color: #b9c9bf;
+}
+.progress-stats dd {
+  margin: 5px 0;
+  font-family: "Barlow Condensed", sans-serif;
+  font-size: 27px;
+  color: #f4d592;
+}
+.progress-stats small {
+  font-size: 11px;
+  color: #b9c9bf;
+}
+.progress-select select,
+.progress-toolbar select {
+  display: block;
+  min-height: 44px;
+  margin-top: 6px;
+  max-width: 100%;
+  color: #f5d494;
+  background: #102621;
+  border: 1px solid #ac925b;
+  padding: 10px;
+}
+.progress-profile {
+  display: flex;
+  gap: 20px;
+  align-items: center;
+  padding: 20px;
+  margin: 20px 0;
+  border: 2px solid #d3b87b40;
+  border-radius: 14px;
+  background: #102622e6;
+  position: relative;
+  min-width: 0;
+  overflow: hidden;
+}
+.progress-profile strong {
+  font-size: 22px;
+  color: #f5dc9c;
+}
+.progress-profile small {
+  display: block;
+  margin-top: 8px;
+  color: #c0cfc2;
+  overflow-wrap: anywhere;
+}
+.profile-title {
+  color: #f0cd85 !important;
+  margin: 5px 0 !important;
+  letter-spacing: 0.08em;
+}
+.profile-portrait {
+  position: relative;
+  min-width: 88px;
+  isolation: isolate;
+}
+.tone-bronze {
+  --cosmetic: #cd8b57;
+}
+.tone-silver {
+  --cosmetic: #dbebf5;
+}
+.tone-gold {
+  --cosmetic: #ffd16d;
+}
+.tone-ice {
+  --cosmetic: #87eaff;
+}
+.tone-violet {
+  --cosmetic: #c694ff;
+}
+.tone-emerald {
+  --cosmetic: #7be6a9;
+}
+.has-frame {
+  border: 3px double var(--cosmetic);
+  box-shadow: inset 0 0 18px
+    color-mix(in srgb, var(--cosmetic) 16%, transparent);
+}
+.has-aura:before {
+  content: "";
+  position: absolute;
+  inset: 4px;
+  border-radius: 50%;
+  background: radial-gradient(
+    ellipse,
+    transparent 35%,
+    var(--cosmetic) 70%,
+    transparent 74%
+  );
+  filter: blur(5px);
+  opacity: 0.65;
+  z-index: -1;
+}
+.profile-badge {
+  color: var(--cosmetic);
+  display: inline-block;
+  text-shadow: 0 0 10px var(--cosmetic);
+  border: 1px solid var(--cosmetic);
+  border-radius: 50%;
+  padding: 2px 7px;
+}
+.profile-orbit {
+  position: absolute;
+  inset: -7px;
+  color: var(--cosmetic);
+  border: 1px dashed var(--cosmetic);
+  border-radius: 50%;
+  animation: master-orbit 12s linear infinite;
+}
+.cosmetic-symbol {
+  display: block;
+  color: var(--cosmetic);
+  font-size: 30px;
+}
+.animated-decoration {
+  animation: master-glow 2s ease-in-out infinite alternate;
+}
+.report-unlocks {
+  border-left: 3px solid #e8ca80;
+  padding: 12px 18px;
+  background: #cda85210;
+  animation: reward-arrival 0.55s ease-out;
+}
+.report-unlocks article {
+  margin: 12px 0;
+}
+.report-mastery {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 14px;
+}
+.report-mastery article {
+  padding: 12px;
+  background: #18352e;
+  border-radius: 6px;
+}
+.report-mastery span {
+  display: block;
+  color: #f4d590;
+  font-size: 12px;
+  margin-top: 6px;
+}
+#match-report {
+  width: min(850px, 100%);
+  text-align: left;
+}
+#match-report section {
+  margin: 14px 0;
+}
+#match-report .progress-profile {
+  margin: 8px 0;
+  padding: 10px;
+}
+#match-report .profile-portrait {
+  transform: scale(0.85);
+}
+.game-overlay.results-report {
+  justify-content: flex-start;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: 22px max(16px, 4%);
+  background: #071b18f5;
+  pointer-events: auto;
+  touch-action: pan-y;
+  box-sizing: border-box;
+}
+.game-overlay.results-report > * {
+  flex-shrink: 0;
+}
+.game-overlay.results-report > small {
+  display: none;
+}
+.game-overlay.results-report .primary {
+  margin: 12px 0 22px;
+  min-height: 48px;
+}
+.game-overlay:not(.results-report) #match-report {
+  display: none;
+}
+.game-overlay.results-report #save-status {
+  max-width: 800px;
+  font-size: 12px;
+}
+.game-overlay.results-report h2 {
+  font-size: 32px;
+  margin: 8px 0;
+}
+.game-overlay.results-report .report-actions button {
+  font-size: 14px;
+}
+.game-overlay.results-report #overlay-text {
+  font-size: 13px;
+}
+@keyframes master-orbit {
+  to {
+    transform: rotate(360deg);
+  }
+}
+@keyframes master-glow {
+  to {
+    filter: drop-shadow(0 0 9px var(--cosmetic));
+  }
+}
+@keyframes reward-arrival {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+@media (max-width: 600px) {
+  .progress-tabs {
+    gap: 6px;
+  }
+  .progress-tabs button {
+    flex: 1 1 30%;
+    padding: 9px;
+    font-size: 12px;
+  }
+  .progress-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px;
+  }
+  .progress-card {
+    padding: 12px;
+  }
+  .progress-card h3 {
+    font-size: 21px;
+  }
+  .progress-card small {
+    font-size: 11px;
+  }
+  .progress-profile {
+    padding: 12px;
+    gap: 12px;
+  }
+  .progress-profile strong {
+    font-size: 18px;
+  }
+  .progress-stats {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .profile-orbit,
+  .animated-decoration,
+  .report-unlocks {
+    animation: none;
+  }
+}
+body[data-screen="account"] #shell-content {
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  touch-action: pan-y;
+  display: block;
+  padding-right: 4px;
+}
+body[data-screen="account"] .screen-intro {
+  margin-bottom: 14px;
+}
+body[data-screen="account"] .progress-content {
+  width: 100%;
+}
+@media (max-height: 500px) {
+  body[data-screen="account"] .screen-intro h1 {
+    font-size: 26px;
+    margin: 4px 0;
+  }
+  body[data-screen="account"] .screen-intro .eyebrow {
+    display: none;
+  }
+  .progress-tabs {
+    margin: 8px 0;
+  }
+  .progress-storage {
+    margin: 7px 0;
+  }
+  .progress-toolbar {
+    margin: 8px 0;
+  }
+  .game-overlay.results-report h2 {
+    font-size: 25px;
+  }
+}

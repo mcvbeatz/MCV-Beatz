@@ -1,3 +1,7 @@
+import { ProgressionStore } from "./progression-storage.js";
+import { completedSnapshot } from "./match-statistics.js";
+import { mountProgression, renderMatchReport } from "./progression-ui.js";
+import { cosmeticCatalog } from "./rewards.js";
 import { createMenuDissolve } from "./menu-transition.js";
 import { musicScene } from "./music-catalog.js";
 import { icon } from "./icons.js";
@@ -44,6 +48,28 @@ export function createApp(api) {
   } catch {}
   const sound = new Soundtrack(settings),
     account = new AccountService();
+  const progressionStores = new Map();
+  const progressionStore = (id = account.user?.id || null) => {
+    if (!progressionStores.has(id))
+      progressionStores.set(id, new ProgressionStore(id));
+    return progressionStores.get(id);
+  };
+  let accountSection = "overview";
+  function openProgress(section = "overview") {
+    accountSection = section;
+    return show("account");
+  }
+  async function syncProgress(store = progressionStore()) {
+    await store.sync(account.client);
+    if (
+      screen === "account" &&
+      store === progressionStore() &&
+      !account.recovery
+    )
+      renderAccount();
+    if (api.game().progressReport && matchTicket?.store === store)
+      $("save-status").textContent = store.status;
+  }
   let screen = "home",
     category = "play",
     slide = 0,
@@ -244,7 +270,7 @@ export function createApp(api) {
   function renderElements() {
     const forms = [...Object.keys(ELEMENTS), ...Object.values(COMBOS)];
     $("shell-content").innerHTML =
-      `<div class="screen-intro"><h1>Choose an elemental.</h1><p>Open its chapter to explore its abilities and fusion recipe.</p></div><div class="element-library" tabindex="0" aria-label="Elemental chapters">${[
+      `<div class="screen-intro"><h1>Choose an elemental.</h1><p>Open its chapter to explore its abilities and fusion recipe.</p><button id="library-mastery">Elemental Mastery →</button></div><div class="element-library" tabindex="0" aria-label="Elemental chapters">${[
         1, 2, 3,
       ]
         .map(
@@ -258,6 +284,7 @@ export function createApp(api) {
               .join("")}</div></section>`,
         )
         .join("")}</div>`;
+    $("library-mastery").onclick = () => openProgress("mastery");
     enableOrientedScroll(document.querySelector(".element-library"));
     $("shell-content")
       .querySelectorAll("[data-chapter]")
@@ -448,7 +475,25 @@ export function createApp(api) {
     );
     api.orientationChanged?.(settings.orientation);
   }
-  function renderAccount(form = "signin") {
+  function renderAccount() {
+    request++;
+    if (account.recovery) return renderAuth("password");
+    enableOrientedScroll($("shell-content"));
+    mountProgression($("shell-content"), progressionStore(), {
+      section: accountSection,
+      user: account.user,
+      onOverview: loadStats,
+      onTab: (tab) => {
+        accountSection = tab;
+      },
+      onAuth: () => renderAuth(),
+      onSync: () => syncProgress(),
+      onEquip: () => {
+        if (account.user) syncProgress();
+      },
+    });
+  }
+  function renderAuth(form = "signin") {
     request++;
     const c = $("shell-content");
     if (account.user && !account.recovery) {
@@ -465,12 +510,14 @@ export function createApp(api) {
         }
       };
       loadStats();
+      addProfileBack();
       return;
     }
     if (account.recovery) form = "password";
-    c.innerHTML = `<div class="screen-intro"><h1>${{ signin: "Welcome back.", signup: "Join the colosseum.", reset: "Reset your password.", password: "Choose a new password." }[form]}</h1><p>${account.client ? "Play as a guest any time. Sign in to save Play-mode stats." : "Accounts are not connected yet. You can play as a guest; guest stats are not saved."}</p></div><form id="account-form" class="account-form">${form === "password" ? "" : '<label>Email<input name="email" type="email" autocomplete="email" required maxlength="254"></label>'}${form === "signup" ? '<label>Username<input name="username" autocomplete="username" required minlength="3" maxlength="24" pattern="[A-Za-z0-9_]+"></label>' : ""}${form === "reset" ? "" : `<label>Password<input name="password" type="password" autocomplete="${form === "signin" ? "current-password" : "new-password"}" required minlength="8" maxlength="128"></label>`}<button type="submit" ${!account.client ? "disabled" : ""}>${{ signin: "Sign in", signup: "Create account", reset: "Send recovery email", password: "Update password" }[form]}</button><p id="account-message" role="status"></p></form><div class="account-links"><button id="account-to-signin">Sign in</button><button id="account-to-signup">Create account</button><button id="account-to-reset">Forgot password?</button></div>`;
+    c.innerHTML = `<div class="screen-intro"><h1>${{ signin: "Welcome back.", signup: "Join the colosseum.", reset: "Reset your password.", password: "Choose a new password." }[form]}</h1><p>${account.client ? "Guest progress is saved separately on this device. Sign in for account progress; saves are never merged automatically." : "Accounts are not connected yet. You can play as a guest; progress is saved locally on this device."}</p></div><form id="account-form" class="account-form">${form === "password" ? "" : '<label>Email<input name="email" type="email" autocomplete="email" required maxlength="254"></label>'}${form === "signup" ? '<label>Username<input name="username" autocomplete="username" required minlength="3" maxlength="24" pattern="[A-Za-z0-9_]+"></label>' : ""}${form === "reset" ? "" : `<label>Password<input name="password" type="password" autocomplete="${form === "signin" ? "current-password" : "new-password"}" required minlength="8" maxlength="128"></label>`}<button type="submit" ${!account.client ? "disabled" : ""}>${{ signin: "Sign in", signup: "Create account", reset: "Send recovery email", password: "Update password" }[form]}</button><p id="account-message" role="status"></p></form><div class="account-links"><button id="account-to-signin">Sign in</button><button id="account-to-signup">Create account</button><button id="account-to-reset">Forgot password?</button></div>`;
     for (const key of ["signin", "signup", "reset"])
-      $(`account-to-${key}`).onclick = () => renderAccount(key);
+      $(`account-to-${key}`).onclick = () => renderAuth(key);
+    addProfileBack();
     $("account-form").onsubmit = async (e) => {
       e.preventDefault();
       const f = e.currentTarget,
@@ -508,6 +555,12 @@ export function createApp(api) {
       }
     };
   }
+  function addProfileBack() {
+    const back = document.createElement("button");
+    back.textContent = "← My progression";
+    back.onclick = () => renderAccount();
+    $("shell-content").prepend(back);
+  }
   function statRows(data) {
     return [
       ["K/D ratio", data?.kd_ratio ?? 0],
@@ -521,7 +574,8 @@ export function createApp(api) {
     const revision = request;
     try {
       const data = await account.stats();
-      if (screen !== "account" || revision !== request) return;
+      if (screen !== "account" || revision !== request || !$("account-stats"))
+        return;
       $("account-stats").replaceChildren(
         ...statRows(data).map(([label, value]) => {
           const card = document.createElement("div");
@@ -534,7 +588,7 @@ export function createApp(api) {
         }),
       );
       $("account-message").textContent =
-        "Completed Play matches only. Practice and guest results are not saved.";
+        "Public leaderboard totals from signed-in Play matches. Guest progress stays private on this device.";
     } catch (e) {
       if ($("account-message")) $("account-message").textContent = e.message;
     }
@@ -587,10 +641,16 @@ export function createApp(api) {
     }
   }
   account.listeners.add(() => {
+    queueMicrotask(() => {
+      if (account.user) syncProgress();
+    });
     $("shell-account").textContent =
       account.user?.user_metadata?.username || "Guest";
     if (account.recovery) show("account");
     else if (screen === "account") renderAccount();
+  });
+  window.addEventListener("online", () => {
+    if (account.user) syncProgress();
   });
   $("shell-account").onclick = () => show("account");
   $("shell-back").onclick = () => {
@@ -635,6 +695,15 @@ export function createApp(api) {
     setScreen("battle");
     sound.unlock();
     matchTicket = account.startMatch(api.game().mode, category === "practice");
+    matchTicket.store = progressionStore(matchTicket.userId);
+    matchTicket.displayName =
+      account.user?.user_metadata?.username ||
+      (matchTicket.userId ? "Player" : "Guest");
+    const auraId = matchTicket.store.state.equipped.aura;
+    api.game().cosmeticAura =
+      cosmeticCatalog().find((c) => c.id === auraId)?.tone || null;
+    $("game-overlay").classList.remove("results-report");
+    $("match-report")?.remove();
     $("save-status").textContent = "";
   }
   function battleExit() {
@@ -642,7 +711,53 @@ export function createApp(api) {
     $("resume-btn").hidden = api.game().finished || !api.started();
   }
   let lastReward = null;
+  function completeProgress(g) {
+    if (!g.finished || !matchTicket || matchTicket.progressProcessed) return;
+    matchTicket.progressProcessed = true;
+    const snapshot = completedSnapshot(g, matchTicket);
+    const store = matchTicket.store;
+    const report = !matchTicket.practice && store.complete(snapshot);
+    g.progressReport = report || {
+      match: snapshot,
+      rewardReason: matchTicket.practice
+        ? "Practice match · no progression rewards."
+        : store.status,
+    };
+    g.progressState = store.state;
+    $("save-status").textContent = matchTicket.practice
+      ? "Practice · no progression rewards."
+      : store.status;
+    if (!matchTicket.practice && matchTicket.userId === account.user?.id)
+      syncProgress(store);
+  }
+  function showResults(g) {
+    completeProgress(g);
+    if (!g.progressReport?.match) return;
+    $("game-overlay").classList.add("results-report");
+    let report = $("match-report");
+    if (!report) {
+      report = document.createElement("div");
+      report.id = "match-report";
+      $("overlay-play").before(report);
+      enableOrientedScroll($("game-overlay"));
+    }
+    if (report.dataset.matchId === matchTicket.id) return;
+    report.dataset.matchId = matchTicket.id;
+    renderMatchReport(report, g.progressReport, g.progressState, {
+      username: matchTicket.displayName,
+      onRecords: () => {
+        api.exitImmersive();
+        openProgress("records");
+      },
+      onChangeMode: () => {
+        api.exitImmersive();
+        show(category);
+      },
+    });
+    $("game-overlay").scrollTop = 0;
+  }
   function tick(g) {
+    completeProgress(g);
     sound.combat(g, screen === "battle" && !api.paused());
     sound.setScene(
       musicScene(screen, g),
@@ -699,7 +814,7 @@ export function createApp(api) {
       if (!matchTicket.userId || matchTicket.practice) {
         $("save-status").textContent = matchTicket.practice
           ? "Practice · no stats saved."
-          : "Guest · no stats saved.";
+          : matchTicket.store.status;
         matchTicket.saved = true;
       } else {
         statsBusy = true;
@@ -710,14 +825,14 @@ export function createApp(api) {
           .then((saved) => {
             if (ticket === matchTicket)
               $("save-status").textContent = saved
-                ? "Stats saved."
+                ? "Leaderboard stats saved. " + ticket.store.status
                 : "Stats were not saved: the signed-in account changed.";
             ticket.saved = true;
           })
           .catch((error) => {
             if (ticket === matchTicket) {
               $("save-status").textContent =
-                `Stats not saved. ${error.message}`;
+                `Leaderboard stats not saved. ${error.message} ${ticket.store.status}`;
               const retry = document.createElement("button");
               retry.textContent = "Retry saving";
               retry.onclick = () => {
@@ -786,6 +901,9 @@ export function createApp(api) {
   initialize();
   return {
     show,
+    openProgress,
+    showResults,
+    progressionStore,
     chooseMode,
     modeGuide,
     elementSlides,

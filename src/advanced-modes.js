@@ -1,4 +1,10 @@
 import {
+  trackObjective,
+  trackTime,
+  trackWave,
+  trackHealing,
+} from "./match-statistics.js";
+import {
   ELEMENTS,
   LEVEL_TWO,
   LEVEL_THREE,
@@ -110,6 +116,7 @@ export function updateAdvanced(g) {
       for (const a of g.fighters.filter((a) => !a.echo)) {
         const form = g.nextForms?.[a.id];
         if (!form) continue;
+        if (a.alive) trackObjective(g, a, "transformations");
         const previous = { ...a };
         const fresh = makeFighter(a.id, form, a.team, a.x, a.y);
         // Health, incoming status, cooldowns and statistics survive; old forms' powers do not.
@@ -165,6 +172,7 @@ export function fusionScore(g, a, oldTier) {
     highest = a.highestTier || oldTier;
   if (tier > highest) {
     g.scores[a.team] += tier === 3 ? 5 : 3;
+    trackObjective(g, a, "fusionPoints", tier === 3 ? 5 : 3);
     a.highestTier = tier;
   }
 }
@@ -233,7 +241,11 @@ function applyReward(g, id) {
         a.nativeParts = [...a.parts];
       }
     }
-  } else if (id === "heal") for (const a of team) a.hp = a.maxHp;
+  } else if (id === "heal")
+    for (const a of team) {
+      trackHealing(g, g.player, a.maxHp - a.hp);
+      a.hp = a.maxHp;
+    }
   else
     for (const a of team) {
       a.waveDamage = 1.25;
@@ -269,6 +281,7 @@ function clearWaveEffects(g) {
 }
 export function advanceWaveTravel(g, dt, input, runAI = true) {
   g.time += dt;
+  trackTime(g, dt);
   const team = g.fighters.filter((a) => a.team === 0 && !a.echo && a.alive);
   for (const a of team)
     for (const key of [
@@ -366,6 +379,7 @@ export function advancedEnd(g) {
     g.fighters.some((a) => a.team === 1 && a.alive && !a.echo)
   )
     return false;
+  trackWave(g);
   if (g.finalWave)
     return g.finish(0, `Final boss defeated · ${g.wave} waves cleared`);
   g.intermission = true;

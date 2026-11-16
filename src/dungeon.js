@@ -1,3 +1,4 @@
+import { trackBoss } from "./match-statistics.js";
 import {
   makeFighter,
   ELEMENTS,
@@ -113,6 +114,7 @@ export function dungeonFelled(g, a) {
   }
   if (!a.dungeonRole || g.dungeon.defeated.includes(a.dungeonRole)) return;
   g.dungeon.defeated.push(a.dungeonRole);
+  trackBoss(g, g.player, a.dungeonRole === "final");
   if (a.dungeonRole === "final") return;
   g.dungeon.reward = { boss: a.dungeonRole, x: a.x, y: a.y };
   if (a.dungeonRole === "apparition")
