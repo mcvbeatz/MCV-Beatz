@@ -1,4 +1,12 @@
-# Fusion Throwdown · v0.56.0
+# Fusion Throwdown · v0.57.0
+
+## v0.57.0 Mode scoreboards and focused results
+
+- Completed Play matches now show three pages: each mode's requested all-player scoreboard, animated mastery bars with elemental portraits, and personal bests/achievements under a gold trophy. Next plays Selection; existing victory/defeat celebrations and music remain intact. Practice returns to setup without results.
+- Tracks every participant's actual eliminations, deaths, damage, healing, laps and relevant objectives. Survive the Night includes successful conversions and cumulative time as Light; Dungeon separates monsters and bosses with encounter totals.
+- Detailed private performance is available under Leaderboard → My Stats. My Account has full-width vertical buttons, with Stats immediately after Overview.
+- Dungeon and Zombies eliminations remain in their mode statistics but no longer increase Overall Performance kills/KD. Existing local journals rebuild automatically; existing hosted accounts need the idempotent [session statistics migration](backend/session-stats.sql) to correct historical public totals.
+- Combat balance, AI, controls, sprites and progression reward rules are unchanged. See [statistics and database details](backend/PROGRESSION.md).
 
 ## v0.56.0 Player progression and rewards
 

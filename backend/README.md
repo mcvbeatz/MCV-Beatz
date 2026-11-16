@@ -7,7 +7,8 @@ The game works without an account backend. Guest progression is saved privately 
 3. Set Site URL and allowed email redirect URL to `https://mcvbeatz.github.io/MCV-Beatz/` (also allow localhost for development).
 4. Put the project HTTPS URL and **publishable/anon key** in `public/app-config.json`. Never put a secret/service-role key in the game.
 5. Run `progression.sql` to add private progression storage (also safe for existing accounts). See [PROGRESSION.md](PROGRESSION.md) for attribution, caps, migrations and account isolation.
-6. Deploy. Test email verification, sign-in, recovery links, password update, sign-out, duplicate result submission, and isolation between two accounts.
+6. For an existing account database, run [session-stats.sql](session-stats.sql) to exclude historical Dungeon/Zombies kills from public Overall Performance. This preserves history and other totals, and is safe to rerun. New projects already have the revised RPC in `supabase.sql`.
+7. Deploy. Test email verification, sign-in, recovery links, password update, sign-out, duplicate result submission, and isolation between two accounts.
 
 Supabase Auth handles password hashing and recovery. The game never stores plaintext passwords; it only passes them to Auth over HTTPS and clears form fields. Session tokens use sessionStorage. Usernames and cumulative stats are public; email addresses and auth records are not exposed by the leaderboard.
 

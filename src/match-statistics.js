@@ -1,8 +1,6 @@
 // Observational only: no gameplay decisions or combat values belong here.
-export function beginStatistics(g) {
-  g.matchStats = {
-    startingForm: g.player.element,
-    startingTeam: g.player.team,
+function freshStats() {
+  return {
     forms: {},
     objectives: {},
     damageDealt: 0,
@@ -16,6 +14,45 @@ export function beginStatistics(g) {
     converted: false,
     lastLapAt: 0,
   };
+}
+export function beginStatistics(g) {
+  g.matchStats = {
+    ...freshStats(),
+    startingForm: g.player.element,
+    startingTeam: g.player.team,
+  };
+  const pve = ["dungeon", "zombies", "gauntlet", "gauntlet-team"].includes(
+    g.mode,
+  );
+  g.sessionActors = new Map(
+    g.fighters
+      .filter((a) => !a.echo && (!pve || a.team === g.player.team))
+      .map((a, i) => [
+        a.id,
+        {
+          id: a.id,
+          name: a === g.player ? "You" : `AI ${i}`,
+          isPlayer: a === g.player,
+          team: a.team,
+          element: a.element,
+          stats: a === g.player ? g.matchStats : freshStats(),
+        },
+      ]),
+  );
+  g.matchStats.dungeonTotals =
+    g.mode === "dungeon"
+      ? {
+          monsters: g.fighters.filter((a) => a.monsterKind).length,
+          bosses: g.fighters.filter((a) => a.dungeonRole).length,
+        }
+      : null;
+}
+function actorStats(g, a) {
+  if (!g.matchStats || g.finished) return null;
+  const resolved = owner(g, a);
+  return resolved === g.player
+    ? g.matchStats
+    : g.sessionActors?.get(resolved?.id)?.stats;
 }
 function owner(g, a) {
   return a?.echo ? g.fighters.find((b) => b.id === a.summoner) : a;
@@ -36,41 +73,50 @@ export function trackTime(g, dt) {
   const s = g.matchStats;
   if (!s || g.finished || !Number.isFinite(dt) || dt <= 0) return;
   if (g.player.alive) form(g, g.player).seconds += dt;
-  if (g.mode === "corruption" && g.player.team === 0 && g.player.alive) {
-    s.lightTime += dt;
-    s.lightStreak += dt;
-    s.longestLight = Math.max(s.longestLight, s.lightStreak);
-  } else s.lightStreak = 0;
+  if (g.mode === "corruption")
+    for (const a of g.fighters) {
+      const stats = actorStats(g, a);
+      if (!stats || a.echo) continue;
+      if (a.team === 0 && a.alive) {
+        stats.lightTime += dt;
+        stats.lightStreak += dt;
+        stats.longestLight = Math.max(stats.longestLight, stats.lightStreak);
+      } else stats.lightStreak = 0;
+    }
 }
 export function trackDamage(g, source, target, amount) {
   if (!g.matchStats || g.finished || amount <= 0) return;
-  if (target === g.player) g.matchStats.damageReceived += amount;
-  // Friendly fire and self-harm never count as damage dealt to an enemy.
-  if (owner(g, source) === g.player && target.team !== g.player.team)
-    g.matchStats.damageDealt += amount;
+  const receiver = actorStats(g, target),
+    attacker = actorStats(g, source);
+  if (receiver && !target.echo) receiver.damageReceived += amount;
+  if (attacker && target.team !== owner(g, source)?.team)
+    attacker.damageDealt += amount;
 }
 export function trackHealing(g, healer, amount) {
-  if (
-    g.matchStats &&
-    !g.finished &&
-    owner(g, healer) === g.player &&
-    amount > 0
-  )
-    g.matchStats.healing += amount;
+  const stats = actorStats(g, healer);
+  if (stats && amount > 0) stats.healing += amount;
 }
 export function trackObjective(g, actor, key, value = 1) {
-  if (!g.matchStats || g.finished || owner(g, actor) !== g.player) return;
-  const o = g.matchStats.objectives;
-  o[key] = (o[key] || 0) + value;
+  const stats = actorStats(g, actor);
+  if (!stats) return;
+  stats.objectives[key] = (stats.objectives[key] || 0) + value;
 }
 export function trackElimination(g, victim, killer) {
   if (!g.matchStats || g.finished || victim.echo) return;
-  if (victim === g.player) g.matchStats.deaths++;
-  if (owner(g, killer) !== g.player || victim.team === g.player.team) return;
-  g.matchStats.kills++;
-  form(g, killer).kills++;
-  if (victim.zombieEnemy) trackObjective(g, killer, "fireDefeated");
+  const source = owner(g, killer),
+    eliminated = actorStats(g, victim),
+    attacker = actorStats(g, source);
+  // Night deaths mean defeat by another participant, including successful conversion.
+  if (g.mode === "corruption" && (!attacker || source === victim)) return;
+  if (eliminated) eliminated.deaths++;
+  if (!attacker || source.team === victim.team) return;
+  attacker.kills++;
+  const f = form(g, source);
+  if (f) f.kills++;
+  if (victim.zombieEnemy) trackObjective(g, source, "fireDefeated");
+  if (victim.monsterKind) trackObjective(g, source, "monstersDefeated");
 }
+
 export function trackBoss(g, actor, final = false) {
   const f = form(g, actor);
   if (!f) return;
@@ -98,9 +144,9 @@ export function trackWave(g) {
   if (g.finalWave) trackBoss(g, g.player);
 }
 export function trackLap(g, actor) {
-  if (actor !== g.player || !g.matchStats) return;
-  const s = g.matchStats,
-    duration = g.time - s.lastLapAt;
+  const s = actorStats(g, actor);
+  if (!s) return;
+  const duration = g.time - s.lastLapAt;
   if (duration > 0)
     s.objectives.fastestLap = Math.min(
       s.objectives.fastestLap || Infinity,
@@ -132,6 +178,9 @@ export function completedSnapshot(g, ticket, now = new Date().toISOString()) {
         g.player.team === 0 &&
         !s.converted,
       scores: g.scores?.slice(),
+      statisticsVersion: 2,
+      players: completedRoster(g),
+      dungeonTotals: s.dungeonTotals,
       forms: s.forms,
       stats: {
         kills: s.kills,
@@ -142,8 +191,45 @@ export function completedSnapshot(g, ticket, now = new Date().toISOString()) {
       },
       objectives: {
         ...s.objectives,
-        ...(g.mode === "corruption" ? { lightSurvival: s.longestLight } : {}),
+        ...(g.mode === "corruption" ? { lightSurvival: s.lightTime } : {}),
       },
     }),
   );
+}
+
+export function completedRoster(g) {
+  const rows = [...(g.sessionActors?.values() || [])].map((row) => {
+    const a = g.fighters.find((a) => a.id === row.id) || row;
+    const s = row.stats;
+    return {
+      id: row.id,
+      name: row.name,
+      isPlayer: row.isPlayer,
+      team: a.team,
+      element: a.element,
+      kills: s.kills,
+      deaths: s.deaths,
+      damageDealt: s.damageDealt,
+      damageReceived: s.damageReceived,
+      healing: s.healing,
+      ...s.objectives,
+      survival: s.lightTime,
+      raceLaps: a.raceLaps || 0,
+      raceProgress: a.raceProgress || 0,
+    };
+  });
+  if (g.mode === "turnpike") {
+    rows.sort(
+      (a, b) => b.raceLaps - a.raceLaps || b.raceProgress - a.raceProgress,
+    );
+    rows.forEach((a, i) => {
+      a.place =
+        i &&
+        a.raceLaps === rows[i - 1].raceLaps &&
+        Math.abs(a.raceProgress - rows[i - 1].raceProgress) < 0.01
+          ? rows[i - 1].place
+          : i + 1;
+    });
+  }
+  return rows;
 }

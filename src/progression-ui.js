@@ -1,3 +1,10 @@
+import {
+  SESSION_COLUMNS,
+  SESSION_BESTS,
+  sessionRows,
+} from "./session-results.js";
+import { icon } from "./icons.js";
+import { enableOrientedScroll } from "./orientation.js";
 import { FORMS, ORIGINS, mastery, MAX_XP } from "./progression.js";
 import {
   ACHIEVEMENTS,
@@ -61,8 +68,8 @@ export function mountProgression(
     const s = state();
     root.innerHTML = `<div class="screen-intro"><span class="eyebrow">YOUR ELEMENTAL JOURNEY</span><h1>My Account</h1></div><nav class="progress-tabs" aria-label="Account sections">${[
       ["overview", "Overview"],
+      ["records", "Stats"],
       ["mastery", "Elemental Mastery"],
-      ["records", "Records"],
       ["achievements", "Achievements"],
       ["cosmetics", "Cosmetics"],
     ]
@@ -132,27 +139,7 @@ export function mountProgression(
           render();
         };
     } else if (tab === "records") {
-      body.innerHTML = `<h2>Personal Records</h2><label class="progress-select">Game mode<select data-mode><option value="overall">Overall performance</option>${PLAY_MODES.map((m) => `<option value="${m}" ${m === mode ? "selected" : ""}>${esc(MODES[m].name)}</option>`).join("")}</select></label>`;
-      if (mode === "overall") body.innerHTML += statsMarkup(s.totals);
-      else {
-        const d = s.modes[mode];
-        body.innerHTML +=
-          statsMarkup(d?.stats) +
-          `<h3>Mode accomplishments</h3><dl class="progress-stats">${Object.entries(
-            RECORDS[mode],
-          )
-            .map(
-              ([k, [label, kind]]) =>
-                `<div><dt>${label}</dt><dd>${kind === "sum" ? formatStat(k, d?.objectives[k] || 0) : d?.bests[k] ? formatStat(k, d.bests[k].value) : "—"}</dd>${d?.bests[k] ? `<small>${esc(dateLabel(d.bests[k].date))}</small>` : ""}</div>`,
-            )
-            .join(
-              "",
-            )}<div><dt>Most eliminations in one match</dt><dd>${d?.bests.kills?.value || 0}</dd>${d?.bests.kills ? `<small>${esc(dateLabel(d.bests.kills.date))}</small>` : ""}</div></dl>${mode === "war" ? `<h3>Victories by chosen army</h3><dl class="progress-stats">${ORIGINS.map((e) => `<div><dt>${nameOf(e)}</dt><dd>${d?.armies[e] || 0}</dd></div>`).join("")}</dl>` : ""}<p>Records count only completed Play matches. Damage excludes absorbed hits and overkill. Team objective wins and your personal objective actions are recorded separately.</p>`;
-      }
-      body.querySelector("[data-mode]").onchange = (e) => {
-        mode = e.target.value;
-        render();
-      };
+      mountPersonalStats(body, s);
     } else if (tab === "achievements") {
       body.innerHTML = `<h2>Achievements</h2><div class="progress-toolbar"><label>Status<select data-filter>${[
         ["all", "All"],
@@ -224,69 +211,156 @@ export function renderMatchReport(
   root,
   report,
   state,
-  { onRecords, onChangeMode, username = "Guest" } = {},
+  { onRecords, onChangeMode, onNext, onStage, username = "Guest" } = {},
 ) {
   const m = report.match;
-  root.innerHTML = `${profileMarkup(state, username, m.finalForm)}<section><h3>${m.result.toUpperCase()} · ${esc(MODES[m.mode]?.name || m.mode)}</h3><p>${esc(nameOf(m.startingForm))}${m.finalForm !== m.startingForm ? " → " + esc(nameOf(m.finalForm)) : ""} · ${formatStat("playtime", m.duration)}${["ctf", "war", "tdm", "gridiron", "rush"].includes(m.mode) ? ` · ${m.scores?.join(" – ")}` : ""}</p><dl class="progress-stats">${Object.entries(
-    m.stats,
-  )
-    .map(
-      ([k, v]) =>
-        `<div><dt>${STAT_LABELS[k]}</dt><dd>${formatStat(k, v)}</dd></div>`,
-    )
-    .join("")}${Object.entries(m.objectives)
-    .filter(([k, v]) => v > 0 && RECORDS[m.mode]?.[k])
-    .map(
-      ([k, v]) =>
-        `<div><dt>${RECORDS[m.mode][k][0]}</dt><dd>${formatStat(k, v)}</dd></div>`,
-    )
-    .join("")}</dl></section>${
-    report.xp
-      ? `<section><h3>+${report.xp.total} Mastery XP</h3><p>${Object.entries(
-          report.xp.sources,
+  if (m.practice || !SESSION_COLUMNS[m.mode]) {
+    root.replaceChildren();
+    return;
+  }
+  let stage = 0,
+    animation = null,
+    honorsSeen = false;
+  const titles = [
+    "Match scoreboard",
+    "Elemental Mastery",
+    "Personal bests & achievements",
+  ];
+  const personal = state.modes[m.mode];
+  function render() {
+    if (animation) cancelAnimationFrame(animation);
+    root.dataset.stage = String(stage);
+    const heading = `<div class="report-step">${stage + 1} / 3 · ${titles[stage]}</div>`;
+    let content = "";
+    if (stage === 0) {
+      const rows = sessionRows(m),
+        columns = SESSION_COLUMNS[m.mode];
+      content = `<section aria-label="Match scoreboard"><h3>${esc(MODES[m.mode]?.name || m.mode)} · ${formatStat("playtime", m.duration)}</h3><div class="scoreboard-scroll" tabindex="0" aria-label="All players’ match statistics"><table class="session-scoreboard"><thead><tr><th scope="col">Player</th>${columns.map(([, label]) => `<th scope="col">${label}</th>`).join("")}</tr></thead><tbody>${rows
+        .map(
+          (row) =>
+            `<tr class="${row.isPlayer ? "your-result" : ""}"><th scope="row"><div class="scoreboard-player">${portraitMarkup(row.element)}<span>${esc(row.isPlayer ? username + " · You" : row.name)}<small>${esc(nameOf(row.element))}</small></span></div></th>${columns
+              .map(([key]) => {
+                let value =
+                  key === "fastestLap" && !row[key]
+                    ? "—"
+                    : formatStat(key, row[key] || 0);
+                if (m.mode === "dungeon")
+                  value = `${row[key] || 0} / ${m.dungeonTotals?.[key === "bosses" ? "bosses" : "monsters"] ?? "—"}`;
+                return `<td>${value}</td>`;
+              })
+              .join("")}</tr>`,
         )
-          .map(
-            ([k, v]) =>
-              `${{ completion: "Match complete", victory: "Victory", kills: "Eliminations", fusions: "Fusions", bosses: "Bosses", waves: "Waves" }[k]} +${v}`,
+        .join("")}</tbody></table></div></section>`;
+    } else if (stage === 1) {
+      content = report.xp
+        ? `<section class="mastery-results"><h3>+${report.xp.total} Mastery XP</h3><div class="report-mastery">${Object.entries(
+            report.xp.forms,
           )
-          .join(" · ")}</p><div class="report-mastery">${Object.entries(
-          report.xp.forms,
+            .filter(([, xp]) => xp > 0)
+            .map(([e, xp]) => {
+              const level = report.mastery[e],
+                change = report.levels.find((l) => l.element === e);
+              return `<article class="xp-result">${portraitMarkup(e)}<div><strong>${esc(nameOf(e))} <span>+${xp} XP</span></strong><small>${change ? `LEVEL UP ${change.from} → ${change.to}` : `Level ${level.level}`}</small><progress data-xp-target="${level.progress}" value="0" max="1" aria-label="${esc(nameOf(e))} mastery"></progress><small>${level.next ? `${level.current} / ${level.next} XP` : "ELEMENTAL MASTER"}</small></div></article>`;
+            })
+            .join("")}</div></section>`
+        : `<p>${esc(report.rewardReason || "Progression is unavailable for this save.")}</p>`;
+    } else {
+      const labels = {
+        kills: "Most eliminations in one match",
+        ...Object.fromEntries(
+          Object.entries(RECORDS[m.mode] || {}).map(([k, [label]]) => [
+            k,
+            label,
+          ]),
+        ),
+        ...Object.fromEntries(
+          Object.entries(SESSION_BESTS[m.mode] || {}).map(([k, [label]]) => [
+            k,
+            label,
+          ]),
+        ),
+      };
+      const bests = Object.entries(personal?.bests || {}).filter(
+        ([key]) =>
+          labels[key] &&
+          !(key === "kills" && ["dungeon", "boss"].includes(m.mode)),
+      );
+      const applicable = ACHIEVEMENTS.filter((a) =>
+        report.achievements?.includes(a.id),
+      );
+      content = `<section class="report-honors"><div class="results-trophy" role="img" aria-label="Gold trophy">${icon("trophy")}</div><h3>Your personal bests · ${esc(MODES[m.mode]?.name || m.mode)}</h3>${bests.length ? `<div class="personal-best-grid">${bests.map(([key, best]) => `<article><span>${labels[key]}</span><strong>${formatStat(key, best.value)}</strong>${report.records?.some((r) => r.key === key) ? '<b class="new-best">NEW PERSONAL BEST</b>' : ""}<small>${esc(dateLabel(best.date))}</small></article>`).join("")}</div>` : "<p>No personal record set yet for this mode.</p>"}${applicable.length ? `<h3>Achievements unlocked</h3><div class="report-unlocks" ${honorsSeen ? 'style="animation:none"' : 'role="status"'}>${applicable.map((a) => `<article><strong>${a.symbol} ${a.name}</strong><p>${a.description}</p><small>Reward: ${a.rewardName}</small></article>`).join("")}</div>` : ""}${
+        report.rewards?.some((id) => id.startsWith("mastery:"))
+          ? `<h3>Mastery rewards unlocked</h3>${report.rewards
+              .filter((id) => id.startsWith("mastery:"))
+              .map(
+                (id) =>
+                  `<p>${esc(cosmeticCatalog().find((c) => c.id === id)?.name)}</p>`,
+              )
+              .join("")}`
+          : ""
+      }</section>`;
+    }
+    root.innerHTML =
+      heading +
+      content +
+      `<div class="report-actions">${stage > 0 ? "<button data-previous>← Back</button>" : ""}${stage < 2 ? '<button class="report-next" data-next>Next →</button>' : "<button data-records>My Stats</button><button data-change>Change Mode</button>"}</div>`;
+    root.querySelector("[data-next]")?.addEventListener("click", () => {
+      onNext?.();
+      stage++;
+      render();
+    });
+    root.querySelector("[data-previous]")?.addEventListener("click", () => {
+      onNext?.();
+      stage--;
+      render();
+    });
+    root.querySelector("[data-records]")?.addEventListener("click", onRecords);
+    root
+      .querySelector("[data-change]")
+      ?.addEventListener("click", onChangeMode);
+    if (stage === 2) honorsSeen = true;
+    paintPortraits(root);
+    const scroll = root.querySelector(".scoreboard-scroll");
+    if (scroll) enableOrientedScroll(scroll, "x");
+    onStage?.(stage);
+    if (stage === 1) {
+      const bars = [...root.querySelectorAll("[data-xp-target]")];
+      const reduced = matchMedia("(prefers-reduced-motion: reduce)").matches;
+      let start;
+      const animate = (now) => {
+        if (!root.isConnected || root.dataset.stage !== "1") return;
+        start ??= now;
+        const progress = reduced ? 1 : Math.min(1, (now - start) / 950);
+        for (const bar of bars)
+          bar.value = Number(bar.dataset.xpTarget) * (1 - (1 - progress) ** 3);
+        if (progress < 1) animation = requestAnimationFrame(animate);
+      };
+      animation = requestAnimationFrame(animate);
+    }
+  }
+  render();
+}
+
+export function mountPersonalStats(root, s, mode = "overall") {
+  root.innerHTML = `<h2>Personal Stats</h2><label class="progress-select">Game mode<select data-mode><option value="overall">Overall performance</option>${PLAY_MODES.map((m) => `<option value="${m}" ${m === mode ? "selected" : ""}>${esc(MODES[m].name)}</option>`).join("")}</select></label>`;
+  if (mode === "overall") root.innerHTML += statsMarkup(s.totals);
+  else {
+    const d = s.modes[mode];
+    root.innerHTML +=
+      statsMarkup(d?.stats) +
+      `<h3>Mode accomplishments</h3><dl class="progress-stats">${Object.entries(
+        { ...RECORDS[mode], ...SESSION_BESTS[mode] },
+      )
+        .map(
+          ([k, [label, kind]]) =>
+            `<div><dt>${label}</dt><dd>${kind === "sum" ? formatStat(k, d?.objectives[k] || 0) : d?.bests[k] ? formatStat(k, d.bests[k].value) : "—"}</dd>${d?.bests[k] ? `<small>${esc(dateLabel(d.bests[k].date))}</small>` : ""}</div>`,
         )
-          .filter(([, xp]) => xp > 0)
-          .map(([e, xp]) => {
-            const level = report.mastery[e],
-              change = report.levels.find((l) => l.element === e);
-            return `<article><strong>${nameOf(e)} · +${xp} XP</strong><span>${change ? `LEVEL UP ${change.from} → ${change.to}` : "Level " + level.level}</span>${meter(level.progress, 1, nameOf(e) + " mastery")}<small>${level.next ? `${level.current} / ${level.next} XP` : "ELEMENTAL MASTER"}</small></article>`;
-          })
-          .join("")}</div></section>`
-      : `<p>${esc(report.rewardReason || "No progression rewards.")}</p>`
-  }${report.records?.length ? `<section class="report-unlocks"><h3>NEW PERSONAL BEST</h3>${report.records.map((r) => `<p>${r.label}: <strong>${formatStat(r.key, r.value)}</strong></p>`).join("")}</section>` : ""}${
-    report.achievements?.length
-      ? `<section class="report-unlocks" role="status"><h3>Achievements unlocked</h3>${report.achievements
-          .map((id) => {
-            const a = ACHIEVEMENTS.find((a) => a.id === id);
-            return `<article><strong>${a.symbol} ${a.name}</strong><p>${a.description}</p><small>Reward: ${a.rewardName} · ${a.slot}</small></article>`;
-          })
-          .join("")}</section>`
-      : ""
-  }${
-    report.rewards?.some((id) => id.startsWith("mastery:"))
-      ? `<section class="report-unlocks"><h3>Mastery rewards unlocked</h3>${report.rewards
-          .filter((id) => id.startsWith("mastery:"))
-          .map(
-            (id) =>
-              `<p>${esc(cosmeticCatalog().find((c) => c.id === id)?.name)}</p>`,
-          )
-          .join(
-            "",
-          )}<small>Equip your rewards in My Account → Cosmetics.</small></section>`
-      : ""
-  }<div class="report-actions"><button data-change>Change Mode</button><button data-records>View Records</button></div>`;
-  root.querySelector("[data-change]").onclick = onChangeMode;
-  root.querySelector("[data-records]").onclick = onRecords;
-  root.addEventListener("animationend", (e) => {
-    if (e.target.classList.contains("report-unlocks"))
-      e.target.style.animation = "none";
-  });
-  paintPortraits(root);
+        .join(
+          "",
+        )}${["dungeon", "boss"].includes(mode) ? "" : `<div><dt>Most eliminations in one match</dt><dd>${d?.bests.kills?.value || 0}</dd>${d?.bests.kills ? `<small>${esc(dateLabel(d.bests.kills.date))}</small>` : ""}</div>`}</dl>${mode === "war" ? `<h3>Victories by chosen army</h3><dl class="progress-stats">${ORIGINS.map((e) => `<div><dt>${nameOf(e)}</dt><dd>${d?.armies[e] || 0}</dd></div>`).join("")}</dl>` : ""}<p>Stats count only completed Play matches. Damage excludes absorbed hits and overkill. Team objective wins and your personal objective actions are recorded separately.</p>`;
+  }
+  root.querySelector("[data-mode]").onchange = (e) => {
+    mode = e.target.value;
+    mountPersonalStats(root, s, mode);
+  };
 }

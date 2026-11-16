@@ -1,3 +1,8 @@
+import {
+  overallEliminations,
+  SESSION_BESTS,
+  ordinal,
+} from "./session-results.js";
 export const STAT_LABELS = {
   matches: "Matches played",
   wins: "Victories",
@@ -34,7 +39,7 @@ export const RECORDS = {
     victories: ["Gridiron victories", "sum"],
   },
   corruption: {
-    lightSurvival: ["Longest unbroken Light survival", "max"],
+    lightSurvival: ["Most time surviving as Light", "max"],
     conversions: ["Dark conversions", "sum"],
     lightVictories: ["Unconverted Light victories", "sum"],
   },
@@ -129,11 +134,28 @@ export function updateRecords(state, m) {
       "damageReceived",
       "healing",
     ])
-      stats[key] += Math.max(0, Number(m.stats?.[key]) || 0);
+      stats[key] +=
+        key === "kills" && stats === state.totals
+          ? overallEliminations(
+              m.mode,
+              Math.max(0, Number(m.stats?.[key]) || 0),
+            )
+          : Math.max(0, Number(m.stats?.[key]) || 0);
     stats.playtime += Math.max(0, m.duration || 0);
   }
   const bests = [];
-  if (improveRecord(mode.bests, "kills", m.stats?.kills || 0, m.date))
+  const personal = m.players?.find((row) => row.isPlayer) || {};
+  for (const [key, [label, comparison]] of Object.entries(
+    SESSION_BESTS[m.mode] || {},
+  )) {
+    const value = personal[key] ?? m.objectives?.[key] ?? m.stats?.[key];
+    if (improveRecord(mode.bests, key, value, m.date, comparison))
+      bests.push({ key, label, value });
+  }
+  if (
+    !["dungeon", "boss"].includes(m.mode) &&
+    improveRecord(mode.bests, "kills", m.stats?.kills || 0, m.date)
+  )
     bests.push({
       key: "kills",
       label: "Most eliminations in one match",
@@ -173,6 +195,7 @@ export function updateRecords(state, m) {
   return bests;
 }
 export function formatStat(key, n = 0) {
+  if (key === "place") return ordinal(n);
   if (
     [
       "playtime",

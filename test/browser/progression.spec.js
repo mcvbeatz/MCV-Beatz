@@ -58,6 +58,8 @@ test("a completed Play match reports real events once, persists guest progress, 
     g.celebrationRemaining = 0;
   });
   await expect(page.locator("#match-report")).toBeVisible();
+  await expect(page.locator("#match-report")).toContainText("Match scoreboard");
+  await page.locator("[data-next]").click();
   await expect(page.locator("#match-report")).toContainText("Mastery XP");
   const before = await page.evaluate(
     () => __app.progressionStore().state.totals.matches,
@@ -72,8 +74,10 @@ test("a completed Play match reports real events once, persists guest progress, 
     await page.evaluate(() => __app.progressionStore().state.totals.matches),
   ).toBe(1);
   await page.screenshot({ path: "/tmp/fusion-progression-results.png" });
+  await page.locator("[data-next]").click();
   await page.locator("[data-records]").click();
   await expect(page.locator("select[data-mode]")).toBeVisible();
+  await page.locator("#shell-account").click();
   await page.locator('[data-tab="cosmetics"]').click();
   await page.locator('[data-equip="achievement:flawless"]').click();
   await expect(page.locator("#shell-content .progress-profile")).toHaveClass(
@@ -104,11 +108,11 @@ test("practice and abandoned matches do not award progress, results remain reach
     g.finish(g.player.team, "Practice");
     g.celebrationRemaining = 0;
   });
-  await expect(page.locator("#match-report")).toContainText("Practice match");
+  await page.waitForFunction(() => __app.screen === "setup");
+  await expect(page.locator("#match-report")).toHaveCount(0);
   expect(
     await page.evaluate(() => __app.progressionStore().state.totals.matches),
   ).toBe(0);
-  await page.locator("[data-change]").click();
   await page.evaluate(() => __app.chooseMode("war"));
   await page.locator("#begin-btn").click();
   await page.evaluate(() => __app.battleExit());

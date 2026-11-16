@@ -1,3 +1,4 @@
+import { overallEliminations } from "./session-results.js";
 import { createClient } from "@supabase/supabase-js";
 export const PRACTICE_MODES = new Set([
   "duel",
@@ -112,8 +113,11 @@ export class AccountService {
     const { error } = await this.require().rpc("record_match", {
       p_match_id: ticket.id,
       p_mode: ticket.mode,
-      p_kills: g.player.kills || 0,
-      p_deaths: g.player.deaths || 0,
+      p_kills: overallEliminations(
+        ticket.mode,
+        g.matchStats?.kills ?? g.player.kills ?? 0,
+      ),
+      p_deaths: g.matchStats?.deaths ?? g.player.deaths ?? 0,
       p_result: g.result,
       p_duration: Math.floor(g.time),
     });

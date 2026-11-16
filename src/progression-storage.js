@@ -51,6 +51,43 @@ export function validateMatch(m) {
     !Object.values(m.objectives).every(finite)
   )
     return false;
+  if (
+    m.players !== undefined &&
+    (!Array.isArray(m.players) ||
+      m.players.length > 32 ||
+      !m.players.every(
+        (row) =>
+          object(row) &&
+          FORMS.includes(row.element) &&
+          typeof row.isPlayer === "boolean" &&
+          typeof row.name === "string" &&
+          validFields(row, [
+            "kills",
+            "deaths",
+            "damageDealt",
+            "damageReceived",
+            "healing",
+            "survival",
+            "raceLaps",
+            "raceProgress",
+            "place",
+            "fastestLap",
+            "monstersDefeated",
+            "bosses",
+            "tokensAcquired",
+            "flagsStolen",
+            "returns",
+            "touchdowns",
+          ]),
+      ))
+  )
+    return false;
+  if (
+    m.dungeonTotals != null &&
+    (!validFields(m.dungeonTotals, ["monsters", "bosses"]) ||
+      !Object.values(m.dungeonTotals).every(finite))
+  )
+    return false;
   return Object.entries(m.forms).every(
     ([e, f]) =>
       FORMS.includes(e) &&

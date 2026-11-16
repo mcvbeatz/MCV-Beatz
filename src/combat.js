@@ -2183,6 +2183,7 @@ export class Combat {
         combination(a.parts, t.parts),
     );
     if (!token || !this.applyFusion(a, token.parts)) return false;
+    trackObjective(this, a, "tokensAcquired");
     if (token.shard)
       a.nativeParts = [...new Set([...a.nativeParts, ...token.parts])];
     const souls = token.souls || [{ owner: token.owner, parts: token.parts }];
@@ -3671,6 +3672,7 @@ export class Combat {
     if (!a || !a.alive || a.team !== 0) return false;
     if (source && this.rebirth(a)) return false;
     if (a === this.player && this.matchStats) this.matchStats.converted = true;
+    if (source) trackElimination(this, a, source);
     trackObjective(this, source, "conversions");
     if (source) source.infections = (source.infections || 0) + 1;
     this.nightForm(a, "dark", 1);
@@ -3934,6 +3936,7 @@ export class Combat {
           (a) => a.team !== flag.team && distance(a, flag) < 30,
         );
         if (carrier) {
+          trackObjective(this, carrier, "flagsStolen");
           flag.carrier = carrier.id;
           flag.dropped = false;
           this.cue("portal", carrier, "#f3da92");

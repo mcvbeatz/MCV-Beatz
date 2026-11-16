@@ -13,7 +13,7 @@ create table public.player_stats (
 create table public.match_results (
   match_id uuid primary key, user_id uuid not null references public.profiles(id) on delete cascade,
   mode text not null, kills integer not null, deaths integer not null,
-  result text not null, duration integer not null, created_at timestamptz not null default now()
+  result text not null, duration integer not null, overall_kills_excluded boolean not null default false, created_at timestamptz not null default now()
 );
 alter table public.profiles enable row level security;
 alter table public.player_stats enable row level security;
@@ -44,11 +44,11 @@ begin
    or p_kills is null or p_kills not between 0 and 10000 or p_deaths is null or p_deaths not between 0 and 1000
    or p_result is null or p_result not in ('victory','defeat','draw') or p_duration is null or p_duration not between 0 and 10800
  then raise exception 'Invalid match result'; end if;
- insert into public.match_results(match_id,user_id,mode,kills,deaths,result,duration)
- values(p_match_id,auth.uid(),p_mode,p_kills,p_deaths,p_result,p_duration) on conflict do nothing;
+ insert into public.match_results(match_id,user_id,mode,kills,deaths,result,duration,overall_kills_excluded)
+ values(p_match_id,auth.uid(),p_mode,p_kills,p_deaths,p_result,p_duration,p_mode in ('dungeon','zombies')) on conflict do nothing;
  get diagnostics inserted = row_count;
  if inserted=1 then
-  update public.player_stats set kills=kills+p_kills,deaths=deaths+p_deaths,
+  update public.player_stats set kills=kills+case when p_mode in ('dungeon','zombies') then 0 else p_kills end,deaths=deaths+p_deaths,
    wins=wins+case when p_result='victory' then 1 else 0 end,
    losses=losses+case when p_result='defeat' then 1 else 0 end where user_id=auth.uid();
  end if;

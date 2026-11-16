@@ -1,6 +1,10 @@
 import { ProgressionStore } from "./progression-storage.js";
 import { completedSnapshot } from "./match-statistics.js";
-import { mountProgression, renderMatchReport } from "./progression-ui.js";
+import {
+  mountProgression,
+  renderMatchReport,
+  mountPersonalStats,
+} from "./progression-ui.js";
 import { cosmeticCatalog } from "./rewards.js";
 import { createMenuDissolve } from "./menu-transition.js";
 import { musicScene } from "./music-catalog.js";
@@ -593,10 +597,20 @@ export function createApp(api) {
       if ($("account-message")) $("account-message").textContent = e.message;
     }
   }
+  function renderSelfStats() {
+    request++;
+    $("shell-content").innerHTML =
+      '<div class="screen-intro"><h1>Leaderboard</h1></div><nav class="leader-sections"><button id="public-stats-btn">Public Leaderboard</button><button aria-current="page" id="self-stats-btn">My Stats</button></nav><section id="self-stats-panel" class="progress-content"></section>';
+    $("public-stats-btn").onclick = renderLeaderboard;
+    $("self-stats-btn").onclick = renderSelfStats;
+    mountPersonalStats($("self-stats-panel"), progressionStore().state);
+    enableOrientedScroll($("self-stats-panel"));
+  }
   async function renderLeaderboard() {
     const revision = ++request;
     $("shell-content").innerHTML =
-      `<div class="screen-intro"><h1>Leaderboard</h1><p>Signed-in players · single-player AI matches</p></div><label class="leader-filter">Rank by <select id="leader-metric"><option value="kd_ratio">KD Ratio</option><option value="kills">Kills</option><option value="deaths">Deaths</option><option value="wins">Games won</option><option value="losses">Games lost</option></select></label><div id="leader-table"></div><p id="leader-message" role="status">${account.client ? "Loading…" : "Leaderboards are not connected yet. Guest and Practice stats are never saved."}</p><div class="menu-pagination"><button id="leader-prev" ${leaderPage ? "" : "disabled"}>← Previous</button><span>Page ${leaderPage + 1}</span><button id="leader-next" disabled>Next →</button></div>`;
+      `<div class="screen-intro"><h1>Leaderboard</h1><p>Signed-in players · single-player AI matches</p></div><nav class="leader-sections"><button aria-current="page">Public Leaderboard</button><button id="self-stats-btn">My Stats</button></nav><label class="leader-filter">Rank by <select id="leader-metric"><option value="kd_ratio">KD Ratio</option><option value="kills">Kills</option><option value="deaths">Deaths</option><option value="wins">Games won</option><option value="losses">Games lost</option></select></label><div id="leader-table"></div><p id="leader-message" role="status">${account.client ? "Loading…" : "Leaderboards are not connected yet. Guest stats stay on this device; Practice does not record stats."}</p><div class="menu-pagination"><button id="leader-prev" ${leaderPage ? "" : "disabled"}>← Previous</button><span>Page ${leaderPage + 1}</span><button id="leader-next" disabled>Next →</button></div>`;
+    $("self-stats-btn").onclick = renderSelfStats;
     $("leader-metric").value = metric;
     $("leader-metric").onchange = (e) => {
       metric = e.target.value;
@@ -648,6 +662,8 @@ export function createApp(api) {
       account.user?.user_metadata?.username || "Guest";
     if (account.recovery) show("account");
     else if (screen === "account") renderAccount();
+    else if (screen === "leaderboard" && $("self-stats-panel"))
+      renderSelfStats();
   });
   window.addEventListener("online", () => {
     if (account.user) syncProgress();
@@ -703,6 +719,8 @@ export function createApp(api) {
     api.game().cosmeticAura =
       cosmeticCatalog().find((c) => c.id === auraId)?.tone || null;
     $("game-overlay").classList.remove("results-report");
+    $("game-overlay").dataset.reportStage = "";
+    $("overlay-play").hidden = false;
     $("match-report")?.remove();
     $("save-status").textContent = "";
   }
@@ -714,6 +732,7 @@ export function createApp(api) {
   function completeProgress(g) {
     if (!g.finished || !matchTicket || matchTicket.progressProcessed) return;
     matchTicket.progressProcessed = true;
+    if (matchTicket.practice) return;
     const snapshot = completedSnapshot(g, matchTicket);
     const store = matchTicket.store;
     const report = !matchTicket.practice && store.complete(snapshot);
@@ -731,6 +750,13 @@ export function createApp(api) {
       syncProgress(store);
   }
   function showResults(g) {
+    if (matchTicket?.practice) {
+      $("game-overlay").hidden = true;
+      $("match-report")?.remove();
+      api.exitImmersive();
+      show("setup");
+      return;
+    }
     completeProgress(g);
     if (!g.progressReport?.match) return;
     $("game-overlay").classList.add("results-report");
@@ -745,9 +771,15 @@ export function createApp(api) {
     report.dataset.matchId = matchTicket.id;
     renderMatchReport(report, g.progressReport, g.progressState, {
       username: matchTicket.displayName,
+      onNext: () => sound.menuClick(),
+      onStage: (stage) => {
+        $("game-overlay").dataset.reportStage = String(stage);
+        $("overlay-play").hidden = stage !== 2;
+        $("game-overlay").scrollTop = 0;
+      },
       onRecords: () => {
         api.exitImmersive();
-        openProgress("records");
+        Promise.resolve(show("leaderboard")).then(renderSelfStats);
       },
       onChangeMode: () => {
         api.exitImmersive();

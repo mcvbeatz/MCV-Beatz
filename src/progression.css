@@ -407,3 +407,250 @@ body[data-screen="account"] .progress-content {
     font-size: 25px;
   }
 }
+/* Account navigation and focused, three-step match reports. */
+.progress-tabs {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  width: 100%;
+  gap: 8px;
+}
+.progress-tabs button {
+  width: 100%;
+  flex: none !important;
+  text-align: left;
+  min-height: 44px;
+}
+.leader-sections {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+.leader-sections button {
+  min-height: 44px;
+  padding: 10px 16px;
+}
+.leader-sections [aria-current="page"] {
+  border-color: #e8c677;
+  color: #ffe2a1;
+  background: #584927;
+}
+#self-stats-panel {
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  min-height: 0;
+  width: 100%;
+  flex: 1;
+  padding-right: 8px;
+  touch-action: pan-y;
+}
+#self-stats-panel h2 {
+  margin-top: 4px;
+}
+.results-report #save-status {
+  display: none;
+}
+.results-report[data-report-stage="1"] > #overlay-kicker,
+.results-report[data-report-stage="1"] > #overlay-title,
+.results-report[data-report-stage="1"] > #overlay-text,
+.results-report[data-report-stage="2"] > #overlay-kicker,
+.results-report[data-report-stage="2"] > #overlay-title,
+.results-report[data-report-stage="2"] > #overlay-text {
+  display: none;
+}
+.report-step {
+  color: #d1b779;
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.13em;
+  text-align: center;
+  margin: 4px 0 12px;
+}
+.scoreboard-scroll {
+  overflow-x: auto;
+  overscroll-behavior: contain;
+  touch-action: pan-x;
+  max-width: 100%;
+  border: 1px solid #ae92574d;
+  border-radius: 10px;
+}
+.session-scoreboard {
+  border-collapse: collapse;
+  width: 100%;
+  font-size: 14px;
+  color: #e9eddf;
+  table-layout: auto;
+}
+.session-scoreboard thead {
+  background: #23423c;
+  color: #f2d694;
+}
+.session-scoreboard th,
+.session-scoreboard td {
+  padding: 12px 9px;
+  border-bottom: 1px solid #afbe9d24;
+  text-align: center;
+}
+.session-scoreboard th:first-child {
+  text-align: left;
+  min-width: 120px;
+}
+.session-scoreboard th {
+  font-weight: 500;
+}
+.session-scoreboard tbody tr {
+  background: #112b27;
+}
+.session-scoreboard tbody tr:nth-child(even) {
+  background: #18342e;
+}
+.session-scoreboard .your-result {
+  box-shadow: inset 3px 0 #f5ce77;
+  background: #3e4129 !important;
+}
+.scoreboard-player {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  white-space: nowrap;
+}
+.scoreboard-player .character-portrait {
+  width: 42px;
+  height: 42px;
+  flex-shrink: 0;
+}
+.scoreboard-player small {
+  display: block !important;
+  font-size: 11px;
+  color: #b8c6b5;
+}
+.session-scoreboard td {
+  font-family: "Barlow Condensed", sans-serif;
+  font-size: 23px;
+  white-space: nowrap;
+}
+.report-next {
+  background: #d3af64;
+  color: #102722 !important;
+  min-width: 150px;
+  min-height: 48px;
+}
+.report-actions {
+  justify-content: center;
+  gap: 12px;
+}
+.report-actions button {
+  min-height: 46px;
+}
+.report-mastery {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+.report-mastery .xp-result {
+  display: grid;
+  grid-template-columns: 84px minmax(0, 1fr);
+  gap: 16px;
+  align-items: center;
+  padding: 18px;
+}
+.xp-result .character-portrait {
+  width: 84px;
+  height: 84px;
+}
+.xp-result strong {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  color: #f2d694;
+}
+.xp-result strong span {
+  margin: 0;
+}
+.xp-result progress {
+  height: 13px;
+}
+.xp-result small {
+  font-size: 12px;
+  color: #c2d3c1;
+}
+.results-trophy {
+  display: flex;
+  justify-content: center;
+  color: #f4cc70;
+  margin: 10px auto 20px;
+  filter: drop-shadow(0 0 12px #e4b84966);
+}
+.results-trophy svg {
+  width: 72px;
+  height: 72px;
+  stroke-width: 1.6;
+}
+.report-honors > h3 {
+  text-align: center;
+}
+.personal-best-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+  gap: 12px;
+}
+.personal-best-grid article {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 8px;
+  background: #18362e;
+  border: 1px solid #bba06455;
+  border-radius: 8px;
+  padding: 18px;
+}
+.personal-best-grid strong {
+  font:
+    32px "Barlow Condensed",
+    sans-serif;
+  color: #f3d28e;
+}
+.new-best {
+  font-size: 12px;
+  color: #ffe299;
+  letter-spacing: 0.05em;
+}
+.game-overlay.results-report button[hidden] {
+  display: none !important;
+}
+@media (max-width: 600px) {
+  .session-scoreboard {
+    font-size: 12px;
+  }
+  .session-scoreboard th,
+  .session-scoreboard td {
+    padding: 8px 6px;
+  }
+  .session-scoreboard td {
+    font-size: 20px;
+  }
+  .scoreboard-player {
+    gap: 4px;
+  }
+  .scoreboard-player .character-portrait {
+    width: 30px;
+    height: 36px;
+  }
+  .scoreboard-player small {
+    font-size: 10px;
+  }
+  .report-mastery .xp-result {
+    grid-template-columns: 60px minmax(0, 1fr);
+    padding: 12px;
+    gap: 10px;
+  }
+  .xp-result .character-portrait {
+    width: 60px;
+    height: 70px;
+  }
+  .results-trophy svg {
+    width: 60px;
+    height: 60px;
+  }
+}
