@@ -77,17 +77,17 @@ test("app menus, account, settings and scrollable mode lists fit phones without 
     "tdm",
     "war",
     "rush",
-    "boss",
-    "gauntlet-team",
     "ctf",
     "gridiron",
     "zombies",
+    "boss",
+    "gauntlet-team",
+    "corruption",
     "turnpike",
     "ffa",
     "roulette",
-    "gauntlet",
     "dungeon",
-    "corruption",
+    "gauntlet",
   ]);
   await context.close();
 });

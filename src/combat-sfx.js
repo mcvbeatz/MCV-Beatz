@@ -23,6 +23,8 @@ export const SFX_KINDS = [
   "clash",
   "token",
   "whistle",
+  "crowd-run",
+  "crowd-touchdown",
 ];
 const armed = new Set([
   "ice",
@@ -44,6 +46,8 @@ export const contactSound = (element) =>
 export function synthesizeSfx(kind, sampleRate = 44100, seed = 1) {
   const length = {
     whistle: 0.48,
+    "crowd-run": 1.4,
+    "crowd-touchdown": 2.6,
     swing: 0.18,
     slice: 0.19,
     impact: 0.2,
@@ -63,6 +67,24 @@ export function synthesizeSfx(kind, sampleRate = 44100, seed = 1) {
     low += 0.12 * (noise - low);
     const high = noise - low;
     let v = 0;
+    if (kind.startsWith("crowd-")) {
+      // Layered vowel-like voices, diffuse roar and scattered claps; two distinct swells.
+      const big = kind === "crowd-touchdown";
+      const envelope = Math.min(1, t / 0.14) * Math.min(1, (length - t) / 0.65);
+      let voices = 0;
+      for (let j = 0; j < 12; j++) {
+        const pitch = 135 + j * 21 + (big ? 35 : 0);
+        const voice = Math.sin(
+          TAU * pitch * t + 1.7 * Math.sin(t * (5 + j * 0.12)),
+        );
+        voices += (voice * (0.5 + 0.5 * Math.sin(t * (7 + j) + j))) / 12;
+      }
+      const claps = Math.max(0, Math.sin(t * 49 + Math.sin(t * 17))) ** 18;
+      v =
+        (voices * 0.24 + low * 0.62 + high * claps * 0.07) *
+        envelope *
+        (big ? 1 : 0.7);
+    }
     if (kind === "whistle") {
       phase += (TAU * (2550 + 95 * Math.sin(TAU * 32 * t))) / sampleRate;
       v =
@@ -167,8 +189,8 @@ export class CombatSfx {
     )
       return false;
     const now = this.context.currentTime;
-    if (kind === "whistle") {
-      // A new-round cue must remain audible even when the combat pool is full.
+    if (["whistle", "crowd-run", "crowd-touchdown"].includes(kind)) {
+      // Stadium cues must remain audible even when the combat pool is full.
       const regular = [...this.voices].filter((v) => v.sfxKind !== "icicle");
       if (regular.length >= 8) {
         regular[0].stop();

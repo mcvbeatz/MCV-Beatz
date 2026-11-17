@@ -12,7 +12,7 @@ import {
   cosmeticCatalog,
 } from "./rewards.js";
 import { STAT_LABELS, RECORDS, formatStat } from "./records.js";
-import { MODES, PLAY_MODES } from "./mode-catalog.js";
+import { MODES, PLAY_MODES, TEAM_MODES } from "./mode-catalog.js";
 import { nameOf } from "./combat.js";
 import { portraitMarkup, paintPortraits } from "./characters.js";
 export const escapeHTML = (s) =>
@@ -233,12 +233,19 @@ export function renderMatchReport(
     const heading = `<div class="report-step">${stage + 1} / 3 · ${titles[stage]}</div>`;
     let content = "";
     if (stage === 0) {
-      const rows = sessionRows(m),
+      const grouped = TEAM_MODES.includes(m.mode) && m.mode !== "zombies";
+      const localTeam = sessionRows(m).find((r) => r.isPlayer)?.team;
+      const rows = [...sessionRows(m)].sort((a, b) =>
+          grouped
+            ? Number(b.team === localTeam) - Number(a.team === localTeam) ||
+              a.team - b.team
+            : 0,
+        ),
         columns = SESSION_COLUMNS[m.mode];
       content = `<section aria-label="Match scoreboard"><h3>${esc(MODES[m.mode]?.name || m.mode)} · ${formatStat("playtime", m.duration)}</h3><div class="scoreboard-scroll" tabindex="0" aria-label="All players’ match statistics"><table class="session-scoreboard"><thead><tr><th scope="col">Player</th>${columns.map(([, label]) => `<th scope="col">${label}</th>`).join("")}</tr></thead><tbody>${rows
         .map(
-          (row) =>
-            `<tr class="${row.isPlayer ? "your-result" : ""}"><th scope="row"><div class="scoreboard-player">${portraitMarkup(row.element)}<span>${esc(row.isPlayer ? username + " · You" : row.name)}<small>${esc(nameOf(row.element))}</small></span></div></th>${columns
+          (row, i) =>
+            `${grouped && (!i || row.team !== rows[i - 1].team) ? `<tr class="team-heading ${row.team === localTeam ? "ally-team" : "enemy-team"}"><th colspan="${columns.length + 1}" scope="colgroup">${row.team === localTeam ? "Your team" : "Opposing team"}${["gridiron", "ctf", "tdm", "war", "rush"].includes(m.mode) && m.scores?.[row.team] != null ? ` · ${m.scores[row.team]}` : ""}</th></tr>` : ""}<tr class="player-result ${row.isPlayer ? "your-result" : ""}"><th scope="row"><div class="scoreboard-player">${portraitMarkup(row.element)}<span>${esc(row.isPlayer ? username + " · You" : row.name)}<small>${esc(nameOf(row.element))}</small></span></div></th>${columns
               .map(([key]) => {
                 let value =
                   key === "fastestLap" && !row[key]

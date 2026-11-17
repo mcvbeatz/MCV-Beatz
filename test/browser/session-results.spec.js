@@ -51,9 +51,9 @@ test("all modes show only their specified columns and every participant, with no
       "Player",
       ...expected.columns,
     ]);
-    await expect(page.locator(".session-scoreboard tbody tr")).toHaveCount(
-      expected.players,
-    );
+    await expect(
+      page.locator(".session-scoreboard tbody .player-result"),
+    ).toHaveCount(expected.players);
     await expect(page.locator(".report-mastery")).toHaveCount(0);
     await expect(page.locator(".results-trophy")).toHaveCount(0);
     if (mode === "dungeon") {

@@ -32,6 +32,7 @@ import {
   fumble,
   gridironHit,
   updateGridiron,
+  advanceGridironCelebration,
   eventEnd,
   gridironAI,
   raceFelled,
@@ -933,6 +934,7 @@ export class Combat {
     this.autoLock(a);
   }
   strike(a, aim = null) {
+    if (this.gridCelebration) return false;
     if (
       this.dungeon?.reward ||
       this.intermission ||
@@ -997,6 +999,7 @@ export class Combat {
     this.emitSound("token", token);
   }
   startCharge(a, form = activeForm(a)) {
+    if (this.gridCelebration) return false;
     if (this.mode === "turnpike" && !a.raceCasting) return useRaceItem(this, a);
     if (
       this.dungeon?.reward ||
@@ -1048,6 +1051,7 @@ export class Combat {
     return true;
   }
   releaseCharge(a) {
+    if (this.gridCelebration) return false;
     if (!a.charging) return;
     a.charging = false;
     if (isIcicleForm(a.chargeForm)) {
@@ -1247,6 +1251,7 @@ export class Combat {
     ignoreFriendlyFire = false,
     deathTerrain = null,
   ) {
+    if (this.gridCelebration) return 0;
     if (
       !b.alive ||
       !dungeonActorAvailable(this, b) ||
@@ -1613,6 +1618,7 @@ export class Combat {
     a.castFy = dy / length;
   }
   cast(a, p, form = activeForm(a)) {
+    if (this.gridCelebration) return false;
     if (
       this.intermission ||
       this.waveTravel ||
@@ -1815,6 +1821,7 @@ export class Combat {
     return true;
   }
   telekinesis(a, target, dx, dy) {
+    if (this.gridCelebration) return false;
     const length = Math.hypot(dx, dy);
     if (
       this.intermission ||
@@ -1862,6 +1869,7 @@ export class Combat {
     return true;
   }
   utility(a, hold = true, form = activeForm(a)) {
+    if (this.gridCelebration) return false;
     if (
       hold &&
       (this.dungeon?.reward ||
@@ -2215,6 +2223,7 @@ export class Combat {
     return true;
   }
   teleport(a, x, y) {
+    if (this.gridCelebration) return false;
     if (this.countingDown || this.dungeon?.reward) return false;
     if (
       !a.alive ||
@@ -3402,6 +3411,8 @@ export class Combat {
     if (this.dungeon?.reward) return;
     if (this.intermission) return advanceReward(this, dt);
     dt = Math.min(dt, 0.05);
+    if (this.gridCelebration)
+      return advanceGridironCelebration(this, dt, input);
     if (this.waveTravel) return advanceWaveTravel(this, dt, input, runAI);
     if (this.countdown > 0) {
       const wasLocked = this.countingDown;

@@ -116,6 +116,8 @@ export function fumble(g, a) {
   if (g.ball?.carrier !== a.id) return;
   Object.assign(g.ball, {
     carrier: null,
+    assistPassers: [],
+    run: null,
     x: a.x,
     y: a.y,
     pickupAt: g.time + 0.12,
@@ -189,6 +191,7 @@ export function passTargets(g, a) {
 export function passGridiron(g, a, receiver = null) {
   if (
     g.finished ||
+    g.gridCelebration ||
     g.countingDown ||
     a.prisonHp > 0 ||
     a.blink ||
@@ -204,6 +207,7 @@ export function passGridiron(g, a, receiver = null) {
     x: a.x,
     y: a.y,
     carrier: null,
+    run: null,
     pickupAt: g.time + duration,
     lastCarrier: a.id,
     lastCarrierUntil: g.time + duration + 0.3,
@@ -253,8 +257,14 @@ function updatePassFlight(g) {
     .sort((a, b) => a.u - b.u || a.gap - b.gap);
   if (catches.length) {
     const passer = g.fighters.find((a) => a.id === p.from);
-    if (passer && passer.team !== catches[0].a.team)
+    if (passer && passer.team !== catches[0].a.team) {
       trackObjective(g, catches[0].a, "interceptions");
+      ball.assistPassers = [];
+    } else if (passer)
+      ball.assistPassers = [
+        ...new Set([...(ball.assistPassers || []), passer.id]),
+      ];
+    ball.run = null;
     ball.carrier = catches[0].a.id;
     ball.x = catches[0].a.x;
     ball.y = catches[0].a.y;
@@ -263,6 +273,8 @@ function updatePassFlight(g) {
     return false;
   }
   if (progress >= 1) {
+    ball.assistPassers = [];
+    ball.run = null;
     ball.pass = null;
     ball.pickupAt = g.time;
     return false;
@@ -271,7 +283,7 @@ function updatePassFlight(g) {
 }
 
 export function updateGridiron(g) {
-  if (g.mode !== "gridiron") return;
+  if (g.mode !== "gridiron" || g.gridCelebration) return;
   updateGridironEvolution(g);
   const ball = g.ball;
   if (updatePassFlight(g)) return;
@@ -281,6 +293,7 @@ export function updateGridiron(g) {
     carrier = null;
   }
   if (carrier) {
+    cheerGridironRun(g, carrier);
     ball.x = carrier.x;
     ball.y = carrier.y;
   }
@@ -296,32 +309,43 @@ export function updateGridiron(g) {
     g.scores[team]++;
     const scorer = carrier || g.fighters.find((a) => a.id === ball.lastCarrier);
     if (scorer?.team === team) trackObjective(g, scorer, "touchdowns");
-    if (g.suddenDeath) {
-      g.finish(team, "Sudden-death touchdown");
-      return;
+    for (const id of ball.assistPassers || []) {
+      const passer = g.fighters.find((a) => a.id === id);
+      if (passer?.team === team && passer !== scorer)
+        trackObjective(g, passer, "assists");
     }
-    updateGridironEvolution(g);
-    for (const a of g.fighters) g.respawn(a);
+    ball.assistPassers = [];
+    g.gridCelebration = {
+      remaining: 3,
+      scoringTeam: team,
+      receivingTeam: zone.team,
+      final: !!g.suddenDeath,
+    };
     g.projectiles = [];
     g.hazards = [];
     g.waves = [];
     g.pending = [];
-    const receivingTeam = g.fighters.filter((a) => a.team === zone.team);
-    const kills = Math.max(...receivingTeam.map((a) => a.kills || 0));
-    const receiver = pick(
-      g,
-      receivingTeam.filter((a) => (a.kills || 0) === kills),
-    );
-    Object.assign(ball, {
-      x: receiver.x,
-      y: receiver.y,
-      carrier: receiver.id,
-      pickupAt: g.time,
-      lastCarrier: null,
-      pass: null,
-    });
-    g.emitSound("whistle", g.player);
-    g.cue("heal", ball, "#f5d28b");
+    g.effects = [];
+    g.audioEvents.length = 0;
+    g.emitSound("crowd-touchdown", g.player);
+    for (const a of g.fighters) {
+      a.charging = false;
+      a.swing =
+        a.hitReact =
+        a.clash =
+        a.castTime =
+        a.burst =
+        a.shield =
+        a.prisonHp =
+        a.stagger =
+        a.slow =
+        a.knockX =
+        a.knockY =
+          0;
+      a.vx = a.vy = 0;
+      a.victory = a.alive;
+      a.victoryTime = 0;
+    }
     return;
   }
   if (!carrier && g.time >= ball.pickupAt) {
@@ -340,9 +364,91 @@ export function updateGridiron(g) {
     );
     if (carrier) {
       ball.carrier = carrier.id;
+      ball.run = null;
+      cheerGridironRun(g, carrier);
       g.emitSound("token", carrier);
     }
   }
+}
+// Count distinct marked lines crossed toward the opposing end zone per carry.
+function cheerGridironRun(g, carrier) {
+  const ball = g.ball;
+  if (ball.run?.id !== carrier.id)
+    ball.run = { id: carrier.id, x: carrier.x, crossed: [], cheers: 0 };
+  const run = ball.run,
+    forward = carrier.team === 0 ? 1 : -1;
+  const r = g.map.shapes[0];
+  for (let i = 1; i < 10; i++) {
+    const x = r.x + 150 + ((r.w - 300) * i) / 10;
+    if (
+      (x - run.x) * forward > 0 &&
+      (carrier.x - x) * forward >= 0 &&
+      !run.crossed.includes(i)
+    )
+      run.crossed.push(i);
+  }
+  run.x = carrier.x;
+  const cheers = Math.floor(run.crossed.length / 3);
+  if (cheers > run.cheers) {
+    run.cheers = cheers;
+    g.emitSound("crowd-run", g.player);
+  }
+}
+export function advanceGridironCelebration(g, dt, input) {
+  const celebration = g.gridCelebration;
+  if (!celebration) return;
+  celebration.remaining = Math.max(0, celebration.remaining - dt);
+  for (const a of g.fighters) {
+    if (!a.alive) continue;
+    g.move(a, a === g.player ? input.x : 0, a === g.player ? input.y : 0, dt);
+    a.victory = a.movingTime === 0;
+    a.victoryTime = a.victory ? (a.victoryTime || 0) + dt : 0;
+  }
+  const carrier = g.fighters.find((a) => a.id === g.ball.carrier);
+  if (carrier) {
+    g.ball.x = carrier.x;
+    g.ball.y = carrier.y;
+  }
+  if (celebration.remaining > 0) return;
+  g.gridCelebration = null;
+  for (const a of g.fighters) a.victory = false;
+  if (
+    celebration.final ||
+    (g.time >= g.timeLimit && g.scores[0] !== g.scores[1])
+  ) {
+    g.finish(
+      celebration.final
+        ? celebration.scoringTeam
+        : g.scores[0] > g.scores[1]
+          ? 0
+          : 1,
+      celebration.final ? "Sudden-death touchdown" : "Touchdowns at full time",
+    );
+    return;
+  }
+  updateGridironEvolution(g);
+  for (const a of g.fighters) g.respawn(a);
+  const receiving = g.fighters.filter(
+    (a) => a.team === celebration.receivingTeam,
+  );
+  const kills = Math.max(...receiving.map((a) => a.kills || 0));
+  const receiver = pick(
+    g,
+    receiving.filter((a) => (a.kills || 0) === kills),
+  );
+  Object.assign(g.ball, {
+    x: receiver.x,
+    y: receiver.y,
+    carrier: receiver.id,
+    pickupAt: g.time,
+    lastCarrier: null,
+    pass: null,
+    assistPassers: [],
+    run: null,
+  });
+  g.emitSound("whistle", g.player);
+  g.gridWhistleStarted = true;
+  g.cue("heal", g.ball, "#f5d28b");
 }
 export function eventEnd(g) {
   if (g.mode === "ctf") {
@@ -363,6 +469,7 @@ export function eventEnd(g) {
     );
   }
   if (g.mode === "gridiron") {
+    if (g.gridCelebration) return false;
     if (g.time < 180) return false;
     if (g.scores[0] === g.scores[1]) {
       g.suddenDeath = true;

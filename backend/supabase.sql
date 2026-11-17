@@ -2,7 +2,7 @@
 -- set Site URL + allowed redirect URL to https://mcvbeatz.github.io/MCV-Beatz/.
 create table public.profiles (
   id uuid primary key references auth.users(id) on delete cascade,
-  username text not null check (username ~ '^[A-Za-z0-9_]{3,24}$)
+  username text not null check (username ~ '^[A-Za-z0-9_]{3,24}$')
 );
 create unique index profiles_username_unique on public.profiles(lower(username));
 create table public.player_stats (

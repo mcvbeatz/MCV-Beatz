@@ -31,9 +31,11 @@ export const SESSION_COLUMNS = {
     ["returns", "Flags Recovered"],
     ...combat,
   ],
-  gridiron: [["touchdowns", "Touchdowns"], ...combat],
+  gridiron: [["touchdowns", "Touchdowns"], ["assists", "Assists"], ...combat],
   zombies: combat,
 };
+export const excludesOverallPerformance = (mode) =>
+  ["gauntlet", "gauntlet-team"].includes(mode);
 export const excludesOverallEliminations = (mode) =>
   ["dungeon", "zombies"].includes(mode);
 export function overallEliminations(mode, count) {

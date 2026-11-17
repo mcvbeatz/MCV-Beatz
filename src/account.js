@@ -1,4 +1,7 @@
-import { overallEliminations } from "./session-results.js";
+import {
+  overallEliminations,
+  excludesOverallPerformance,
+} from "./session-results.js";
 import { createClient } from "@supabase/supabase-js";
 export const PRACTICE_MODES = new Set([
   "duel",
@@ -92,6 +95,23 @@ export class AccountService {
     const { error } = await this.require().auth.signOut();
     if (error) throw error;
   }
+  async deleteAccount() {
+    if (!this.user) throw new Error("Sign in to delete your account.");
+    const id = this.user.id;
+    const { error } = await this.require().rpc("delete_own_account");
+    if (error)
+      throw new Error(
+        `Account could not be deleted: ${error.message}. The account database update may need to be installed.`,
+      );
+    // The server deletion succeeded. Never let a stale local session recreate its cache.
+    this.user = null;
+    try {
+      localStorage.removeItem(`fusion-throwdown:progress:v1:account:${id}`);
+    } catch {}
+    await this.client.auth.signOut({ scope: "local" }).catch(() => {});
+    this.listeners.forEach((f) => f());
+    return id;
+  }
   startMatch(mode, practice = false) {
     return {
       id: crypto.randomUUID(),
@@ -105,6 +125,7 @@ export class AccountService {
       !ticket ||
       ticket.saved ||
       ticket.practice ||
+      excludesOverallPerformance(ticket.mode) ||
       !ticket.userId ||
       ticket.userId !== this.user?.id ||
       !g.finished

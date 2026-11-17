@@ -1,3 +1,4 @@
+import { excludesOverallPerformance } from "./session-results.js";
 import { ProgressionStore } from "./progression-storage.js";
 import { completedSnapshot } from "./match-statistics.js";
 import {
@@ -250,7 +251,7 @@ export function createApp(api) {
         ? TEAM_MODES
         : SOLO_MODES;
     $("shell-content").innerHTML =
-      `<div class="screen-intro"><h1>${practice ? "Make every move count." : category === "team-battles" ? "Team Battles" : "Solo Battles"}</h1><p>${practice ? "Tutorials and adaptive AI practice. No stats are saved." : "Choose a mode. Scroll to explore every battle."}</p></div><div class="mode-menu mode-scroll" tabindex="0" aria-label="${practice ? "Practice modes" : category === "team-battles" ? "Team battle modes" : "Solo battle modes"}">${list.map((id) => `<article class="mode-card"><button data-launch="${id}"><strong>${MODES[id]?.name || "Tutorial"}</strong><span>${MODES[id]?.tag || "Controls · elements · fusion abilities"}</span></button><button data-help="${id}" aria-label="How to play ${MODES[id]?.name || id}">How to play</button></article>`).join("")}</div>`;
+      `<div class="screen-intro"><h1>${practice ? "Make every move count." : category === "team-battles" ? "Team Battles" : "Solo Battles"}</h1><p>${practice ? "Tutorials and adaptive AI practice. No stats are saved." : "Choose a mode. Scroll to explore every battle."}</p></div><div class="mode-menu mode-scroll" tabindex="0" aria-label="${practice ? "Practice modes" : category === "team-battles" ? "Team battle modes" : "Solo battle modes"}">${list.map((id) => `<article class="mode-card"><button data-launch="${id}"><strong>${MODES[id]?.name || "Tutorial"}</strong></button><button data-help="${id}" aria-label="How to play ${MODES[id]?.name || id}">How to play</button></article>`).join("")}</div>`;
     enableOrientedScroll(document.querySelector(".mode-scroll"));
     $("shell-content")
       .querySelectorAll("[data-launch]")
@@ -502,7 +503,7 @@ export function createApp(api) {
     const c = $("shell-content");
     if (account.user && !account.recovery) {
       c.innerHTML =
-        '<div class="screen-intro"><h1>My Account</h1><p id="account-name"></p></div><div id="account-stats" class="stats-grid"></div><p id="account-message" role="status"></p><button id="account-signout">Sign out</button>';
+        '<div class="screen-intro"><h1>My Account</h1><p id="account-name"></p></div><div id="account-stats" class="stats-grid"></div><p id="account-message" role="status"></p><button id="account-signout">Sign out</button><button id="account-delete" class="danger-button">Delete Account</button><div id="account-delete-confirm" hidden><h2>Are you Sure?</h2><p>This permanently deletes your account, account progress and public stats. Guest saves are kept.</p><button id="account-delete-cancel">Cancel</button><button id="account-delete-yes" class="danger-button">Yes, Delete Account</button></div>';
       $("account-name").textContent =
         account.user.user_metadata?.username || "Player";
       $("account-signout").onclick = async () => {
@@ -511,6 +512,29 @@ export function createApp(api) {
           show("account");
         } catch (e) {
           $("account-message").textContent = e.message;
+        }
+      };
+      $("account-delete").onclick = () => {
+        $("account-delete-confirm").hidden = false;
+        $("account-delete-cancel").focus();
+      };
+      $("account-delete-cancel").onclick = () => {
+        $("account-delete-confirm").hidden = true;
+        $("account-delete").focus();
+      };
+      $("account-delete-yes").onclick = async () => {
+        $("account-delete-yes").disabled = true;
+        const id = account.user?.id;
+        try {
+          await account.deleteAccount();
+          const deletedStore = progressionStores.get(id);
+          if (deletedStore) deletedStore.discarded = true;
+          progressionStores.delete(id);
+          if (matchTicket?.userId === id) matchTicket = null;
+          show("account");
+        } catch (e) {
+          $("account-message").textContent = e.message;
+          $("account-delete-yes").disabled = false;
         }
       };
       loadStats();
@@ -843,7 +867,11 @@ export function createApp(api) {
       if (!g.intermission && !g.dungeon?.reward) lastReward = null;
     }
     if (g.finished && matchTicket && !matchTicket.saved && !statsBusy) {
-      if (!matchTicket.userId || matchTicket.practice) {
+      if (
+        !matchTicket.userId ||
+        matchTicket.practice ||
+        excludesOverallPerformance(matchTicket.mode)
+      ) {
         $("save-status").textContent = matchTicket.practice
           ? "Practice · no stats saved."
           : matchTicket.store.status;

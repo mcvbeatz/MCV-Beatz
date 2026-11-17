@@ -1,3 +1,4 @@
+import { advanceGridironCelebration } from "../src/event-modes.js";
 import test from "node:test";
 import assert from "node:assert/strict";
 import { Combat, visibility, canUseSkill, distance } from "../src/combat.js";
@@ -248,6 +249,7 @@ test("Gridiron gives the next possession to the conceding team's highest-kill pl
   g.ball.y = 550;
   updateGridiron(g);
   assert.deepEqual(g.scores, [1, 0]);
+  advanceGridironCelebration(g, 3, { x: 0, y: 0 });
   assert.equal(g.ball.carrier, receiver.id);
   assert.equal(g.ball.x, receiver.spawn.x);
   assert.equal(g.ball.y, receiver.spawn.y);
@@ -259,6 +261,7 @@ test("Gridiron gives the next possession to the conceding team's highest-kill pl
   g.ball.y = 550;
   updateGridiron(g);
   assert.deepEqual(g.scores, [1, 1]);
+  advanceGridironCelebration(g, 3, { x: 0, y: 0 });
   assert.equal(g.ball.carrier, g.fighters[1].id);
 });
 

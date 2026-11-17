@@ -1,3 +1,4 @@
+import { advanceGridironCelebration } from "../src/event-modes.js";
 import test from "node:test";
 import assert from "node:assert/strict";
 import { Combat, makeFighter } from "./combat-fixture.js";
@@ -305,7 +306,12 @@ test("Gridiron touchdown and opponent pass interception are real objective event
   g.ball.carrier = p.id;
   updateGridiron(g);
   assert.equal(g.matchStats.objectives.touchdowns, 1);
-  assert.equal(g.audioEvents.filter((e) => e.kind === "whistle").length, 2);
+  assert.equal(
+    g.audioEvents.filter((e) => e.kind === "crowd-touchdown").length,
+    1,
+  );
+  advanceGridironCelebration(g, 3, { x: 0, y: 0 });
+  assert.equal(g.audioEvents.filter((e) => e.kind === "whistle").length, 1);
 });
 test("Zombies damage is measured in actual hit points and Fire eliminations are individual, not the team total", () => {
   const g = new Combat({ mode: "zombies", players: 2 });

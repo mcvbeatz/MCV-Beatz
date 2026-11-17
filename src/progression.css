@@ -654,3 +654,38 @@ body[data-screen="account"] .progress-content {
     height: 60px;
   }
 }
+
+.progress-toolbar [data-auth] {
+  min-height: 52px;
+  padding: 12px 24px;
+  background: linear-gradient(135deg, #ffe5a0, #c89b47);
+  color: #172c28;
+  font-weight: 800;
+  border: 2px solid #ffebad;
+  box-shadow: 0 0 20px #e7be6040;
+  font-size: 1.1rem;
+}
+.team-heading th {
+  padding: 14px 10px;
+  text-align: left;
+  letter-spacing: 0.06em;
+}
+.team-heading.ally-team {
+  color: #9de7bb;
+  background: #204b3a;
+}
+.team-heading.enemy-team {
+  color: #ffc18b;
+  background: #513929;
+}
+.danger-button {
+  border: 1px solid #dc917a;
+  color: #ffd1bb;
+  margin-top: 14px;
+  min-height: 44px;
+}
+#account-delete-confirm {
+  padding: 16px;
+  border: 1px solid #dc917a;
+  background: #263330;
+}

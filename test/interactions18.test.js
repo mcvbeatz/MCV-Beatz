@@ -158,10 +158,10 @@ test("Team Battles use the requested order", () => {
     "tdm",
     "war",
     "rush",
-    "boss",
-    "gauntlet-team",
     "ctf",
     "gridiron",
     "zombies",
+    "boss",
+    "gauntlet-team",
   ]);
 });

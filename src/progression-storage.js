@@ -78,6 +78,7 @@ export function validateMatch(m) {
             "flagsStolen",
             "returns",
             "touchdowns",
+            "assists",
           ]),
       ))
   )
@@ -198,6 +199,7 @@ export class ProgressionStore {
     this.save.equipped = { ...this.state.equipped };
   }
   persist() {
+    if (this.discarded) return false;
     if (this.readOnly) return false;
     try {
       if (!this.storage) throw new Error("Storage unavailable");

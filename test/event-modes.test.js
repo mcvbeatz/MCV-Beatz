@@ -1,3 +1,4 @@
+import { advanceGridironCelebration } from "../src/event-modes.js";
 import test from "node:test";
 import assert from "node:assert/strict";
 import {
@@ -115,6 +116,7 @@ test("Gridiron scores the opposite end zone, resets possession, and ends tied re
   g.ball.y = 550;
   updateGridiron(g);
   assert.deepEqual(g.scores, [1, 0]);
+  advanceGridironCelebration(g, 3, { x: 0, y: 0 });
   const receiver = g.fighters.find((a) => a.id === g.ball.carrier);
   assert.equal(receiver.team, 1);
   assert.equal(g.ball.x, receiver.spawn.x);
@@ -126,6 +128,7 @@ test("Gridiron scores the opposite end zone, resets possession, and ends tied re
   g.ball.x = 250;
   g.ball.y = 550;
   updateGridiron(g);
+  advanceGridironCelebration(g, 3, { x: 0, y: 0 });
   assert.equal(g.finished, true);
   assert.equal(g.winnerTeam, 1);
   assert.match(g.finishReason, /Sudden/);

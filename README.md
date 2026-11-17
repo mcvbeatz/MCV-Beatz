@@ -1,4 +1,13 @@
-# Fusion Throwdown · v0.57.0
+# Fusion Throwdown · v0.58.0
+
+## v0.58.0 Gridiron celebrations and account updates
+
+- Team session scoreboards now group players by team; solo modes and Zombies retain their single list. Gridiron includes touchdown assists.
+- Completed passes in an unbroken scoring possession award each eligible passer one assist when a teammate scores. Fumbles, interceptions and missed catches clear the pending credit. A passer who scores the touchdown does not assist themselves.
+- Gridiron cheers after every three distinct forward yard lines crossed during a carry, with a separate touchdown cheer. Touchdowns pause the clock/combat for three seconds: living players can run or automatically pose while idle. Then the conceding team's highest-kill player receives possession and the whistle starts the next round. Sudden-death winners celebrate before final results.
+- Solo/Team Waves retain mastery and per-mode records but no longer contribute any Overall Performance totals. Dungeon/Zombies still exclude only eliminations. Historical local totals rebuild automatically.
+- Reordered mode lists, removed mode-card subtitles, highlighted Sign in / Register, and added confirmed account deletion under Manage Account.
+- Fixed the original SQL username-pattern syntax error. The combined [v0.58 database update](backend/update-v058.sql) creates/repairs the public leaderboard, installs private progression and self-deletion, and corrects historical public totals once. **It must be run by the project owner in Supabase SQL Editor; deploying the client cannot apply SQL.** [Setup and verification](backend/README.md).
 
 ## v0.57.0 Mode scoreboards and focused results
 

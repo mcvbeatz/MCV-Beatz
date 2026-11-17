@@ -91,7 +91,7 @@ export const MODES = {
       ],
       [
         "Touchdown",
-        "Bring the ball into the opposing end zone for one point. After a touchdown, players return to their starting positions and the team that conceded receives the ball. Its player with the most kills is the carrier; ties choose randomly. Most points after three minutes wins; a tie goes to sudden death, with the next touchdown winning.",
+        "Bring the ball into the opposing end zone for one point. After a touchdown, enjoy a three-second celebration with the match clock paused: move freely or stand still to pose. The next round starts with a whistle. Completed passes in an unbroken scoring possession earn assists; fumbles, missed catches and interceptions clear them. Then players return to their starting positions and the team that conceded receives the ball. Its player with the most kills is the carrier; ties choose randomly. Most points after three minutes wins; a tie goes to sudden death, with the next touchdown winning.",
         "⚑",
       ],
     ],
@@ -412,19 +412,19 @@ export const TEAM_MODES = [
   "tdm",
   "war",
   "rush",
-  "boss",
-  "gauntlet-team",
   "ctf",
   "gridiron",
   "zombies",
+  "boss",
+  "gauntlet-team",
 ];
 export const SOLO_MODES = [
+  "corruption",
   "turnpike",
   "ffa",
   "roulette",
-  "gauntlet",
   "dungeon",
-  "corruption",
+  "gauntlet",
 ];
 export const PLAY_MODES = [...TEAM_MODES, ...SOLO_MODES];
 export const PRACTICE_LIST = ["duel", "fused", "fused3", "team"];

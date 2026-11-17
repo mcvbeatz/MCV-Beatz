@@ -1,5 +1,6 @@
 import {
   overallEliminations,
+  excludesOverallPerformance,
   SESSION_BESTS,
   ordinal,
 } from "./session-results.js";
@@ -34,6 +35,7 @@ export const RECORDS = {
   },
   war: { victories: ["War victories", "sum"] },
   gridiron: {
+    assists: ["Touchdown assists", "sum"],
     touchdowns: ["Touchdowns", "sum"],
     interceptions: ["Interceptions", "sum"],
     victories: ["Gridiron victories", "sum"],
@@ -118,7 +120,9 @@ export function updateRecords(state, m) {
     bests: {},
     armies: {},
   });
-  for (const stats of [state.totals, mode.stats]) {
+  for (const stats of excludesOverallPerformance(m.mode)
+    ? [mode.stats]
+    : [state.totals, mode.stats]) {
     stats.matches++;
     stats[
       m.result === "victory"

@@ -66,10 +66,12 @@ test("Gridiron HUD shows possession rules, scores and sudden death", async ({
   await expect(page.locator("#objective-score")).toContainText("SUDDEN DEATH");
   await page.evaluate(async () => {
     const g = __arena.game;
-    const { updateGridiron } = await import("/src/event-modes.js");
+    const { updateGridiron, advanceGridironCelebration } =
+      await import("/src/event-modes.js");
     g.ball.x = 1550;
     g.ball.y = 550;
     updateGridiron(g);
+    advanceGridironCelebration(g, 3, { x: 0, y: 0 });
   });
   expect(await page.evaluate(() => __arena.game.winnerTeam)).toBe(0);
   expect(errors).toEqual([]);

@@ -1,3 +1,4 @@
+import { advanceGridironCelebration } from "../src/event-modes.js";
 import test from "node:test";
 import assert from "node:assert/strict";
 import { Combat, canUseSkill } from "../src/combat.js";
@@ -58,6 +59,7 @@ test("A touchdown that creates a three-point deficit applies Invincible before t
   Object.assign(g.ball, { carrier: null, x: 1550, y: 550 });
   updateGridiron(g);
   assert.deepEqual(g.scores, [3, 0]);
+  advanceGridironCelebration(g, 3, { x: 0, y: 0 });
   assert.equal(a.element, "invincible");
   assert.equal(a.x, a.spawn.x);
   assert.equal(a.y, a.spawn.y);
