@@ -205,7 +205,9 @@ export function separateCTF(g, dt) {
   const budget = new Map(
     living.map((a) => [
       a,
-      a.id !== "player" && a.prisonHp <= 0 && !g.isShocked(a)
+      (g.humanInputs ? !g.humanInputs.has(a.id) : a.id !== "player") &&
+      a.prisonHp <= 0 &&
+      !g.isShocked(a)
         ? Math.min(16, dt * 300)
         : 0,
     ]),

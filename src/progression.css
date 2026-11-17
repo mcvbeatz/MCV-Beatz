@@ -670,11 +670,11 @@ body[data-screen="account"] .progress-content {
   text-align: left;
   letter-spacing: 0.06em;
 }
-.team-heading.ally-team {
+.session-scoreboard tbody tr.team-heading.ally-team {
   color: #9de7bb;
   background: #204b3a;
 }
-.team-heading.enemy-team {
+.session-scoreboard tbody tr.team-heading.enemy-team {
   color: #ffc18b;
   background: #513929;
 }
@@ -688,4 +688,143 @@ body[data-screen="account"] .progress-content {
   padding: 16px;
   border: 1px solid #dc917a;
   background: #263330;
+}
+
+.session-scoreboard tbody tr.ally-player {
+  background: #204b3a;
+}
+.session-scoreboard tbody tr.enemy-player {
+  background: #513929;
+}
+.session-scoreboard .team-gap td {
+  height: 22px;
+  padding: 0;
+  border: 0;
+  background: #091e19;
+}
+.profile-name {
+  color: #f7d78d;
+  font: inherit;
+  font-weight: 700;
+  padding: 8px;
+  border-bottom: 1px solid #d3b777;
+}
+.default-picker > div {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+.default-picker button[data-default] {
+  min-height: 120px;
+  display: grid;
+  justify-items: center;
+  color: #f8dc9a;
+  border: 1px solid #806d47;
+}
+.default-picker button[aria-pressed="true"] {
+  background: #45664e;
+  border-color: #ffe29a;
+}
+#lobby-panel {
+  position: absolute;
+  z-index: 25;
+  top: 12px;
+  right: 14px;
+  width: min(330px, 45%);
+  max-height: 62%;
+  overflow: auto;
+  padding: 15px;
+  background: #092820f2;
+  color: #f9dfaa;
+  border: 1px solid #c8a969;
+  border-radius: 12px;
+  touch-action: pan-y;
+}
+#lobby-panel header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+#lobby-panel p {
+  font-size: 0.78rem;
+  margin: 8px 0;
+}
+#lobby-panel button,
+#lobby-panel select {
+  min-height: 42px;
+}
+#lobby-panel label {
+  display: grid;
+  grid-template-columns: 1fr 1.2fr;
+  align-items: center;
+  gap: 8px;
+  margin: 8px 0;
+}
+#lobby-panel [data-start] {
+  width: 100%;
+  background: #eac574;
+  color: #122c24;
+  font-weight: bold;
+}
+.lobby-members {
+  padding-left: 22px;
+  font-size: 0.85rem;
+}
+.lobby-members small {
+  margin-left: 8px;
+  opacity: 0.7;
+}
+body[data-lobby="true"] .skill-controls,
+body[data-lobby="true"] #attack-btn,
+body[data-lobby="true"] #skill-switcher,
+body[data-lobby="true"] .game-hud,
+body[data-lobby="true"] .arena-caption,
+body[data-lobby="true"] #pause-btn {
+  visibility: hidden;
+}
+#results-sync {
+  color: #f5d48d;
+  font-size: 0.85rem;
+}
+body.portrait-play #lobby-panel {
+  top: 8px;
+  right: 8px;
+  width: calc(100% - 16px);
+  max-height: 45%;
+}
+
+.lobby-members li {
+  margin: 5px 0;
+  padding: 6px;
+}
+.lobby-members .member-frame {
+  border: 2px solid #f0d07e;
+  border-radius: 6px;
+}
+.lobby-members .tone-silver {
+  border-color: #cedce6;
+}
+
+#lobby-panel select {
+  min-width: 0;
+  width: 100%;
+  color: #f6dc9c;
+  background: #173b31;
+  border: 1px solid #a88b50;
+  border-radius: 6px;
+  padding: 8px;
+  font: inherit;
+  color-scheme: dark;
+}
+#lobby-panel [data-start] {
+  margin: 6px 0;
+  border-radius: 6px;
+}
+#lobby-panel [data-start]:disabled {
+  opacity: 0.65;
+}
+
+#orientation-root:not([data-rotation="0"]) #lobby-panel {
+  touch-action: none;
 }

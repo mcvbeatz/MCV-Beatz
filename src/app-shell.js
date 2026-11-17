@@ -1,3 +1,18 @@
+import { updateRespawnCamera } from "./camera.js";
+import { samplePresentation } from "./network-presentation.js";
+import {
+  defaultElement,
+  saveDefaultElement,
+  BASE_FORMS,
+} from "./player-preferences.js";
+import { LobbyClient } from "./lobby-client.js";
+import {
+  unpackGame,
+  resultFor,
+  RESULTS_SECONDS,
+} from "./multiplayer-protocol.js";
+import { renderLobbyPanel } from "./lobby-ui.js";
+import { escapeHTML } from "./progression-ui.js";
 import { excludesOverallPerformance } from "./session-results.js";
 import { ProgressionStore } from "./progression-storage.js";
 import { completedSnapshot } from "./match-statistics.js";
@@ -16,6 +31,7 @@ import {
   MODES,
   PLAY_MODES,
   TEAM_MODES,
+  MULTIPLAYER_MODES,
   SOLO_MODES,
   PRACTICE_LIST,
   CONTROL_SLIDES,
@@ -60,6 +76,213 @@ export function createApp(api) {
     return progressionStores.get(id);
   };
   let accountSection = "overview";
+  let lobby = null,
+    lobbyUrl = "",
+    lobbyRound = null,
+    lobbySignature = "",
+    resultControls = null,
+    lobbyCountdown = null;
+  const lobbyPanel = document.createElement("aside");
+  lobbyPanel.id = "lobby-panel";
+  lobbyPanel.hidden = true;
+  document.getElementById("game-wrap").append(lobbyPanel);
+  enableOrientedScroll(lobbyPanel);
+  function leaveLobby() {
+    lobby?.close();
+    lobby = null;
+    lobbyRound = null;
+    lobbyCountdown = null;
+    lobbySignature = "";
+    lobbyPanel.hidden = true;
+    delete document.body.dataset.lobby;
+    $("overlay-play").disabled = false;
+    api.releaseInput();
+  }
+  function roomProfile() {
+    return {
+      element: defaultElement(account.user),
+      cosmetics: { ...progressionStore().state.equipped },
+    };
+  }
+  function enterMode(id) {
+    if (id === "random")
+      id = PLAY_MODES[Math.floor(Math.random() * PLAY_MODES.length)];
+    return MULTIPLAYER_MODES.includes(id) ? openLobby(id) : chooseMode(id);
+  }
+  async function openLobby(id, offline = false) {
+    leaveLobby();
+    api.chooseMode(id);
+    category = "team-battles";
+    api.selectElement(defaultElement(account.user));
+    setScreen("battle");
+    document.body.dataset.lobby = "true";
+    lobbyPanel.hidden = false;
+    lobbyPanel.innerHTML =
+      "<h2>Joining lobby…</h2><p>Preparing your place in the colosseum.</p>";
+    sound.prepareBattle(id);
+    const profile = roomProfile();
+    const client = new LobbyClient({
+      url: lobbyUrl,
+      account,
+      onState: (state) => receiveLobby(state, client, profile),
+      onError: (message) => {
+        if (lobby !== client) return;
+        api.releaseInput();
+        lobbyPanel.hidden = false;
+        lobbyPanel.innerHTML = `<h2>Lobby connection</h2><p>${escapeHTML(message)}</p><button data-retry>Retry online</button><button data-offline>AI-only lobby</button><button data-exit>Back</button>`;
+        lobbyPanel.querySelector("[data-retry]").onclick = () => openLobby(id);
+        lobbyPanel.querySelector("[data-offline]").onclick = () =>
+          openLobby(id, true);
+        lobbyPanel.querySelector("[data-exit]").onclick = () =>
+          show("team-battles");
+      },
+    });
+    lobby = client;
+    try {
+      await client.connect(id, profile, offline);
+    } catch (e) {
+      client.onError(e.message);
+    }
+  }
+  function receiveLobby(state, client, profile) {
+    if (lobby !== client) return;
+    const member = state.members.find((m) => m.id === client.userId);
+    if (!member) return;
+    const old = api.game();
+    const presentation = old.networked ? samplePresentation(old) : null;
+    const localFocus =
+      old.networked && !old.player.alive ? old.spectatorFocus : null;
+    const g = unpackGame(state.game, old.networked ? old : null);
+    g.presentationFrom = presentation;
+    g.presentationAt = performance.now();
+    const waiting = ["lobby", "countdown"].includes(state.phase);
+    g.player = waiting
+      ? g.fighters[member.seat]
+      : g.fighters.find((a) => a.id === member.actorId);
+    if (!g.player) return;
+    g.spectatorFocus = !g.player.alive ? localFocus : null;
+    g.networked = true;
+    g.lobby = waiting;
+    g.networkCommand = (message) => client.send(message);
+    g.update = (dt, input) => {
+      updateRespawnCamera(g, dt, input);
+      client.move(input.x, input.y);
+    };
+    g.advanceCelebration = () => {};
+    // Local controls express actions; only the room server changes gameplay state.
+    g.strike = () => {
+      if (performance.now() - (client.lastStrike || 0) < 80) return;
+      client.lastStrike = performance.now();
+      client.send({ kind: "strike" });
+    };
+    for (const [method, kind] of Object.entries({
+      startCharge: "startCharge",
+      releaseCharge: "releaseCharge",
+      utility: "utility",
+      switchForm: "switchForm",
+      teleport: "teleport",
+      placeChasm: "chasm",
+    }))
+      g[method] = (_actor, ...args) => client.send({ kind, args });
+    g.chooseReward = (id) => client.send({ kind: "reward", args: [id] });
+    if (g.sessionActors) {
+      for (const row of g.sessionActors.values())
+        row.isPlayer = row.id === g.player.id;
+      g.matchStats = g.sessionActors.get(g.player.id)?.stats || g.matchStats;
+    }
+    if (g.finished) g.result = resultFor(g, g.player);
+    const catalog = cosmeticCatalog();
+    for (const a of g.fighters)
+      a.cosmeticAura =
+        catalog.find((c) => c.id === a.cosmetics?.aura)?.tone || null;
+    if (g.portals.placingOwners)
+      g.portals.placing = g.portals.placingOwners.has(g.player.id)
+        ? g.player.id
+        : null;
+    const fresh =
+      waiting !== !!old.lobby ||
+      (state.phase === "battle" && lobbyRound !== state.roundId) ||
+      !old.networked;
+    api.receiveGame(g, fresh);
+    document.body.dataset.lobby = String(waiting);
+    lobbyPanel.hidden = !waiting;
+    if (state.phase === "battle" && lobbyRound !== state.roundId) {
+      lobbyRound = state.roundId;
+      start();
+      matchTicket.id = member.matchId;
+    }
+    if (state.phase === "countdown" && lobbyCountdown !== state.deadline) {
+      lobbyCountdown = state.deadline;
+      sound.setScene(
+        musicScene("battle", { mode: state.mode, mapId: state.nextMapId }),
+        false,
+        true,
+      );
+    }
+    if (waiting) {
+      const signature = JSON.stringify([
+        state.phase,
+        state.capacity,
+        state.captain,
+        state.members.map((m) => [m.id, m.seat, m.element, m.cosmetics]),
+      ]);
+      if (signature !== lobbySignature) {
+        lobbySignature = signature;
+        renderLobbyPanel(lobbyPanel, client, progressionStore(), profile, {
+          onLeave: () => show("team-battles"),
+          onStart: () => client.send({ kind: "start" }),
+          onSize: (size) => client.send({ kind: "size", size }),
+          onProfile: (element) => {
+            profile.element = element;
+            client.send({ kind: "profile", ...profile });
+          },
+          onEquip: (slot, id) => {
+            const store = progressionStore(),
+              old = store.state.equipped[slot];
+            if (old && old !== id) store.equip(old);
+            if (id && old !== id) store.equip(id);
+            profile.cosmetics = { ...store.state.equipped };
+            client.send({ kind: "profile", ...profile });
+            if (account.user) syncProgress(store);
+          },
+        });
+      }
+    }
+    // Background tabs may suspend animation frames while the room keeps running.
+    // Persist a completed round before its next match replaces the ticket.
+    if (g.finished) tick(g);
+  }
+  function showDefaultPicker() {
+    const current = defaultElement(account.user);
+    const panel = document.createElement("section");
+    panel.className = "default-picker";
+    panel.innerHTML = `<h2>Default elemental</h2><p>Your starting choice in lobbies. Mode-specific forms still apply.</p><div>${BASE_FORMS.map((e) => `<button data-default="${e}" aria-pressed="${e === current}">${portraitMarkup(e)}${nameOf(e)}</button>`).join("")}</div><p role="status"></p><button data-close>Done</button>`;
+    $("shell-content").replaceChildren(panel);
+    paintPortraits(panel);
+    panel.querySelector("[data-close]").onclick = renderAccount;
+    panel.querySelectorAll("[data-default]").forEach(
+      (button) =>
+        (button.onclick = async () => {
+          button.disabled = true;
+          try {
+            await saveDefaultElement(button.dataset.default, account);
+            api.selectElement(button.dataset.default);
+            panel
+              .querySelectorAll("[data-default]")
+              .forEach((b) =>
+                b.setAttribute("aria-pressed", String(b === button)),
+              );
+            panel.querySelector("[role=status]").textContent =
+              "Default elemental saved.";
+          } catch (e) {
+            panel.querySelector("[role=status]").textContent = e.message;
+          } finally {
+            button.disabled = false;
+          }
+        }),
+    );
+  }
+
   function openProgress(section = "overview") {
     accountSection = section;
     return show("account");
@@ -132,8 +355,8 @@ export function createApp(api) {
       {
         home: "CHOOSE YOUR NEXT FORM",
         play: "PLAY",
-        "team-battles": "TEAM BATTLES",
-        "solo-battles": "SOLO BATTLES",
+        "team-battles": "MULTIPLAYER",
+        "solo-battles": "SOLO",
         elements: "ELEMENTS & FUSIONS",
         practice: "PRACTICE",
         tutorial: "TUTORIAL",
@@ -145,6 +368,7 @@ export function createApp(api) {
   }
   const dissolve = createMenuDissolve();
   function show(next) {
+    if (lobby && next !== "battle") leaveLobby();
     return dissolve(
       () => renderScreen(next),
       !["loading", "battle"].includes(screen) &&
@@ -183,11 +407,11 @@ export function createApp(api) {
         )
         .join(
           "",
-        )}</nav><p class="shell-note">Single-player battles with adaptive AI. Online multiplayer comes later.</p>`;
+        )}</nav><p class="shell-note">Shared online battles when connected, or AI-only lobbies.</p>`;
     else if (next === "play") {
       category = "play";
-      c.innerHTML = `<div class="screen-intro"><h1>Choose your battles.</h1><p>Find your team. Face the arena alone. Or let Quick Match decide.</p></div><nav class="battle-categories"><button data-screen="team-battles"><strong>Team Battles</strong><span>Fight and survive together →</span></button><button data-screen="solo-battles"><strong>Solo Battles</strong><span>Test yourself in solo battles →</span></button><button id="quick-match"><strong>Quick Match</strong><span>A random Team or Solo mode →</span></button></nav>`;
-      $("quick-match").onclick = () => chooseMode("random");
+      c.innerHTML = `<div class="screen-intro"><h1>Choose your battles.</h1><p>Find your team. Face the arena alone. Or let Quick Match decide.</p></div><nav class="battle-categories"><button data-screen="team-battles"><strong>Multiplayer</strong><span>Join a lobby and face the arena together →</span></button><button data-screen="solo-battles"><strong>Solo</strong><span>Dungeon and Solo Waves →</span></button><button id="quick-match"><strong>Quick Match</strong><span>A random Multiplayer or Solo mode →</span></button></nav>`;
+      $("quick-match").onclick = () => enterMode("random");
     } else if (["team-battles", "solo-battles", "practice"].includes(next)) {
       category = next;
       renderModes();
@@ -248,10 +472,10 @@ export function createApp(api) {
     const list = practice
       ? ["tutorial", ...PRACTICE_LIST]
       : category === "team-battles"
-        ? TEAM_MODES
+        ? MULTIPLAYER_MODES
         : SOLO_MODES;
     $("shell-content").innerHTML =
-      `<div class="screen-intro"><h1>${practice ? "Make every move count." : category === "team-battles" ? "Team Battles" : "Solo Battles"}</h1><p>${practice ? "Tutorials and adaptive AI practice. No stats are saved." : "Choose a mode. Scroll to explore every battle."}</p></div><div class="mode-menu mode-scroll" tabindex="0" aria-label="${practice ? "Practice modes" : category === "team-battles" ? "Team battle modes" : "Solo battle modes"}">${list.map((id) => `<article class="mode-card"><button data-launch="${id}"><strong>${MODES[id]?.name || "Tutorial"}</strong></button><button data-help="${id}" aria-label="How to play ${MODES[id]?.name || id}">How to play</button></article>`).join("")}</div>`;
+      `<div class="screen-intro"><h1>${practice ? "Make every move count." : category === "team-battles" ? "Multiplayer" : "Solo"}</h1><p>${practice ? "Tutorials and adaptive AI practice. No stats are saved." : "Choose a mode. Scroll to explore every battle."}</p></div><div class="mode-menu mode-scroll" tabindex="0" aria-label="${practice ? "Practice modes" : category === "team-battles" ? "Team battle modes" : "Solo battle modes"}">${list.map((id) => `<article class="mode-card"><button data-launch="${id}"><strong>${MODES[id]?.name || "Tutorial"}</strong></button><button data-help="${id}" aria-label="How to play ${MODES[id]?.name || id}">How to play</button></article>`).join("")}</div>`;
     enableOrientedScroll(document.querySelector(".mode-scroll"));
     $("shell-content")
       .querySelectorAll("[data-launch]")
@@ -260,7 +484,7 @@ export function createApp(api) {
           (b.onclick = () =>
             b.dataset.launch === "tutorial"
               ? show("tutorial")
-              : chooseMode(b.dataset.launch)),
+              : enterMode(b.dataset.launch)),
       );
     $("shell-content")
       .querySelectorAll("[data-help]")
@@ -308,10 +532,11 @@ export function createApp(api) {
     if (!MODES[id]) id = "duel";
     category = PRACTICE_LIST.includes(id)
       ? "practice"
-      : TEAM_MODES.includes(id)
+      : MULTIPLAYER_MODES.includes(id)
         ? "team-battles"
         : "solo-battles";
     api.chooseMode(id);
+    api.selectElement(defaultElement(account.user));
     setScreen("setup");
     sound.prepareBattle(id);
     $("setup-mode-title").textContent = MODES[id].name;
@@ -488,6 +713,7 @@ export function createApp(api) {
       section: accountSection,
       user: account.user,
       onOverview: loadStats,
+      onDefault: showDefaultPicker,
       onTab: (tab) => {
         accountSection = tab;
       },
@@ -718,7 +944,11 @@ export function createApp(api) {
   document.addEventListener(
     "click",
     (event) => {
-      if (["battle", "loading"].includes(screen)) return;
+      if (
+        screen === "loading" ||
+        (screen === "battle" && lobby?.state?.phase !== "lobby")
+      )
+        return;
       const control = event.target.closest?.("button, a, input, select");
       if (
         !control ||
@@ -731,7 +961,7 @@ export function createApp(api) {
     true,
   );
   function start() {
-    sound.setScene(musicScene("battle", api.game()), false, true);
+    if (!lobby) sound.setScene(musicScene("battle", api.game()), false, true);
     setScreen("battle");
     sound.unlock();
     matchTicket = account.startMatch(api.game().mode, category === "practice");
@@ -749,6 +979,10 @@ export function createApp(api) {
     $("save-status").textContent = "";
   }
   function battleExit() {
+    if (lobby) {
+      show("team-battles");
+      return;
+    }
     show("setup");
     $("resume-btn").hidden = api.game().finished || !api.started();
   }
@@ -793,30 +1027,67 @@ export function createApp(api) {
     }
     if (report.dataset.matchId === matchTicket.id) return;
     report.dataset.matchId = matchTicket.id;
-    renderMatchReport(report, g.progressReport, g.progressState, {
-      username: matchTicket.displayName,
-      onNext: () => sound.menuClick(),
-      onStage: (stage) => {
-        $("game-overlay").dataset.reportStage = String(stage);
-        $("overlay-play").hidden = stage !== 2;
-        $("game-overlay").scrollTop = 0;
+    resultControls = renderMatchReport(
+      report,
+      g.progressReport,
+      g.progressState,
+      {
+        username: matchTicket.displayName,
+        onNext: () => sound.menuClick(),
+        onStage: (stage) => {
+          $("game-overlay").dataset.reportStage = String(stage);
+          $("overlay-play").hidden = stage !== 2;
+          $("game-overlay").scrollTop = 0;
+        },
+        onRecords: () => {
+          api.exitImmersive();
+          Promise.resolve(show("leaderboard")).then(renderSelfStats);
+        },
+        onChangeMode: () => {
+          api.exitImmersive();
+          show(category);
+        },
       },
-      onRecords: () => {
-        api.exitImmersive();
-        Promise.resolve(show("leaderboard")).then(renderSelfStats);
-      },
-      onChangeMode: () => {
-        api.exitImmersive();
-        show(category);
-      },
-    });
+    );
     $("game-overlay").scrollTop = 0;
   }
   function tick(g) {
     completeProgress(g);
     sound.combat(g, screen === "battle" && !api.paused());
+    if (lobby) {
+      const state = lobby.state,
+        remaining = lobby.remaining();
+      const clock = lobbyPanel.querySelector("[data-lobby-clock]");
+      if (clock)
+        clock.textContent =
+          state?.phase === "countdown"
+            ? `Starting together in ${Math.ceil(remaining)}…`
+            : "Move with the stick. Waiting for the captain.";
+      if (state?.phase === "results") {
+        resultControls?.advanceTo(
+          Math.min(2, Math.floor((RESULTS_SECONDS - remaining) / 10)),
+        );
+        let timer = $("results-sync");
+        if (!timer) {
+          timer = document.createElement("p");
+          timer.id = "results-sync";
+          $("game-overlay").append(timer);
+        }
+        timer.textContent = `Next fight together in ${Math.ceil(remaining)}s · Leave to change mode.`;
+        $("overlay-play").textContent =
+          `Staying for next fight · ${Math.ceil(remaining)}s`;
+        $("overlay-play").disabled = true;
+      } else $("results-sync")?.remove();
+    }
     sound.setScene(
-      musicScene(screen, g),
+      lobby?.state?.phase === "lobby"
+        ? "menu"
+        : lobby?.state?.phase === "countdown"
+          ? musicScene("battle", {
+              mode: lobby.state.mode,
+              mapId: lobby.state.nextMapId,
+            })
+          : musicScene(screen, g),
       screen === "loading" || (screen === "battle" && api.paused()),
     );
     if ((g.intermission || g.dungeon?.reward) && screen === "battle") {
@@ -844,11 +1115,15 @@ export function createApp(api) {
             b.append(title, detail);
             b.dataset.reward = choice.id;
             b.setAttribute("aria-pressed", "false");
+            b.disabled = !!lobby && lobby.state.captain !== lobby.userId;
             b.onclick = () => g.chooseReward(choice.id);
             return b;
           }),
         );
       }
+      if (lobby && lobby.state.captain !== lobby.userId)
+        $("wave-reward-caption").textContent =
+          "Waiting for the captain to choose the team’s advantage.";
       const selected = g
         .rewardChoices()
         .find((r) => r.id === g.rewardSelection);
@@ -921,6 +1196,7 @@ export function createApp(api) {
       );
       if (response.ok) config = await response.json();
     } catch {}
+    lobbyUrl = config.multiplayerUrl || "";
     account
       .initialize(config)
       .catch((e) => console.warn("Account service unavailable:", e.message));
@@ -965,6 +1241,13 @@ export function createApp(api) {
     showResults,
     progressionStore,
     chooseMode,
+    openLobby,
+    get lobbyActive() {
+      return !!lobby;
+    },
+    get lobby() {
+      return lobby;
+    },
     modeGuide,
     elementSlides,
     openSlides,

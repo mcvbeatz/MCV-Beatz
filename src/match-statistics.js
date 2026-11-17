@@ -31,11 +31,18 @@ export function beginStatistics(g) {
         a.id,
         {
           id: a.id,
-          name: a === g.player ? "You" : `AI ${i}`,
+          name: a.displayName || (a === g.player ? "You" : `AI ${i}`),
           isPlayer: a === g.player,
           team: a.team,
           element: a.element,
-          stats: a === g.player ? g.matchStats : freshStats(),
+          stats:
+            a === g.player
+              ? g.matchStats
+              : {
+                  ...freshStats(),
+                  startingForm: a.element,
+                  startingTeam: a.team,
+                },
         },
       ]),
   );
@@ -58,8 +65,8 @@ function owner(g, a) {
   return a?.echo ? g.fighters.find((b) => b.id === a.summoner) : a;
 }
 function form(g, a) {
-  const s = g.matchStats;
-  if (!s || owner(g, a) !== g.player || g.finished) return null;
+  const s = actorStats(g, a);
+  if (!s || g.finished) return null;
   const e = owner(g, a).element;
   return (s.forms[e] ||= {
     seconds: 0,
@@ -72,7 +79,8 @@ function form(g, a) {
 export function trackTime(g, dt) {
   const s = g.matchStats;
   if (!s || g.finished || !Number.isFinite(dt) || dt <= 0) return;
-  if (g.player.alive) form(g, g.player).seconds += dt;
+  for (const a of g.fighters)
+    if (a.alive && !a.echo && actorStats(g, a)) form(g, a).seconds += dt;
   if (g.mode === "corruption")
     for (const a of g.fighters) {
       const stats = actorStats(g, a);
@@ -129,19 +137,24 @@ export function trackFusion(g, actor) {
   if (!f) return;
   f.fusions++;
   trackObjective(g, actor, "fusions");
-  g.matchStats.objectives.highestTier = Math.max(
-    g.matchStats.objectives.highestTier || 1,
+  const stats = actorStats(g, actor);
+  stats.objectives.highestTier = Math.max(
+    stats.objectives.highestTier || 1,
     actor.parts.length,
   );
 }
 export function trackWave(g) {
   if (!g.matchStats || g.finished) return;
-  // Team objectives credit surviving and felled participants, once per cleared wave.
-  if ((g.matchStats.objectives.highestWave || 0) >= g.wave) return;
-  form(g, g.player).waves++;
-  trackObjective(g, g.player, "waves");
-  g.matchStats.objectives.highestWave = g.wave;
-  if (g.finalWave) trackBoss(g, g.player);
+  for (const actor of g.fighters.filter(
+    (a) => a.team === g.player.team && !a.echo,
+  )) {
+    const stats = actorStats(g, actor);
+    if (!stats || (stats.objectives.highestWave || 0) >= g.wave) continue;
+    form(g, actor).waves++;
+    trackObjective(g, actor, "waves");
+    stats.objectives.highestWave = g.wave;
+    if (g.finalWave) trackBoss(g, actor);
+  }
 }
 export function trackLap(g, actor) {
   const s = actorStats(g, actor);

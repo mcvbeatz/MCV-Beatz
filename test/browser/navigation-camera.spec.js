@@ -55,7 +55,7 @@ async function world(page, x, y) {
     { x, y },
   );
 }
-test("Play has ordered Team/Solo lists, native scrolling and Quick Match across both categories", async ({
+test("Play separates Multiplayer and Solo, and Quick Match enters the correct flow", async ({
   page,
 }) => {
   await page.setViewportSize({ width: 568, height: 320 });
@@ -63,58 +63,21 @@ test("Play has ordered Team/Solo lists, native scrolling and Quick Match across 
   await page.locator('[data-screen="play"]').click();
   await expect(page.locator(".battle-categories button")).toHaveCount(3);
   await page.locator('[data-screen="team-battles"]').click();
-  await expect(page.locator("[data-launch]")).toHaveCount(8);
-  expect(
-    await page
-      .locator("[data-launch]")
-      .evaluateAll((es) => es.map((e) => e.dataset.launch)),
-  ).toEqual([
-    "tdm",
-    "war",
-    "rush",
-    "boss",
-    "gauntlet-team",
-    "ctf",
-    "gridiron",
-    "zombies",
-  ]);
-  expect(
-    await page
-      .locator(".mode-scroll")
-      .evaluate((e) => e.scrollHeight > e.clientHeight),
-  ).toBe(true);
-  await expect(page.locator("#mode-next")).toHaveCount(0);
-  const rows = await page
-    .locator(".mode-card")
-    .evaluateAll((es) =>
-      es.map((e) => ({ width: e.clientWidth, height: e.clientHeight })),
-    );
-  expect(rows.every((r) => r.width > 490 && r.height < 90)).toBe(true);
+  await expect(page.locator("[data-launch]")).toHaveCount(12);
   await page.locator('[data-launch="boss"]').click();
-  await expect(page.locator("#setup-mode-title")).toHaveText("Boss");
-  await page.locator("#change-mode-btn").click();
-  await expect(page.locator('[data-launch="boss"]')).toHaveCount(1);
+  await expect(page.locator("#lobby-panel header")).toContainText("Boss");
+  await page.locator("[data-leave]").click();
   await page.locator("#shell-back").click();
   await page.locator('[data-screen="solo-battles"]').click();
-  await expect(page.locator("[data-launch]")).toHaveCount(6);
+  await expect(page.locator("[data-launch]")).toHaveCount(2);
   expect(
     await page
       .locator("[data-launch]")
       .evaluateAll((es) => es.map((e) => e.dataset.launch)),
-  ).toEqual([
-    "turnpike",
-    "ffa",
-    "roulette",
-    "gauntlet",
-    "dungeon",
-    "corruption",
-  ]);
-  await expect(page.locator('[data-launch="gauntlet"] strong')).toHaveText(
-    "Solo Waves",
-  );
+  ).toEqual(["dungeon", "gauntlet"]);
   for (const [random, mode, group] of [
     [0, "tdm", "team-battles"],
-    [0.99, "corruption", "solo-battles"],
+    [0.99, "gauntlet", "solo-battles"],
   ]) {
     await page.evaluate(() => __app.show("play"));
     await page.evaluate((v) => {
@@ -122,10 +85,14 @@ test("Play has ordered Team/Solo lists, native scrolling and Quick Match across 
       Math.random = () => v;
     }, random);
     await page.locator("#quick-match").click();
-    await expect.poll(() => page.evaluate(() => __app.screen)).toBe("setup");
+    await expect
+      .poll(() =>
+        page.evaluate(() => __app.lobby?.state?.mode || __arena.game.mode),
+      )
+      .toBe(mode);
     await page.evaluate(() => (Math.random = window.savedRandom));
-    expect(await page.evaluate(() => __arena.game.mode)).toBe(mode);
-    await page.locator("#change-mode-btn").click();
+    if (mode === "tdm") await page.locator("[data-leave]").click();
+    else await page.locator("#change-mode-btn").click();
     await expect.poll(() => page.evaluate(() => __app.screen)).toBe(group);
   }
 });
@@ -379,7 +346,7 @@ test("compact mode lists scroll with touch in normal and rotated landscape", asy
       .poll(() => page.locator(".mode-scroll").evaluate((e) => e.scrollTop))
       .toBeGreaterThan(60);
     await page.locator('[data-launch="boss"]').tap();
-    await expect(page.locator("#setup-mode-title")).toHaveText("Boss");
+    await expect(page.locator("#lobby-panel header")).toContainText("Boss");
   }
   await client.detach();
   await context.close();

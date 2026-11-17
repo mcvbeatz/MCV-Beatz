@@ -385,7 +385,14 @@ export class Renderer {
     );
     c.restore();
   }
-  avatar(c, a, time, immersion = 0, showHealth = true) {
+  avatar(
+    c,
+    a,
+    time,
+    immersion = 0,
+    showHealth = true,
+    viewer = { id: "player", team: 0 },
+  ) {
     const scale = 2.35;
     const flying = a.parts.includes("air");
     const pose = characterPose(a);
@@ -421,7 +428,7 @@ export class Renderer {
       c.fill();
       c.shadowBlur = 0;
     }
-    if (a.id === "player") {
+    if (a.id === viewer.id) {
       c.strokeStyle = "#e6d39699";
       c.lineWidth = 2;
       c.beginPath();
@@ -553,14 +560,14 @@ export class Renderer {
       }
     }
     c.restore();
-    if (showHealth) this.healthIndicator(c, a);
+    if (showHealth) this.healthIndicator(c, a, viewer);
   }
-  healthIndicator(c, a, viewer = { team: 0 }) {
+  healthIndicator(c, a, viewer = { id: "player", team: 0 }) {
     c.save();
     c.translate(a.x, a.y);
     // Leave room above the taller crowns and Air's floating silhouette.
     c.translate(0, -10 - 64 * (characterScale(a.element) - 1));
-    if (a.id !== "player") {
+    if (a.id !== viewer.id) {
       c.fillStyle = "#23332b";
       c.fillRect(-22, -70, 44, 5);
       c.fillStyle = a.team === viewer.team ? "#9cd3bd" : "#d88b70";
@@ -861,11 +868,15 @@ export class Renderer {
       }
       const a = body.a;
       c.save();
-      if (a === game.player && a.alive && game.cosmeticAura) {
+      if (
+        a.alive &&
+        (a.cosmeticAura || (a === game.player && game.cosmeticAura))
+      ) {
         const colors = { gold: "#ffd16d", ice: "#87eaff", emerald: "#7be6a9" };
         c.save();
         c.globalAlpha = body.alpha * 0.55;
-        c.strokeStyle = colors[game.cosmeticAura] || "#ffd16d";
+        c.strokeStyle =
+          colors[a.cosmeticAura || game.cosmeticAura] || "#ffd16d";
         c.shadowColor = c.strokeStyle;
         c.shadowBlur = 9;
         c.lineWidth = 2;
@@ -886,7 +897,7 @@ export class Renderer {
         this.outline(c, a, t);
       }
       c.globalAlpha = body.alpha;
-      if (body.alpha > 0) this.avatar(c, a, t, immersion, false);
+      if (body.alpha > 0) this.avatar(c, a, t, immersion, false, game.player);
       drawWaterline(c, a, immersion, t);
       if (game.auroraProtected(a)) drawAurora(c, a, t);
       c.restore();

@@ -107,6 +107,7 @@ export class AccountService {
     this.user = null;
     try {
       localStorage.removeItem(`fusion-throwdown:progress:v1:account:${id}`);
+      localStorage.removeItem(`fusion-throwdown:player:v1:${id}`);
     } catch {}
     await this.client.auth.signOut({ scope: "local" }).catch(() => {});
     this.listeners.forEach((f) => f());

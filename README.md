@@ -1,4 +1,13 @@
-# Fusion Throwdown · v0.58.0
+# Fusion Throwdown · v0.59.0
+
+## v0.59.0 Shared lobbies and smoother rematches
+
+- Play is now divided into Multiplayer (team modes plus Night, Racing, Free For All and Roulette) and Solo (Dungeon and Solo Waves). Multiplayer opens a movement-only Colosseum lobby with AI seats, default/selected origin and selectable cosmetics. Click your name in My Account to save your default origin.
+- Added an authenticated Node/WebSocket room server that runs the existing combat engine. Humans replace AI seats; the first arrival captains supported player-count settings and the five-second countdown. Captaincy transfers in arrival order. Shared results run for 30 seconds before a synchronized rematch with the same roster.
+- **Online hosting must be configured separately:** GitHub Pages cannot run the server. Without it, or for guests, lobbies are explicitly AI-only. Follow the [step-by-step hosting guide](backend/MULTIPLAYER.md); no additional lobby SQL is needed.
+- Scoreboard player rows match their team header, with a gap between teams and a separate user highlight. Gridiron always uses Jade and Ember; only scorers celebrate, and bots move/idle independently during the three-second touchdown break.
+- Battles with more than four fighters no longer select the Sunken Colosseum. Lobbies intentionally retain it at all supported sizes.
+- Preloads/decodes menu audio before selection and resumes interrupted browser audio on return or interaction. Global pointer release, capture loss and page restoration reset the joystick; online stale input also clears automatically.
 
 ## v0.58.0 Gridiron celebrations and account updates
 

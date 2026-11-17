@@ -31,7 +31,11 @@ test("new matches shuffle all three maps and survival always retains the maze", 
     ])
       assert.equal(
         new Combat({ mode, random }).mapId,
-        mode.startsWith("gauntlet") ? "waves" : kind,
+        mode.startsWith("gauntlet")
+          ? "waves"
+          : mode === "rush" && kind === "classic"
+            ? "garden"
+            : kind,
       );
   assert.equal(
     new Combat({ mode: "corruption", mapId: "tower" }).map.kind,

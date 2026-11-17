@@ -17,7 +17,7 @@ test("battle menus have requested ordering and no mode subtitles, sign-in is hig
   await page.evaluate(() => __app.show("solo-battles"));
   await expect(page.locator("[data-launch]").first()).toHaveAttribute(
     "data-launch",
-    "corruption",
+    "dungeon",
   );
   await expect(page.locator("[data-launch]").last()).toHaveAttribute(
     "data-launch",
@@ -28,7 +28,20 @@ test("battle menus have requested ordering and no mode subtitles, sign-in is hig
   const ids = await page
     .locator("[data-launch]")
     .evaluateAll((nodes) => nodes.map((n) => n.dataset.launch));
-  expect(ids.slice(-2)).toEqual(["boss", "gauntlet-team"]);
+  expect(ids).toEqual([
+    "tdm",
+    "war",
+    "rush",
+    "ctf",
+    "gridiron",
+    "zombies",
+    "boss",
+    "gauntlet-team",
+    "corruption",
+    "turnpike",
+    "ffa",
+    "roulette",
+  ]);
   await page.evaluate(() => __app.show("account"));
   await expect(page.locator("[data-auth]")).toHaveText("Sign in / Register");
   expect(
@@ -64,6 +77,28 @@ test("team scoreboards separate both teams and add assists while solo and Zombie
     await expect(page.locator(".team-heading")).toHaveCount(
       ["ffa", "zombies"].includes(mode) ? 0 : mode === "gauntlet-team" ? 1 : 2,
     );
+    if (!["ffa", "zombies"].includes(mode)) {
+      const colors = await page
+        .locator(".session-scoreboard tbody")
+        .evaluate((body) => {
+          let header;
+          return [...body.rows].flatMap((row) => {
+            if (row.classList.contains("team-heading"))
+              header = getComputedStyle(row).backgroundColor;
+            return row.classList.contains("player-result") &&
+              !row.classList.contains("your-result")
+              ? [{ actual: getComputedStyle(row).backgroundColor, header }]
+              : [];
+          });
+        });
+      for (const color of colors) expect(color.actual).toBe(color.header);
+      if (mode !== "gauntlet-team") {
+        await expect(page.locator(".team-gap")).toHaveCount(1);
+        expect(
+          (await page.locator(".team-gap").boundingBox()).height,
+        ).toBeGreaterThanOrEqual(22);
+      }
+    }
     if (mode === "gridiron") {
       await expect(page.locator(".session-scoreboard thead")).toContainText(
         "Assists",

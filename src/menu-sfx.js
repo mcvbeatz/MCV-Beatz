@@ -26,7 +26,8 @@ export class MenuClickSfx {
     this.voices = new Set();
     this.pendingAt = null;
     this.output = context.createGain();
-    this.output.gain.value = 0;
+    this.output.gain.value =
+      Math.max(0, Math.min(1, Number(volume) || 0)) * 0.35 * 0.8;
     this.output.connect(context.destination);
     this.volume(volume);
     this.ready = this.load();

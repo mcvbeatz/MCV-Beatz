@@ -474,6 +474,20 @@ export class Combat {
       )
         mapId = "skykeep";
     }
+    const rosterSize = ["war", "team", "tdm", "rush", "ctf"].includes(mode)
+      ? mode === "ctf"
+        ? 8
+        : Math.max(mode === "war" || mode === "rush" ? 3 : 2, size) * 2
+      : ["ffa", "roulette", "boss", "zombies"].includes(mode)
+        ? players
+        : ["corruption", "turnpike", "gridiron"].includes(mode)
+          ? 8
+          : 2;
+    const availableMaps =
+      rosterSize > 4
+        ? MATCH_MAP_IDS.filter((id) => id !== "classic")
+        : MATCH_MAP_IDS;
+    if (rosterSize > 4 && mapId === "classic") mapId = undefined;
     this.mapId =
       mode === "ctf"
         ? "evergreen"
@@ -488,10 +502,10 @@ export class Combat {
                 : isGauntlet(this)
                   ? "waves"
                   : (mapId ??
-                    MATCH_MAP_IDS[
+                    availableMaps[
                       Math.min(
-                        MATCH_MAP_IDS.length - 1,
-                        Math.floor(random() * MATCH_MAP_IDS.length),
+                        availableMaps.length - 1,
+                        Math.floor(random() * availableMaps.length),
                       )
                     ]);
     this.map =
@@ -1182,10 +1196,10 @@ export class Combat {
       this.mode === "boss" &&
       !a.echo &&
       a.element === "invincible" &&
-      a.team === 1 &&
-      this.player.team === 0
+      a.team === 1
     )
-      trackBoss(this, this.player);
+      for (const ally of this.fighters.filter((b) => b.team === 0 && !b.echo))
+        trackBoss(this, ally);
     a.hp = 0;
     a.clash = a.reflect = a.hitReact = a.castTime = 0;
     a.blink = null;
@@ -1203,6 +1217,7 @@ export class Combat {
     a.dimension = null;
     a.transit = null;
     a.vx = a.vy = 0;
+    this.portals.placingOwners?.delete(a.id);
     if (this.portals.placing === a.id) this.portals.placing = null;
     this.tokens = this.tokens.filter((t) => t.owner !== a.id);
     if (this.mode === "turnpike") {
@@ -3467,7 +3482,14 @@ export class Combat {
       }
       if (!a.alive && !a.ghost) continue;
       if (!dungeonActorAvailable(this, a)) continue;
-      if (this.portals.tick(a, actorDt, a.id === "player" ? input : undefined))
+      if (
+        this.portals.tick(
+          a,
+          actorDt,
+          this.humanInputs?.get(a.id) ||
+            (a.id === "player" && !this.humanInputs ? input : undefined),
+        )
+      )
         continue;
       for (const key of [
         "attackCd",
@@ -3529,7 +3551,11 @@ export class Combat {
       }
       if (!a.alive && !a.ghost) continue;
       const old = { x: a.x, y: a.y };
-      if (a.id === "player") this.move(a, input.x, input.y, actorDt);
+      if (this.humanInputs?.has(a.id)) {
+        const control = this.humanInputs.get(a.id);
+        this.move(a, control.x, control.y, actorDt);
+      } else if (a.id === "player" && !this.humanInputs)
+        this.move(a, input.x, input.y, actorDt);
       else if (runAI) this.ai(a, actorDt);
       else this.move(a, 0, 0, actorDt);
       this.updateBurst(a, old, actorDt);
@@ -3682,7 +3708,8 @@ export class Combat {
   corrupt(a, source = null) {
     if (!a || !a.alive || a.team !== 0) return false;
     if (source && this.rebirth(a)) return false;
-    if (a === this.player && this.matchStats) this.matchStats.converted = true;
+    const stats = this.sessionActors?.get(a.id)?.stats;
+    if (stats) stats.converted = true;
     if (source) trackElimination(this, a, source);
     trackObjective(this, source, "conversions");
     if (source) source.infections = (source.infections || 0) + 1;

@@ -1,0 +1,307 @@
+import { Combat, makeFighter } from "./combat.js";
+import { beginStatistics } from "./match-statistics.js";
+import { BASE_FORMS } from "./player-preferences.js";
+import { MULTIPLAYER_MODES } from "./mode-catalog.js";
+import {
+  lobbySizes,
+  packGame,
+  RESULTS_SECONDS,
+  START_SECONDS,
+} from "./multiplayer-protocol.js";
+import { cosmeticCatalog } from "./rewards.js";
+import { control } from "./multiplayer-controls.js";
+const cleanCosmetics = (value) =>
+  Object.fromEntries(
+    Object.entries(value || {}).filter(([slot, id]) =>
+      cosmeticCatalog().some((c) => c.slot === slot && c.id === id),
+    ),
+  );
+export class LobbyRoom {
+  constructor(mode, { now = () => Date.now(), id = crypto.randomUUID() } = {}) {
+    if (!MULTIPLAYER_MODES.includes(mode))
+      throw new Error("Unknown multiplayer mode");
+    this.id = id;
+    this.mode = mode;
+    this.now = now;
+    this.members = new Map();
+    this.order = 0;
+    this.capacity = lobbySizes(mode)[0];
+    this.phase = "lobby";
+    this.deadline = null;
+    this.roundId = null;
+    this.sequence = 0;
+    this.createLobby();
+  }
+  get captain() {
+    return (
+      [...this.members.values()].sort((a, b) => a.order - b.order)[0]?.id ||
+      null
+    );
+  }
+  createLobby() {
+    this.game = new Combat({ mode: "duel", mapId: "classic" });
+    this.game.lobby = true;
+    this.game.fighters = Array.from({ length: this.capacity }, (_, i) =>
+      makeFighter(
+        `seat-${i}`,
+        BASE_FORMS[i % 6],
+        0,
+        220 + (i % 5) * 145,
+        260 + Math.floor(i / 5) * 155,
+      ),
+    );
+    this.game.player = this.game.fighters[0];
+    this.game.humanInputs = new Map();
+    this.phase = "lobby";
+    this.deadline = null;
+    for (const m of this.members.values()) this.applyMember(m);
+  }
+  applyMember(m) {
+    const a = this.game.fighters[m.seat];
+    if (!a) return;
+    a.displayName = m.name;
+    a.cosmetics = m.cosmetics || {};
+    if (this.phase === "lobby" || this.phase === "countdown")
+      Object.assign(a, makeFighter(a.id, m.element, 0, a.x, a.y), {
+        displayName: m.name,
+        cosmetics: m.cosmetics || {},
+      });
+  }
+  join(id, name, element = "fire", cosmetics = {}) {
+    if (this.members.has(id)) return this.members.get(id);
+    if (this.phase !== "lobby" || this.members.size >= this.capacity)
+      throw new Error("This lobby is full or its round has started.");
+    const used = new Set([...this.members.values()].map((m) => m.seat));
+    let seat = 0;
+    while (used.has(seat)) seat++;
+    const member = {
+      id,
+      name: String(name || "Player").slice(0, 24),
+      element: BASE_FORMS.includes(element) ? element : "fire",
+      cosmetics: cleanCosmetics(cosmetics),
+      seat,
+      order: this.order++,
+      input: { x: 0, y: 0 },
+      lastInput: this.now(),
+    };
+    this.members.set(id, member);
+    this.applyMember(member);
+    return member;
+  }
+  leave(id) {
+    const m = this.members.get(id);
+    if (!m) return;
+    this.members.delete(id);
+    const actor = ["lobby", "countdown"].includes(this.phase)
+      ? this.game.fighters[m.seat]
+      : this.game.fighters.find((a) => a.id === m.actorId);
+    if (actor) {
+      actor.displayName = `AI ${m.seat + 1}`;
+      actor.cosmetics = {};
+    }
+    this.game.humanInputs?.delete(actor?.id);
+    if (
+      this.phase === "battle" &&
+      this.game.player.id === m.actorId &&
+      this.captain
+    ) {
+      const next = this.game.fighters.find(
+        (a) => a.id === this.members.get(this.captain).actorId,
+      );
+      if (next) {
+        this.game.player = next;
+        this.game.matchStats = this.game.sessionActors.get(next.id).stats;
+      }
+    }
+    // Countdown cancellation prevents a new captain inheriting an unexpected start.
+    if (this.phase === "countdown") {
+      this.phase = "lobby";
+      this.deadline = null;
+    }
+  }
+  command(id, message) {
+    const m = this.members.get(id);
+    if (!m) return;
+    const a =
+      this.game.fighters.find((a) => a.id === m.actorId) ||
+      this.game.fighters[m.seat];
+    if (message.kind === "neutral") {
+      m.input = { x: 0, y: 0 };
+      m.lastInput = 0;
+      if (a) {
+        a.charging = false;
+        a.charge = 0;
+        this.game.utility(a, false);
+      }
+      return;
+    }
+    if (message.kind === "move") {
+      m.input = {
+        x: Math.max(-1, Math.min(1, Number(message.x) || 0)),
+        y: Math.max(-1, Math.min(1, Number(message.y) || 0)),
+      };
+      m.lastInput = this.now();
+      return;
+    }
+    if (message.kind === "profile" && this.phase === "lobby") {
+      if (BASE_FORMS.includes(message.element)) m.element = message.element;
+      if (message.cosmetics && typeof message.cosmetics === "object")
+        m.cosmetics = cleanCosmetics(message.cosmetics);
+      this.applyMember(m);
+      return;
+    }
+    if (
+      message.kind === "size" &&
+      id === this.captain &&
+      this.phase === "lobby"
+    ) {
+      if (
+        !lobbySizes(this.mode).includes(message.size) ||
+        message.size < this.members.size
+      )
+        throw new Error("Choose a size that fits everyone.");
+      this.capacity = message.size;
+      [...this.members.values()]
+        .sort((a, b) => a.order - b.order)
+        .forEach((m, i) => (m.seat = i));
+      this.createLobby();
+      return;
+    }
+    if (
+      message.kind === "start" &&
+      id === this.captain &&
+      this.phase === "lobby"
+    ) {
+      this.phase = "countdown";
+      this.preparedGame = this.buildBattle();
+      this.deadline = this.now() + START_SECONDS * 1000;
+      return;
+    }
+    if (this.phase === "battle" && a) {
+      if (message.kind === "reward" && id !== this.captain) return;
+      control(this.game, a, message);
+    }
+  }
+  buildBattle() {
+    const captain = this.members.get(this.captain);
+    return new Combat({
+      mode: this.mode,
+      element: captain?.element || "fire",
+      size: this.mode === "gauntlet-team" ? this.capacity : this.capacity / 2,
+      players: this.capacity,
+      countdown: true,
+    });
+  }
+  startBattle() {
+    this.game = this.preparedGame || this.buildBattle();
+    this.preparedGame = null;
+    // The shared five-second lobby countdown has already completed.
+    this.game.countdown = 0;
+    const roster =
+      this.mode === "zombies" || this.mode === "gauntlet-team"
+        ? this.game.fighters.filter((a) => a.team === 0)
+        : this.game.fighters;
+    this.seatIds = roster.map((a) => a.id);
+    for (const m of this.members.values()) {
+      const a = roster[m.seat];
+      if (!a) continue;
+      m.actorId = a.id;
+      m.matchId = crypto.randomUUID();
+      if (
+        !["gridiron", "turnpike", "corruption", "zombies", "war"].includes(
+          this.mode,
+        ) &&
+        a.element !== "invincible"
+      ) {
+        const fresh = makeFighter(a.id, m.element, a.team, a.x, a.y);
+        Object.assign(a, fresh, {
+          spawn: { x: a.x, y: a.y, element: m.element },
+          kills: 0,
+          deaths: 0,
+        });
+      }
+      a.displayName = m.name;
+      a.cosmetics = m.cosmetics;
+    }
+    this.game.player = roster[this.members.get(this.captain)?.seat || 0];
+    beginStatistics(this.game);
+    this.game.humanInputs = new Map();
+    this.phase = "battle";
+    this.roundId = crypto.randomUUID();
+    this.deadline = null;
+    this.sequence++;
+  }
+  tick(dt) {
+    const now = this.now(),
+      g = this.game;
+    if (this.phase === "countdown" && now >= this.deadline) {
+      this.startBattle();
+      return;
+    }
+    if (this.phase === "results" && now >= this.deadline) {
+      this.createLobby();
+      this.phase = "countdown";
+      this.preparedGame = this.buildBattle();
+      this.deadline = now + START_SECONDS * 1000;
+      return;
+    }
+    g.humanInputs = new Map();
+    for (const m of this.members.values()) {
+      const a =
+        this.phase === "lobby" || this.phase === "countdown"
+          ? g.fighters[m.seat]
+          : g.fighters.find((a) => a.id === m.actorId);
+      if (a) {
+        a.aiControlled = false;
+        if (now - m.lastInput > 500) {
+          a.charging = false;
+          a.charge = 0;
+          g.utility(a, false);
+        }
+        g.humanInputs.set(
+          a.id,
+          now - m.lastInput > 500 ? { x: 0, y: 0 } : m.input,
+        );
+      }
+    }
+    if (this.phase === "lobby" || this.phase === "countdown") {
+      g.time += dt;
+      for (const [i, a] of g.fighters.entries()) {
+        const input = g.humanInputs.get(a.id);
+        g.move(
+          a,
+          input?.x ?? Math.cos(g.time * 0.55 + i) * 0.25,
+          input?.y ?? Math.sin(g.time * 0.45 + i) * 0.25,
+          dt,
+        );
+      }
+    } else if (this.phase === "battle") {
+      if (!g.finished) g.update(dt, { x: 0, y: 0 });
+      else {
+        g.advanceCelebration(dt);
+        if (!g.celebrationRemaining) {
+          this.phase = "results";
+          this.deadline = now + RESULTS_SECONDS * 1000;
+        }
+      }
+    }
+  }
+  snapshot() {
+    return {
+      roomId: this.id,
+      mode: this.mode,
+      nextMapId: this.preparedGame?.mapId,
+      capacity: this.capacity,
+      phase: this.phase,
+      captain: this.captain,
+      deadline: this.deadline,
+      serverNow: this.now(),
+      roundId: this.roundId,
+      sequence: this.sequence,
+      members: [...this.members.values()].map(
+        ({ input, lastInput, ...m }) => m,
+      ),
+      game: packGame(this.game),
+    };
+  }
+}

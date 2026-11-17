@@ -33,13 +33,42 @@ export class Soundtrack {
     this.playPending = false;
     this.playBlocked = false;
     this.trackEnded = false;
-    document.addEventListener("visibilitychange", () => this.sync());
+    const recover = () => {
+      if (!document.hidden) this.unlock();
+      else this.sync();
+    };
+    document.addEventListener("visibilitychange", recover);
+    window.addEventListener("pageshow", recover);
+    window.addEventListener("focus", recover);
+    // Fetch and decode while menus are opening, rather than waiting for the first click.
+    this.ensureContext();
   }
-  unlock() {
+  ensureContext() {
     try {
-      this.context ||= new (window.AudioContext || window.webkitAudioContext)();
-      if (this.context.state === "suspended")
-        this.context.resume().catch(() => {});
+      if (this.context?.state === "closed") {
+        this.context =
+          this.music =
+          this.sfx =
+          this.menuSfx =
+          this.menuSource =
+          this.trackSource =
+            null;
+        this.menuOffset = 0;
+        this.track?.pause();
+        this.track = null;
+        this.trackId = null;
+        this.playPending = false;
+        this.trackGeneration++;
+      }
+      if (!this.context) {
+        this.context = new (window.AudioContext || window.webkitAudioContext)();
+        this.context.addEventListener("statechange", () => {
+          if (this.context.state === "running") {
+            this.sync();
+            this.flushClick();
+          }
+        });
+      }
       if (!this.music) {
         this.music = this.context.createGain();
         this.music.connect(this.context.destination);
@@ -47,9 +76,37 @@ export class Soundtrack {
       }
       this.sfx ||= new CombatSfx(this.context, this.settings.sfx);
       this.menuSfx ||= new MenuClickSfx(this.context, this.settings.sfx);
-      this.playBlocked = false;
-      this.sync();
-    } catch {}
+      this.prepareMenu();
+      return true;
+    } catch {
+      return false;
+    }
+  }
+  unlock() {
+    if (!this.ensureContext()) return;
+    this.playBlocked = false;
+    // A pre-gesture resume can remain pending indefinitely. Retry within every
+    // trusted gesture so that promise never prevents the actual unlock.
+    if (this.context.state !== "running") {
+      this.resumePending = this.context
+        .resume()
+        .then(() => {
+          this.sync();
+          this.flushClick();
+        })
+        .catch(() => {})
+        .finally(() => {
+          this.resumePending = null;
+        });
+    }
+    this.sync();
+    this.flushClick();
+  }
+  flushClick() {
+    if (!this.clickAt || this.context?.state !== "running") return;
+    const recent = performance.now() - this.clickAt < 500;
+    this.clickAt = 0;
+    if (recent && !document.hidden && this.settings.sfx) this.menuSfx?.play();
   }
   setScene(mode, paused = false, restart = false) {
     if (!restart && this.scene === mode && this.paused === paused) return;
@@ -234,7 +291,7 @@ export class Soundtrack {
         this.context.currentTime,
         0.1,
       );
-    this.sync();
+    this.unlock();
   }
   combat(game, active) {
     const events = game.audioEvents?.splice(0) || [];
@@ -251,20 +308,23 @@ export class Soundtrack {
         event.team !== game.player.team
       )
         continue;
-      const distance = Math.hypot(event.x - listener.x, event.y - listener.y);
+      const stadium = ["whistle", "crowd-run", "crowd-touchdown"].includes(
+        event.kind,
+      );
+      const distance = stadium
+        ? 0
+        : Math.hypot(event.x - listener.x, event.y - listener.y);
       if (distance > 650) continue;
       this.sfx?.play(event.kind, {
         gain: 1 - distance / 800,
-        pan: (event.x - listener.x) / 700,
+        pan: stadium ? 0 : (event.x - listener.x) / 700,
       });
     }
   }
   menuClick() {
     if (!this.settings.sfx || document.hidden) return;
+    this.clickAt = performance.now();
     this.unlock();
-    if (!this.context) return;
-    this.menuSfx ||= new MenuClickSfx(this.context, this.settings.sfx);
-    this.menuSfx.play();
   }
   tone(frequency = 180) {
     if (!this.settings.sfx) return;

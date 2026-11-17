@@ -161,7 +161,7 @@ test("team defeat loops Downcast, respects volume and visibility, and draws play
     .poll(() => page.evaluate(() => __app.sound.track.paused))
     .toBe(false);
   await page.locator("#leave-btn").click();
-  await start(page, "duel");
+  await start(page, "ffa");
   await page.evaluate(() => __arena.game.finish(null, "Tie"));
   await expect.poll(() => page.evaluate(() => __app.sound.scene)).toBe("draw");
   expect(await page.evaluate(() => __app.sound.track.paused)).toBe(true);

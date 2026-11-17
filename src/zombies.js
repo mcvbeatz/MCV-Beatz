@@ -400,7 +400,13 @@ export function separateZombies(g, dt) {
   buildCrowdGrid(g);
   // Smoothly resolve residual overlaps without moving the user or crossing walls.
   for (const a of g.fighters) {
-    if (a === g.player || !a.alive || !inWorld(a) || a.prisonHp > 0 || a.blink)
+    if (
+      (g.humanInputs ? g.humanInputs.has(a.id) : a === g.player) ||
+      !a.alive ||
+      !inWorld(a) ||
+      a.prisonHp > 0 ||
+      a.blink
+    )
       continue;
     let dx = 0,
       dy = 0;

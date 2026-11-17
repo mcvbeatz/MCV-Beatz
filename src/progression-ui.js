@@ -1,3 +1,4 @@
+import { defaultElement } from "./player-preferences.js";
 import {
   SESSION_COLUMNS,
   SESSION_BESTS,
@@ -56,6 +57,7 @@ export function mountProgression(
     onEquip,
     onTab,
     onOverview,
+    onDefault,
   } = {},
 ) {
   let tab = section,
@@ -107,7 +109,11 @@ export function mountProgression(
     const body = root.querySelector(".progress-content");
     if (tab === "overview") {
       body.innerHTML =
-        profileMarkup(s, user?.user_metadata?.username || "Guest") +
+        profileMarkup(
+          s,
+          user?.user_metadata?.username || "Guest",
+          defaultElement(user),
+        ) +
         `<h2>Overall performance</h2><p>Progression records begin with this update. Existing account lifetime totals remain available below and on the leaderboard.</p>${statsMarkup(s.totals)}<div class="progress-grid"><article class="progress-card"><h3>Total mastery</h3><strong>${Object.values(s.mastery).reduce((a, xp) => a + mastery(xp).level - 1, 0)} / ${FORMS.length * 19} levels earned</strong>${meter(
           Object.values(s.mastery).reduce((a, xp) => a + xp, 0),
           FORMS.length * MAX_XP,
@@ -198,6 +204,17 @@ export function mountProgression(
       );
       onOverview?.();
     }
+    const profileName = body.querySelector(
+      ".progress-profile > div:last-child > strong",
+    );
+    if (profileName && onDefault) {
+      const button = document.createElement("button");
+      button.className = "profile-name";
+      button.innerHTML = profileName.innerHTML + " ▾";
+      button.title = "Choose your default elemental";
+      button.onclick = onDefault;
+      profileName.replaceWith(button);
+    }
     paintPortraits(root);
   }
   render();
@@ -245,7 +262,7 @@ export function renderMatchReport(
       content = `<section aria-label="Match scoreboard"><h3>${esc(MODES[m.mode]?.name || m.mode)} · ${formatStat("playtime", m.duration)}</h3><div class="scoreboard-scroll" tabindex="0" aria-label="All players’ match statistics"><table class="session-scoreboard"><thead><tr><th scope="col">Player</th>${columns.map(([, label]) => `<th scope="col">${label}</th>`).join("")}</tr></thead><tbody>${rows
         .map(
           (row, i) =>
-            `${grouped && (!i || row.team !== rows[i - 1].team) ? `<tr class="team-heading ${row.team === localTeam ? "ally-team" : "enemy-team"}"><th colspan="${columns.length + 1}" scope="colgroup">${row.team === localTeam ? "Your team" : "Opposing team"}${["gridiron", "ctf", "tdm", "war", "rush"].includes(m.mode) && m.scores?.[row.team] != null ? ` · ${m.scores[row.team]}` : ""}</th></tr>` : ""}<tr class="player-result ${row.isPlayer ? "your-result" : ""}"><th scope="row"><div class="scoreboard-player">${portraitMarkup(row.element)}<span>${esc(row.isPlayer ? username + " · You" : row.name)}<small>${esc(nameOf(row.element))}</small></span></div></th>${columns
+            `${grouped && (!i || row.team !== rows[i - 1].team) ? `${i ? `<tr class="team-gap" aria-hidden="true"><td colspan="${columns.length + 1}"></td></tr>` : ""}<tr class="team-heading ${(m.mode === "gridiron" ? row.team === 0 : row.team === localTeam) ? "ally-team" : "enemy-team"}"><th colspan="${columns.length + 1}" scope="colgroup">${m.mode === "gridiron" ? (row.team === 0 ? "Jade" : "Ember") + (row.team === localTeam ? " · Your team" : " · Opposing team") : row.team === localTeam ? "Your team" : "Opposing team"}${["gridiron", "ctf", "tdm", "war", "rush"].includes(m.mode) && m.scores?.[row.team] != null ? ` · ${m.scores[row.team]}` : ""}</th></tr>` : ""}<tr class="player-result ${row.isPlayer ? "your-result" : grouped ? ((m.mode === "gridiron" ? row.team === 0 : row.team === localTeam) ? "ally-player" : "enemy-player") : ""}"><th scope="row"><div class="scoreboard-player">${portraitMarkup(row.element)}<span>${esc(row.isPlayer ? username + " · You" : row.name)}<small>${esc(nameOf(row.element))}</small></span></div></th>${columns
               .map(([key]) => {
                 let value =
                   key === "fastestLap" && !row[key]
@@ -346,6 +363,17 @@ export function renderMatchReport(
     }
   }
   render();
+  return {
+    advanceTo(next) {
+      if (next > stage && next <= 2) {
+        stage = next;
+        render();
+      }
+    },
+    get stage() {
+      return stage;
+    },
+  };
 }
 
 export function mountPersonalStats(root, s, mode = "overall") {

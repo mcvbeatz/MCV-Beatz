@@ -16,6 +16,7 @@ export class PortalSystem {
     this.game = game;
     this.portals = [];
     this.placing = null;
+    this.placingOwners = new Set();
     this.nextId = 0;
     this.closing = new Set();
   }
@@ -31,6 +32,7 @@ export class PortalSystem {
       return false;
     if (this.willClose(owner)) {
       this.closing.add(owner.id);
+      this.placingOwners.delete(owner.id);
       if (this.placing === owner.id) this.placing = null;
       return this.close(owner, this.owned(owner)[0].id);
     }
@@ -44,12 +46,15 @@ export class PortalSystem {
       return false;
     }
     this.placing = owner.id;
+    this.placingOwners.add(owner.id);
     return true;
   }
   place(owner, x, y, { autonomous = false } = {}) {
     if (
       this.game.mode === "corruption" ||
-      (this.placing !== owner.id && !(autonomous && owner.aiControlled)) ||
+      (this.placing !== owner.id &&
+        !this.placingOwners.has(owner.id) &&
+        !(autonomous && owner.aiControlled)) ||
       !owner.alive ||
       this.owned(owner).length >= 2
     )
@@ -86,7 +91,10 @@ export class PortalSystem {
     this.game.emitSound("flash", { x, y, team: owner.team });
     this.game.animateCast?.(owner, x - owner.x, y - owner.y);
     const pair = this.owned(owner);
-    if (pair.length === 2 && this.placing === owner.id) this.placing = null;
+    if (pair.length === 2) {
+      this.placingOwners.delete(owner.id);
+      if (this.placing === owner.id) this.placing = null;
+    }
     return true;
   }
   active(portal) {
@@ -235,7 +243,12 @@ export class PortalSystem {
     if (e.hp !== undefined) {
       let dx = input?.x || 0,
         dy = input?.y || 0;
-      if (e.id !== "player" && d.age > 0.45) {
+      if (
+        (this.game.humanInputs
+          ? !this.game.humanInputs.has(e.id)
+          : e.id !== "player") &&
+        d.age > 0.45
+      ) {
         dx = -d.dx;
         dy = -d.dy;
       }

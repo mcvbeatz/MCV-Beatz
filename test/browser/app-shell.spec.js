@@ -112,12 +112,14 @@ test("each Play mode has an accessible swipeable slideshow and Random opens a va
   await page.locator("#slides-close").click();
   await page.locator("#shell-back").click();
   await page.locator("#quick-match").click();
-  await expect(page.locator("#begin-btn")).toBeVisible();
-  expect(
-    await page.evaluate(() =>
-      ["duel", "fused", "fused3", "team"].includes(__arena.game.mode),
-    ),
-  ).toBe(false);
+  await expect
+    .poll(() =>
+      page.evaluate(() => __app.lobby?.state?.mode || __arena.game.mode),
+    )
+    .not.toMatch(/^(duel|fused|fused3|team)$/);
+  if (await page.evaluate(() => !!__app.lobby))
+    await expect(page.locator("#lobby-panel")).toBeVisible();
+  else await expect(page.locator("#begin-btn")).toBeVisible();
 });
 test("Gauntlet reward selection advances waves and tier III starts the final boss", async ({
   page,

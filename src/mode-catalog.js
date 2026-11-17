@@ -418,15 +418,15 @@ export const TEAM_MODES = [
   "boss",
   "gauntlet-team",
 ];
-export const SOLO_MODES = [
+export const MULTIPLAYER_MODES = [
+  ...TEAM_MODES,
   "corruption",
   "turnpike",
   "ffa",
   "roulette",
-  "dungeon",
-  "gauntlet",
 ];
-export const PLAY_MODES = [...TEAM_MODES, ...SOLO_MODES];
+export const SOLO_MODES = ["dungeon", "gauntlet"];
+export const PLAY_MODES = [...MULTIPLAYER_MODES, ...SOLO_MODES];
 export const PRACTICE_LIST = ["duel", "fused", "fused3", "team"];
 export const CONTROL_SLIDES = [
   [

@@ -343,7 +343,12 @@ export function updateGridiron(g) {
         a.knockY =
           0;
       a.vx = a.vy = 0;
-      a.victory = a.alive;
+      a.victory = a.alive && a.team === team;
+      a.roundCelebration = {
+        delay: g.random() * 0.7,
+        moveFor: g.random() * 1.8,
+        angle: g.random() * Math.PI * 2,
+      };
       a.victoryTime = 0;
     }
     return;
@@ -400,8 +405,30 @@ export function advanceGridironCelebration(g, dt, input) {
   celebration.remaining = Math.max(0, celebration.remaining - dt);
   for (const a of g.fighters) {
     if (!a.alive) continue;
-    g.move(a, a === g.player ? input.x : 0, a === g.player ? input.y : 0, dt);
-    a.victory = a.movingTime === 0;
+    const personalInput =
+      g.humanInputs?.get(a.id) ||
+      (a === g.player && !g.humanInputs ? input : null);
+    const behavior = a.roundCelebration;
+    const elapsed = 3 - celebration.remaining;
+    const moving =
+      behavior &&
+      elapsed > behavior.delay &&
+      elapsed < behavior.delay + behavior.moveFor;
+    g.move(
+      a,
+      personalInput
+        ? personalInput.x
+        : moving
+          ? Math.cos(behavior.angle) * 0.55
+          : 0,
+      personalInput
+        ? personalInput.y
+        : moving
+          ? Math.sin(behavior.angle) * 0.55
+          : 0,
+      dt,
+    );
+    a.victory = a.team === celebration.scoringTeam && a.movingTime === 0;
     a.victoryTime = a.victory ? (a.victoryTime || 0) + dt : 0;
   }
   const carrier = g.fighters.find((a) => a.id === g.ball.carrier);
@@ -617,7 +644,9 @@ export function gridironAI(g, a, dt) {
     // Stay at the receiving spot rather than chasing the ball's launch position.
     goal = { x: g.ball.pass.toX, y: g.ball.pass.toY };
   } else if (pass && passer?.team !== a.team) {
-    const defenders = team.filter((b) => b.id !== "player");
+    const defenders = team.filter((b) =>
+      g.humanInputs ? !g.humanInputs.has(b.id) : b.id !== "player",
+    );
     const interceptor = defenders.sort(
       (b, c) =>
         distance(b, passIntercept(g, b)) - distance(c, passIntercept(g, c)),
@@ -642,7 +671,9 @@ export function gridironAI(g, a, dt) {
     goal = { x: a.team ? 260 : 1540, y: a.y };
   } else if (carrier && carrier.team !== a.team) {
     const defenders = team
-      .filter((b) => b.id !== "player")
+      .filter((b) =>
+        g.humanInputs ? !g.humanInputs.has(b.id) : b.id !== "player",
+      )
       .sort((b, c) => distance(b, carrier) - distance(c, carrier));
     const receivers = passTargets(g, carrier).sort((b, c) =>
       b.id.localeCompare(c.id),

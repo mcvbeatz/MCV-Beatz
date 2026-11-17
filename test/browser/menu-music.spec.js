@@ -134,3 +134,24 @@ test("menu navigation preserves the song; music volume, hiding, and battle trans
   }
   expect(errors).toEqual([]);
 });
+
+test("interrupted menu audio resumes on page return and on the next gesture", async ({
+  page,
+}) => {
+  await ready(page);
+  await page.evaluate(async () => {
+    await __app.sound.context.suspend();
+    window.dispatchEvent(new Event("pageshow"));
+  });
+  await expect
+    .poll(() => page.evaluate(() => __app.sound.context.state))
+    .toBe("running");
+  await page.evaluate(async () => {
+    await __app.sound.context.suspend();
+  });
+  await page.locator("#shell-back").click();
+  await expect
+    .poll(() => page.evaluate(() => __app.sound.context.state))
+    .toBe("running");
+  expect(await page.evaluate(() => !!__app.sound.menuSource)).toBe(true);
+});

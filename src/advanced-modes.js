@@ -293,9 +293,15 @@ export function advanceWaveTravel(g, dt, input, runAI = true) {
       "hurtReveal",
     ])
       a[key] = Math.max(0, (a[key] || 0) - dt);
-  g.move(g.player, input.x, input.y, dt);
+  const playerInput = g.humanInputs?.get(g.player.id) || input;
+  g.move(g.player, playerInput.x, playerInput.y, dt);
   for (const a of team) {
     if (a === g.player || !runAI) continue;
+    if (g.humanInputs?.has(a.id)) {
+      const control = g.humanInputs.get(a.id);
+      g.move(a, control.x, control.y, dt);
+      continue;
+    }
     const gap = Math.hypot(a.x - g.player.x, a.y - g.player.y);
     const playerArrived = g.map.inRoom(g.player, g.nextWaveRoom, 70);
     // Stay with the player through the corridor, then assemble inside the room.
