@@ -1,8 +1,10 @@
-# Multiplayer lobbies (v0.59)
+# Multiplayer lobbies (v0.60)
 
 The GitHub Pages site is the game client. It cannot run a persistent multiplayer server. `server/index.js` is a separate Node/WebSocket service that runs the existing combat engine and AI. Supabase verifies player sign-ins; it is not used as a high-frequency game simulation server.
 
-Until a server URL is configured, Multiplayer opens a clearly labelled **AI-only lobby**. Guests also use AI-only lobbies. Online rooms require signing in; no guest progress is published automatically.
+The client is configured for `wss://mcv-beatz.onrender.com`. Deploy the latest `main` commit to that Render service (automatic deployment or **Manual Deploy → Deploy latest commit**). `/health` now reports `protocolVersion: 2`; the client asks for a server update if an older protocol responds.
+
+When no server URL is configured, Multiplayer opens a clearly labelled **AI-only lobby**. Guests also use AI-only lobbies. Online rooms require signing in; no guest progress is published automatically.
 
 ## Owner setup — Render example
 
@@ -19,9 +21,9 @@ Until a server URL is configured, Multiplayer opens a clearly labelled **AI-only
    | `NODE_VERSION` | `22` |
 
    Render supplies `PORT`. Set the health check path to `/health`. **Do not use a service-role key, database password, or user password.**
-5. Deploy. Open `https://YOUR-SERVICE.onrender.com/health`; it should return `{"ok":true,"rooms":0}` when nobody is playing.
+5. Deploy. Open `https://YOUR-SERVICE.onrender.com/health`; it should return `{"ok":true,"rooms":0,"protocolVersion":2}` when nobody is playing.
 6. Set `multiplayerUrl` in [`public/app-config.json`](../public/app-config.json) to `wss://YOUR-SERVICE.onrender.com` (replace the example with the actual service hostname). Commit it and run `npm run deploy:pages` to publish that configuration with the game. Alternatively, send the deployed service URL to Codex to complete this step.
-7. Sign in with two different accounts in separate browsers/devices. Both choose Multiplayer and the same mode. The lobby must say **Online lobby**, show both account names, and remove two AI seats. Move both players, change a form/cosmetic, and have the captain press Start. Both should see the same five-second countdown and match. Leave with the captain to check handoff. After a completed match, both should progress through the timed results and next countdown together.
+7. Sign in with two different accounts in separate browsers/devices. Both choose Multiplayer and the same mode. The lobby must say **Online lobby**, show both account names, and remove two AI seats. Move both players, change a form/cosmetic, and have the captain press Start. Both should see the same five-second countdown and match. Leave with the captain to check handoff. After a completed match, each player can page through results manually. After 30 seconds both return to the lobby; the captain must press START again.
 
 For another host, use the same commands/environment variables and a public HTTPS/WSS endpoint that supports long-lived WebSockets. A container recipe is included at `server/Dockerfile` (build from the repository root).
 
@@ -34,9 +36,9 @@ For manual local play, set the server environment variables above, allow `http:/
 ## Room behavior and operational limits
 
 - Joining finds a waiting room for that mode or creates one. Every unused seat is AI-controlled. Matches already underway do not accept new joins; leaving changes that fighter to AI. One active connection is allowed per account.
-- The first connected member is captain; departure transfers captaincy in arrival order. Only the captain changes supported player counts or starts the five-second countdown. Fixed-count modes keep their existing counts. War uses the captain's army, and modes with assigned forms retain those rules.
+- The first connected member is captain; departure transfers captaincy in arrival order. Limits default to the highest supported count. Only the captain changes supported player counts or starts the shared five-second countdown. Other players press START to display Ready! above their character. Fixed-count modes keep their existing counts. War shows each assigned army in the lobby; only the captain can change their own army. Gridiron (Earth), Turnpike (Air), Survive the Night (Light), and Zombies (Ice) override defaults for everyone and disable elemental selection.
 - The shared Colosseum lobby permits movement and cosmetic/form selection, but no attacks. Larger **battles** exclude the Colosseum. Equipped auras appear on characters; frames, titles and badges appear in the lobby roster/profile.
-- After the existing victory celebration, results last 30 seconds: scoreboard, mastery and records each get ten seconds. Next can advance sooner. Staying automatically starts another five-second countdown with the same humans and AI seats. Change Mode, View Stats or Leave exits the room. Solo and Practice keep their existing untimed flow.
+- After the existing victory celebration, results last 30 seconds. Next/Previous are entirely manual; pages never advance themselves. The deadline returns the same players to the lobby without starting a match. Only captain START begins the next five-second countdown. Change Mode, View Stats or Leave exits the room. Solo and Practice keep their existing untimed flow.
 - Movement/abilities are intentions sent to the server; clients cannot submit health, positions or scores to the room. The server updates combat at 30 Hz and distributes snapshots at 10 Hz; visual interpolation smooths movement. Lost controls clear after 500 ms and disconnected seats revert to AI. Audio events are delivered once per snapshot.
 - Rooms are held in memory. Deploys/restarts end active rooms. Start with one server instance; multiple independent instances do not share rooms. The default maximum is 12 concurrent rooms; capacity depends on hardware and mode, especially large Zombies runs. Load-test against the intended population before increasing it. This release does not include ranked matchmaking, invitations, reconnect-to-active-match, or cross-server room storage.
 - Progression keeps the existing per-account/device fallback and idempotent completion IDs. Distinct players receive distinct match IDs even within one shared round. Existing client-submitted progression/cosmetic unlocks are **not cheat-proof**; this does not introduce a public competitive ranking guarantee.

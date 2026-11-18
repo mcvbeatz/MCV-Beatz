@@ -1,3 +1,4 @@
+import { LOBBY_PROTOCOL } from "./multiplayer-protocol.js";
 import { LobbyRoom } from "./lobby-room.js";
 export class LobbyClient {
   constructor({ url = "", account, onState, onError }) {
@@ -76,6 +77,13 @@ export class LobbyClient {
   }
   receive(state) {
     if (this.closed) return;
+    if (state.protocolVersion !== LOBBY_PROTOCOL) {
+      this.close();
+      this.onError(
+        "The lobby server needs the latest update. In Render, deploy the latest commit, then retry.",
+      );
+      return;
+    }
     this.state = state;
     this.userId = state.userId;
     this.receivedAt = performance.now();

@@ -1,3 +1,4 @@
+import { LOBBY_PROTOCOL } from "../src/multiplayer-protocol.js";
 import http from "node:http";
 import { pathToFileURL } from "node:url";
 import { WebSocketServer, WebSocket } from "ws";
@@ -13,7 +14,13 @@ export function createLobbyServer({
     res.writeHead(req.url === "/health" ? 200 : 404, {
       "Content-Type": "application/json",
     });
-    res.end(JSON.stringify({ ok: req.url === "/health", rooms: rooms.size }));
+    res.end(
+      JSON.stringify({
+        ok: req.url === "/health",
+        rooms: rooms.size,
+        protocolVersion: LOBBY_PROTOCOL,
+      }),
+    );
   });
   const wss = new WebSocketServer({
     server,

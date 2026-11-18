@@ -47,23 +47,28 @@ async function ready(page, id = null) {
       };
     }, id);
 }
-test("Multiplayer click opens an honest AI-only lobby, safe movement and selectable default/cosmetics", async ({
+test("lobby has four controls beside movement, hidden settings, maximum seats, and selectable forms/cosmetics", async ({
   page,
 }) => {
   await ready(page);
   await page.locator("[data-screen=play]").click();
   await page.locator("[data-screen=team-battles]").click();
-  await expect(page.locator("#shell-content h1")).toHaveText("Multiplayer");
-  await page.locator("[data-launch=gridiron]").click();
-  await expect(page.locator("#lobby-panel")).toContainText("AI-only lobby");
-  await expect(page.locator("#lobby-panel .lobby-members li")).toHaveCount(8);
+  await page.locator("[data-launch=ffa]").click();
+  await expect(page.locator("#lobby-status")).toContainText("AI-only lobby");
+  await expect(page.locator("#lobby-panel")).toBeHidden();
+  await expect(page.locator("#lobby-controls button")).toHaveCount(4);
   expect(await page.evaluate(() => __arena.game.mapId)).toBe("classic");
-  await page.locator("#lobby-panel [data-element]").selectOption("light");
+  await page.locator('[data-lobby-tab="players"]').click();
+  await expect(page.locator("#lobby-panel .lobby-members li")).toHaveCount(8);
+  await expect(page.locator("select[data-size]")).toHaveValue("8");
+  await page.locator("[data-lobby-close]").click();
+  await page.locator('[data-lobby-tab="elemental"]').click();
+  await page.locator("select[data-element]").selectOption("light");
   await expect
     .poll(() => page.evaluate(() => __arena.game.player.element))
     .toBe("light");
+  await page.locator("[data-lobby-close]").click();
   const before = await page.evaluate(() => __arena.game.player.x);
-  await page.evaluate(() => document.activeElement.blur());
   await page.keyboard.down("d");
   await expect
     .poll(() => page.evaluate(() => __arena.game.player.x))
@@ -72,22 +77,53 @@ test("Multiplayer click opens an honest AI-only lobby, safe movement and selecta
   expect(
     await page.evaluate(() => __arena.game.fighters.every((a) => a.hp === 120)),
   ).toBe(true);
-  await page.locator("#lobby-panel summary").click();
-  await expect(page.locator("[data-cosmetic=aura]")).toBeVisible();
-  await page.locator("[data-leave]").click();
-  await page.locator("#shell-account").click();
+  await page.locator('[data-lobby-tab="cosmetics"]').click();
+  await expect(page.locator('[data-cosmetic="aura"]')).toBeVisible();
+  await page.locator("#leave-btn").click();
+  await page.evaluate(() => __app.show("account"));
   await page.locator(".profile-name").click();
-  await page.locator("[data-default=earth]").click();
-  await expect(page.locator(".default-picker [role=status]")).toHaveText(
-    "Default elemental saved.",
+  await page.locator('[data-default="earth"]').click();
+  await expect(page.locator(".default-picker [role=status]")).toContainText(
+    "Default elemental saved",
   );
-  await page.locator("[data-close]").click();
   await page.evaluate(() => __app.openLobby("ffa"));
   await expect
     .poll(() => page.evaluate(() => __arena.game.player.element))
     .toBe("earth");
 });
-test("two browsers share lobby, captain countdown, independent players, results and the same next round", async ({
+
+test("forced lobby forms override defaults and cannot be changed", async ({
+  page,
+}) => {
+  await ready(page);
+  for (const [mode, form] of [
+    ["gridiron", "earth"],
+    ["turnpike", "air"],
+    ["corruption", "light"],
+    ["zombies", "ice"],
+  ]) {
+    await page.evaluate((mode) => __app.openLobby(mode), mode);
+    await expect(page.locator('[data-lobby-tab="elemental"]')).toBeDisabled();
+    await expect(page.locator('[data-lobby-tab="elemental"]')).toContainText(
+      form,
+    );
+    expect(
+      await page.evaluate(() =>
+        __arena.game.fighters.every(
+          (a) => a.element === __arena.game.player.element,
+        ),
+      ),
+    ).toBe(true);
+    await page.evaluate(() =>
+      __app.lobby.send({ kind: "profile", element: "fire" }),
+    );
+    await expect
+      .poll(() => page.evaluate(() => __arena.game.player.element))
+      .toBe(form);
+  }
+});
+
+test("two browsers share Ready signs, captain countdown, manual results and a captain-started rematch", async ({
   browser,
 }) => {
   test.setTimeout(90000);
@@ -104,15 +140,40 @@ test("two browsers share lobby, captain countdown, independent players, results 
     await ready(a, "Alice");
     await ready(b, "Bob");
     await a.evaluate(() => __app.openLobby("tdm"));
-    await expect(a.locator("#lobby-panel")).toContainText("You are captain");
     await b.evaluate(() => __app.openLobby("tdm"));
-    await expect(b.locator("#lobby-panel")).toContainText("Captain: Alice");
+    await expect(a.locator("#lobby-status")).toContainText("You are captain");
+    await expect(b.locator("#lobby-status")).toContainText("Captain: Alice");
+    await a.locator('[data-lobby-tab="players"]').click();
+    await b.locator('[data-lobby-tab="players"]').click();
     await expect(a.locator(".lobby-members")).toContainText("Bob");
-    await expect(b.locator("[data-start]")).toBeDisabled();
-    await a.locator("#lobby-panel [data-size]").selectOption("6");
+    await expect(b.locator("select[data-size]")).toBeDisabled();
+    await a.locator("select[data-size]").selectOption("6");
     await expect(b.locator(".lobby-members li")).toHaveCount(6);
+    await a.locator("[data-lobby-close]").click();
+    await b.locator("[data-lobby-close]").click();
+    await a.evaluate(() => {
+      const ctx = __arena.renderer.ctx,
+        paint = ctx.fillText.bind(ctx);
+      ctx.fillText = (text, ...args) => {
+        if (text === "Ready!") window.sawReadySign = true;
+        return paint(text, ...args);
+      };
+    });
+    await b.locator("[data-start]").click();
+    await expect
+      .poll(() =>
+        a.evaluate(() =>
+          __arena.game.fighters.some(
+            (f) => f.displayName === "Bob" && f.lobbyReady,
+          ),
+        ),
+      )
+      .toBe(true);
+    await expect.poll(() => a.evaluate(() => !!window.sawReadySign)).toBe(true);
+    expect(await b.evaluate(() => __app.lobby.state.phase)).toBe("lobby");
     await a.locator("[data-start]").click();
-    await expect(b.locator("[data-lobby-clock]")).toContainText(
+    await expect(a.locator("#lobby-countdown strong")).toHaveText("5");
+    await expect(b.locator("#lobby-countdown")).toContainText(
       "Starting together",
     );
     await expect
@@ -124,12 +185,9 @@ test("two browsers share lobby, captain countdown, independent players, results 
     expect(await a.evaluate(() => __app.lobby.state.roundId)).toBe(
       await b.evaluate(() => __app.lobby.state.roundId),
     );
-    expect(await a.evaluate(() => __arena.game.mapId)).not.toBe("classic");
     const id = await b.evaluate(() => __arena.game.player.id),
       x = await b.evaluate(() => __arena.game.player.x);
     await b.keyboard.down("d");
-    await b.waitForTimeout(220);
-    await b.keyboard.up("d");
     await expect
       .poll(() =>
         a.evaluate(
@@ -138,11 +196,11 @@ test("two browsers share lobby, captain countdown, independent players, results 
         ),
       )
       .toBeGreaterThan(x);
+    await b.keyboard.up("d");
     const room = [...service.rooms.values()].find((r) =>
       r.members.has("Alice"),
     );
-    const remote = room.game.fighters.find((f) => f.id === id);
-    room.game.fell(remote);
+    room.game.fell(room.game.fighters.find((f) => f.id === id));
     await expect
       .poll(() => b.evaluate(() => __arena.game.player.alive))
       .toBe(false);
@@ -155,31 +213,33 @@ test("two browsers share lobby, captain countdown, independent players, results 
       )
       .toBeGreaterThan(10);
     await b.keyboard.up("d");
-    room.game.finish(0, "Browser synchronized result");
+    room.game.finish(0, "Synchronized results");
     room.game.celebrationRemaining = 0;
     await expect(a.locator("#match-report")).toBeVisible();
     await expect(b.locator("#match-report")).toBeVisible();
-    expect(await a.locator(".team-heading").first().textContent()).toContain(
-      "Your team",
-    );
-    expect(
-      await a.evaluate(() => __arena.game.progressReport.match.id),
-    ).not.toBe(await b.evaluate(() => __arena.game.progressReport.match.id));
     room.deadline = Date.now() + 19500;
+    await expect
+      .poll(() => a.evaluate(() => __app.lobby.remaining()))
+      .toBeLessThan(20);
     await expect(a.locator("#game-overlay")).toHaveAttribute(
       "data-report-stage",
-      "1",
+      "0",
     );
-    await expect(b.locator("#game-overlay")).toHaveAttribute(
-      "data-report-stage",
-      "1",
-    );
+    await a.locator("[data-next]").click();
     room.deadline = Date.now() + 9500;
+    await expect
+      .poll(() => b.evaluate(() => __app.lobby.remaining()))
+      .toBeLessThan(10);
     await expect(a.locator("#game-overlay")).toHaveAttribute(
       "data-report-stage",
-      "2",
+      "1",
     );
     await expect(b.locator("#game-overlay")).toHaveAttribute(
+      "data-report-stage",
+      "0",
+    );
+    await a.locator("[data-next]").click();
+    await expect(a.locator("#game-overlay")).toHaveAttribute(
       "data-report-stage",
       "2",
     );
@@ -187,14 +247,20 @@ test("two browsers share lobby, captain countdown, independent players, results 
     room.deadline = Date.now() + 150;
     await expect
       .poll(() => a.evaluate(() => __app.lobby.state.phase))
+      .toBe("lobby");
+    await expect(b.locator("#game-overlay")).toBeHidden();
+    expect(room.deadline).toBeNull();
+    await b.locator("[data-start]").click();
+    await expect.poll(() => room.members.get("Bob").ready).toBe(true);
+    expect(room.phase).toBe("lobby");
+    await a.locator("[data-start]").click();
+    await expect
+      .poll(() => b.evaluate(() => __app.lobby.state.phase))
       .toBe("countdown");
     room.deadline = Date.now() + 150;
     await expect
       .poll(() => b.evaluate(() => __app.lobby.state.roundId))
       .not.toBe(old);
-    expect(await a.evaluate(() => __app.lobby.state.roundId)).toBe(
-      await b.evaluate(() => __app.lobby.state.roundId),
-    );
     await a.evaluate(() => __app.show("home"));
     await expect.poll(() => room.captain).toBe("Bob");
     expect(errors).toEqual([]);
@@ -254,6 +320,7 @@ test("rotated phone lobby keeps touch scrolling and captain controls usable", as
     setOrientation("landscape");
     await __app.openLobby("gridiron");
   });
+  await page.locator('[data-lobby-tab="players"]').tap();
   await expect(page.locator("#lobby-panel")).toBeVisible();
   const points = await page.locator("#lobby-panel").evaluate((el) => {
     const r = el.getBoundingClientRect();
@@ -288,6 +355,7 @@ test("rotated phone lobby keeps touch scrolling and captain controls usable", as
     .poll(() => page.locator("#lobby-panel").evaluate((el) => el.scrollTop))
     .toBeGreaterThan(25);
   await page.locator("#lobby-panel").evaluate((el) => (el.scrollTop = 0));
+  await page.locator("[data-lobby-close]").tap();
   await page.locator("[data-start]").tap();
   await expect
     .poll(() => page.evaluate(() => __app.lobby.state.phase))

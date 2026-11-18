@@ -1,5 +1,6 @@
 import { Combat } from "./combat.js";
 import { PortalSystem } from "./portals.js";
+export const LOBBY_PROTOCOL = 2;
 export const RESULTS_SECONDS = 30;
 export const START_SECONDS = 5;
 export function packGame(game) {
@@ -126,3 +127,11 @@ export function lobbySizes(mode) {
   if (mode === "boss") return [4, 5, 6, 7, 8];
   return [2, 3, 4, 5, 6, 7, 8];
 }
+
+export const forcedLobbyElement = (mode) =>
+  ({
+    gridiron: "earth",
+    turnpike: "air",
+    corruption: "light",
+    zombies: "ice",
+  })[mode] || null;

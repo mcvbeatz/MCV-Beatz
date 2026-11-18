@@ -828,3 +828,140 @@ body.portrait-play #lobby-panel {
 #orientation-root:not([data-rotation="0"]) #lobby-panel {
   touch-action: none;
 }
+
+/* The field stays clear until a lobby settings button is opened. */
+#lobby-controls {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
+  flex: 1;
+  max-width: 620px;
+  pointer-events: auto;
+}
+#lobby-controls button {
+  min-width: 0;
+  min-height: 70px;
+  padding: 8px 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
+  gap: 3px;
+  border: 1px solid #c8aa6c;
+  border-radius: 9px;
+  background: #12352eee;
+  color: #f5d690;
+  touch-action: manipulation;
+}
+#lobby-controls svg {
+  width: 19px;
+  height: 19px;
+}
+#lobby-controls strong {
+  font-size: 12px;
+}
+#lobby-controls small {
+  font-size: 10px;
+  text-transform: capitalize;
+}
+#lobby-controls [data-start] {
+  background: #ecd08a;
+  color: #173329;
+}
+#lobby-controls button:disabled {
+  opacity: 0.65;
+}
+#lobby-controls button[aria-expanded="true"] {
+  box-shadow: 0 0 0 2px #f9df9b;
+}
+body[data-lobby="true"] .arena-panel #battle-controls {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  height: auto;
+  gap: 14px;
+  z-index: 12;
+}
+body[data-lobby="true"] #battle-controls > .skill-controls,
+body[data-lobby="true"] #attack-btn {
+  display: none;
+}
+body.portrait-play[data-lobby="true"] #lobby-controls {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+body.portrait-play[data-lobby="true"] #lobby-controls button {
+  min-height: 59px;
+  padding: 5px 3px;
+}
+body.portrait-play[data-lobby="true"] #lobby-controls svg {
+  display: none;
+}
+body.portrait-play[data-lobby="true"] #game {
+  top: 0;
+  height: calc(100% - var(--portrait-bottom));
+}
+#lobby-status {
+  position: absolute;
+  top: 5px;
+  left: 8px;
+  right: 8px;
+  z-index: 5;
+  margin: 0;
+  padding: 7px;
+  font-size: 12px;
+  color: #f1d596;
+  background: #0e2b26df;
+  text-align: center;
+  pointer-events: none;
+}
+#lobby-countdown {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-content: center;
+  text-align: center;
+  z-index: 15;
+  color: #ffdf91;
+  pointer-events: none;
+  text-shadow: 0 3px 12px #001b14;
+}
+#lobby-countdown span {
+  font-size: 18px;
+  background: #102d26e6;
+  padding: 8px 20px;
+  border-radius: 12px;
+}
+#lobby-countdown strong {
+  font:
+    bold 100px "Barlow Condensed",
+    sans-serif;
+}
+#lobby-controls[hidden],
+#lobby-status[hidden],
+#lobby-countdown[hidden] {
+  display: none;
+}
+#lobby-panel {
+  top: 42px;
+  max-height: calc(100% - 165px);
+}
+#lobby-panel h2 {
+  margin: 0;
+  font-size: 21px;
+}
+body.portrait-play #lobby-panel {
+  top: 42px;
+  max-height: calc(100% - 230px);
+}
+.game-overlay.results-report,
+.scoreboard-scroll {
+  touch-action: pan-x pan-y;
+}
+.scoreboard-scroll {
+  overscroll-behavior-x: contain;
+  overscroll-behavior-y: auto;
+}
+#orientation-root:not([data-rotation="0"]) .game-overlay.results-report,
+#orientation-root:not([data-rotation="0"]) .scoreboard-scroll {
+  touch-action: none;
+}

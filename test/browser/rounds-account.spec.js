@@ -31,16 +31,16 @@ test("battle menus have requested ordering and no mode subtitles, sign-in is hig
   expect(ids).toEqual([
     "tdm",
     "war",
-    "rush",
     "ctf",
-    "gridiron",
-    "zombies",
-    "boss",
-    "gauntlet-team",
-    "corruption",
-    "turnpike",
     "ffa",
+    "corruption",
+    "gridiron",
+    "turnpike",
+    "zombies",
+    "rush",
     "roulette",
+    "gauntlet-team",
+    "boss",
   ]);
   await page.evaluate(() => __app.show("account"));
   await expect(page.locator("[data-auth]")).toHaveText("Sign in / Register");

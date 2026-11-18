@@ -3,62 +3,105 @@ import { lobbySizes } from "./multiplayer-protocol.js";
 import { MODES } from "./mode-catalog.js";
 import { cosmeticCatalog } from "./rewards.js";
 import { escapeHTML as esc, profileMarkup } from "./progression-ui.js";
-import { paintPortraits } from "./characters.js";
+import { paintPortraits, portraitMarkup } from "./characters.js";
+import { icon } from "./icons.js";
 export function renderLobbyPanel(
   root,
   client,
   store,
   profile,
-  { onLeave, onEquip, onProfile, onStart, onSize },
+  { onEquip, onProfile, onStart, onSize, onOpen, controls, status },
 ) {
   const s = client.state,
-    me = s.members.find((m) => m.id === client.userId),
-    captain = s.captain === client.userId;
-  const catalog = cosmeticCatalog(),
-    slots = ["aura", "frame", "title", "badge", "decoration"];
-  const expanded = root.querySelector("details")?.open;
-  root.innerHTML = `<header><strong>${esc(MODES[s.mode].name)} · Lobby</strong><button data-leave>Leave lobby</button></header><p>${client.local ? "AI-only lobby · Other users cannot join this room." : "Online lobby · Humans replace AI seats."}</p><p data-lobby-clock></p><p>${captain ? "You are captain" : `Captain: ${esc(s.members.find((m) => m.id === s.captain)?.name || "—")}`}</p><button data-start ${!captain || s.phase !== "lobby" ? "disabled" : ""}>Start · 5 second countdown</button><label>Players<select data-size ${!captain || s.phase !== "lobby" ? "disabled" : ""}>${lobbySizes(
-    s.mode,
-  )
-    .map(
-      (n) =>
-        `<option ${n === s.capacity ? "selected" : ""} ${n < s.members.length ? "disabled" : ""}>${n}</option>`,
-    )
-    .join(
-      "",
-    )}</select></label><label>Your elemental<select data-element ${s.phase !== "lobby" ? "disabled" : ""}>${BASE_FORMS.map((e) => `<option value="${e}" ${e === me.element ? "selected" : ""}>${e[0].toUpperCase() + e.slice(1)}</option>`).join("")}</select></label><p class="lobby-rules">Movement only here. Mode rules may assign your match form (for example, Earth in Gridiron or Ice in Zombies).</p><details ${expanded ? "open" : ""}><summary>Cosmetics · auras, frames, titles & badges</summary>${profileMarkup(store.state, me.name, me.element)}${slots
-    .map(
-      (slot) =>
-        `<label>${slot}<select data-cosmetic="${slot}" ${s.phase !== "lobby" ? "disabled" : ""}><option value="">None</option>${catalog
-          .filter((c) => c.slot === slot)
-          .map(
-            (c) =>
-              `<option value="${c.id}" ${store.state.equipped[slot] === c.id ? "selected" : ""} ${store.state.unlocks[c.id] ? "" : "disabled"}>${esc(c.name)}${store.state.unlocks[c.id] ? "" : " · Locked"}</option>`,
-          )
-          .join("")}</select></label>`,
-    )
-    .join("")}</details><ol class="lobby-members">${Array.from(
-    { length: s.capacity },
-    (_, i) => {
-      const member = s.members.find((m) => m.seat === i);
-      const badge = catalog.find((c) => c.id === member?.cosmetics?.badge),
-        title = catalog.find((c) => c.id === member?.cosmetics?.title),
-        frame = catalog.find((c) => c.id === member?.cosmetics?.frame);
-      return `<li class="${frame ? "member-frame tone-" + frame.tone : ""}">${badge ? `<span title="${esc(badge.name)}">${badge.symbol}</span> ` : ""}${member ? esc(member.name) + (member.id === s.captain ? " · Captain" : "") : `AI ${i + 1}`}<small>${member ? esc(member.element) : "AI seat available"}${title ? " · " + esc(title.name) : ""}</small></li>`;
-    },
-  ).join("")}</ol>`;
-  root.querySelector("[data-leave]").onclick = onLeave;
-  root.querySelector("[data-size]").onchange = (e) =>
-    onSize(Number(e.target.value));
-  root.querySelector("[data-element]").onchange = (e) =>
-    onProfile(e.target.value);
-  root.querySelector("[data-start]").onclick = onStart;
-  root
-    .querySelectorAll("[data-cosmetic]")
-    .forEach(
-      (select) =>
-        (select.onchange = () =>
-          onEquip(select.dataset.cosmetic, select.value)),
+    me = s.members.find((m) => m.id === client.userId);
+  const captain = s.captain === client.userId,
+    waiting = s.phase === "lobby";
+  const catalog = cosmeticCatalog();
+  if (!waiting) delete root.dataset.tab;
+  const paint = () => {
+    const tab = root.dataset.tab;
+    root.hidden = !tab;
+    status.textContent = `${MODES[s.mode].name} · ${client.local ? "AI-only lobby" : "Online lobby"} · ${captain ? "You are captain" : "Captain: " + (s.members.find((m) => m.id === s.captain)?.name || "—")}`;
+    controls.innerHTML = `<button data-start ${!waiting ? "disabled" : ""} title="${captain ? "Start the five-second countdown" : "Show Ready! above your elemental"}">${icon("strike")}<strong>START</strong><small>${captain ? "Captain" : me.ready ? "Ready!" : "Signal ready"}</small></button>${[
+      ["players", "team", "Players", String(s.capacity)],
+      [
+        "elemental",
+        me.element,
+        "Elemental",
+        me.element + (me.elementLocked ? " · Locked" : ""),
+      ],
+      ["cosmetics", "fusion", "Cosmetics", "Customize"],
+    ]
+      .map(
+        ([id, glyph, label, detail]) =>
+          `<button data-lobby-tab="${id}" aria-expanded="${tab === id}" ${!waiting || (id === "elemental" && me.elementLocked) ? "disabled" : ""}>${icon(glyph)}<strong>${label}</strong><small>${esc(detail)}</small></button>`,
+      )
+      .join("")}`;
+    controls.querySelector("[data-start]").onclick = () => {
+      onOpen?.();
+      onStart();
+    };
+    controls.querySelectorAll("[data-lobby-tab]").forEach(
+      (b) =>
+        (b.onclick = () => {
+          onOpen?.();
+          if (root.dataset.tab === b.dataset.lobbyTab) delete root.dataset.tab;
+          else root.dataset.tab = b.dataset.lobbyTab;
+          paint();
+        }),
     );
-  paintPortraits(root);
+    if (!tab) {
+      root.replaceChildren();
+      return;
+    }
+    let content = "";
+    if (tab === "players") {
+      const sizes = lobbySizes(s.mode);
+      content = `<p>${captain ? "Choose the lobby’s player limit." : "Only the captain can change the player limit."}${sizes.length === 1 ? " This mode requires eight players." : ""}</p><label>Players<select data-size ${!captain || !waiting || sizes.length === 1 ? "disabled" : ""}>${sizes.map((n) => `<option ${n === s.capacity ? "selected" : ""} ${n < s.members.length ? "disabled" : ""}>${n}</option>`).join("")}</select></label><ol class="lobby-members">${Array.from(
+        { length: s.capacity },
+        (_, seat) => {
+          const m = s.members.find((m) => m.seat === seat);
+          const badge = catalog.find((c) => c.id === m?.cosmetics?.badge),
+            title = catalog.find((c) => c.id === m?.cosmetics?.title),
+            frame = catalog.find((c) => c.id === m?.cosmetics?.frame);
+          return `<li class="${frame ? "member-frame tone-" + frame.tone : ""}">${badge ? `<span title="${esc(badge.name)}">${badge.symbol}</span> ` : ""}${m ? esc(m.name) + (m.id === s.captain ? " · Captain" : m.ready ? " · Ready!" : "") : `AI ${seat + 1}`}<small>${m ? esc(m.element) : "Available seat"}${title ? " · " + esc(title.name) : ""}</small></li>`;
+        },
+      ).join("")}</ol>`;
+    } else if (tab === "elemental") {
+      content = `${portraitMarkup(me.element)}<label>Your elemental<select data-element ${me.elementLocked || !waiting ? "disabled" : ""}>${BASE_FORMS.map((e) => `<option value="${e}" ${e === me.element ? "selected" : ""}>${e[0].toUpperCase() + e.slice(1)}</option>`).join("")}</select></label><p>${s.mode === "war" ? "The captain chooses their army; teammates share their assigned army’s element." : s.mode === "boss" ? "One player is randomly assigned the boss form when the match starts." : "Choose your form for this match."}</p>`;
+    } else if (tab === "cosmetics") {
+      content =
+        profileMarkup(store.state, me.name, me.element) +
+        ["aura", "frame", "title", "badge", "decoration"]
+          .map(
+            (slot) =>
+              `<label>${slot}<select data-cosmetic="${slot}"><option value="">None</option>${catalog
+                .filter((c) => c.slot === slot)
+                .map(
+                  (c) =>
+                    `<option value="${c.id}" ${store.state.equipped[slot] === c.id ? "selected" : ""} ${store.state.unlocks[c.id] ? "" : "disabled"}>${esc(c.name)}${store.state.unlocks[c.id] ? "" : " · Locked"}</option>`,
+                )
+                .join("")}</select></label>`,
+          )
+          .join("");
+    }
+    root.innerHTML = `<header><h2>${tab[0].toUpperCase() + tab.slice(1)}</h2><button data-lobby-close aria-label="Close lobby settings">Done</button></header>${content}`;
+    root.querySelector("[data-lobby-close]").onclick = () => {
+      delete root.dataset.tab;
+      paint();
+    };
+    root
+      .querySelector("[data-size]")
+      ?.addEventListener("change", (e) => onSize(Number(e.target.value)));
+    root
+      .querySelector("[data-element]")
+      ?.addEventListener("change", (e) => onProfile(e.target.value));
+    root
+      .querySelectorAll("[data-cosmetic]")
+      .forEach(
+        (el) => (el.onchange = () => onEquip(el.dataset.cosmetic, el.value)),
+      );
+    paintPortraits(root);
+  };
+  paint();
 }

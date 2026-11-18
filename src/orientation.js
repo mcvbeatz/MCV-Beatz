@@ -66,6 +66,7 @@ export function enableOrientedScroll(el, axis = "y") {
     drag = {
       id: e.pointerId,
       angle,
+      startPoint: orientationPoint(el, e.clientX, e.clientY),
       start: orientationPoint(el, e.clientX, e.clientY)[axis],
       scroll: el[position],
       moved: false,
@@ -80,8 +81,18 @@ export function enableOrientedScroll(el, axis = "y") {
         drag = null;
         return;
       }
-      const delta =
-        orientationPoint(el, e.clientX, e.clientY)[axis] - drag.start;
+      const point = orientationPoint(el, e.clientX, e.clientY);
+      const delta = point[axis] - drag.start;
+      const otherAxis = axis === "x" ? "y" : "x";
+      const cross = point[otherAxis] - drag.startPoint[otherAxis];
+      if (
+        !drag.moved &&
+        Math.abs(cross) > 8 &&
+        Math.abs(cross) > Math.abs(delta)
+      ) {
+        drag = null;
+        return;
+      }
       if (!drag.moved && Math.abs(delta) < 8) return;
       if (!drag.moved) {
         drag.moved = true;
@@ -125,7 +136,9 @@ export function enableOrientedScroll(el, axis = "y") {
   el.addEventListener(
     "wheel",
     (e) => {
-      if (!angle || e.ctrlKey) return;
+      if (!angle || e.ctrlKey || e.defaultPrevented) return;
+      if (axis === "x" && Math.abs(e.deltaY) >= Math.abs(e.deltaX)) return;
+      if (axis === "x") e.stopPropagation();
       e.preventDefault();
       el[position] +=
         (axis === "x" ? e.deltaX || e.deltaY : e.deltaY || e.deltaX) *

@@ -6,11 +6,7 @@ import {
   BASE_FORMS,
 } from "./player-preferences.js";
 import { LobbyClient } from "./lobby-client.js";
-import {
-  unpackGame,
-  resultFor,
-  RESULTS_SECONDS,
-} from "./multiplayer-protocol.js";
+import { unpackGame, resultFor } from "./multiplayer-protocol.js";
 import { renderLobbyPanel } from "./lobby-ui.js";
 import { escapeHTML } from "./progression-ui.js";
 import { excludesOverallPerformance } from "./session-results.js";
@@ -87,13 +83,31 @@ export function createApp(api) {
   lobbyPanel.hidden = true;
   document.getElementById("game-wrap").append(lobbyPanel);
   enableOrientedScroll(lobbyPanel);
+  const lobbyControls = document.createElement("nav");
+  lobbyControls.id = "lobby-controls";
+  lobbyControls.setAttribute("aria-label", "Lobby controls");
+  lobbyControls.hidden = true;
+  $("battle-controls").append(lobbyControls);
+  const lobbyStatus = document.createElement("p");
+  lobbyStatus.id = "lobby-status";
+  lobbyStatus.hidden = true;
+  const lobbyClock = document.createElement("div");
+  lobbyClock.id = "lobby-countdown";
+  lobbyClock.hidden = true;
+  lobbyClock.setAttribute("role", "status");
+  $("game-wrap").append(lobbyStatus, lobbyClock);
   function leaveLobby() {
     lobby?.close();
     lobby = null;
     lobbyRound = null;
     lobbyCountdown = null;
     lobbySignature = "";
-    lobbyPanel.hidden = true;
+    lobbyPanel.hidden =
+      lobbyControls.hidden =
+      lobbyStatus.hidden =
+      lobbyClock.hidden =
+        true;
+    delete lobbyPanel.dataset.tab;
     delete document.body.dataset.lobby;
     $("overlay-play").disabled = false;
     api.releaseInput();
@@ -205,7 +219,8 @@ export function createApp(api) {
       !old.networked;
     api.receiveGame(g, fresh);
     document.body.dataset.lobby = String(waiting);
-    lobbyPanel.hidden = !waiting;
+    lobbyControls.hidden = lobbyStatus.hidden = !waiting;
+    if (!waiting) lobbyPanel.hidden = true;
     if (state.phase === "battle" && lobbyRound !== state.roundId) {
       lobbyRound = state.roundId;
       start();
@@ -224,12 +239,21 @@ export function createApp(api) {
         state.phase,
         state.capacity,
         state.captain,
-        state.members.map((m) => [m.id, m.seat, m.element, m.cosmetics]),
+        state.members.map((m) => [
+          m.id,
+          m.seat,
+          m.element,
+          m.elementLocked,
+          m.ready,
+          m.cosmetics,
+        ]),
       ]);
       if (signature !== lobbySignature) {
         lobbySignature = signature;
         renderLobbyPanel(lobbyPanel, client, progressionStore(), profile, {
-          onLeave: () => show("team-battles"),
+          controls: lobbyControls,
+          status: lobbyStatus,
+          onOpen: api.releaseInput,
           onStart: () => client.send({ kind: "start" }),
           onSize: (size) => client.send({ kind: "size", size }),
           onProfile: (element) => {
@@ -251,6 +275,7 @@ export function createApp(api) {
     // Background tabs may suspend animation frames while the room keeps running.
     // Persist a completed round before its next match replaces the ticket.
     if (g.finished) tick(g);
+    if (waiting) matchTicket = null;
   }
   function showDefaultPicker() {
     const current = defaultElement(account.user);
@@ -1057,25 +1082,24 @@ export function createApp(api) {
     if (lobby) {
       const state = lobby.state,
         remaining = lobby.remaining();
-      const clock = lobbyPanel.querySelector("[data-lobby-clock]");
-      if (clock)
-        clock.textContent =
-          state?.phase === "countdown"
-            ? `Starting together in ${Math.ceil(remaining)}…`
-            : "Move with the stick. Waiting for the captain.";
+      lobbyClock.hidden = state?.phase !== "countdown";
+      if (!lobbyClock.hidden) {
+        const count = String(Math.max(1, Math.ceil(remaining)));
+        if (lobbyClock.dataset.count !== count) {
+          lobbyClock.dataset.count = count;
+          lobbyClock.innerHTML = `<span>Starting together</span><strong>${count}</strong>`;
+        }
+      }
       if (state?.phase === "results") {
-        resultControls?.advanceTo(
-          Math.min(2, Math.floor((RESULTS_SECONDS - remaining) / 10)),
-        );
         let timer = $("results-sync");
         if (!timer) {
           timer = document.createElement("p");
           timer.id = "results-sync";
           $("game-overlay").append(timer);
         }
-        timer.textContent = `Next fight together in ${Math.ceil(remaining)}s · Leave to change mode.`;
+        timer.textContent = `Back to the lobby in ${Math.ceil(remaining)}s · View each page at your own pace.`;
         $("overlay-play").textContent =
-          `Staying for next fight · ${Math.ceil(remaining)}s`;
+          `Returning to lobby · ${Math.ceil(remaining)}s`;
         $("overlay-play").disabled = true;
       } else $("results-sync")?.remove();
     }

@@ -20,10 +20,10 @@ test("captain order, AI replacement, captain-only settings and five-second synch
   const r = new LobbyRoom("tdm", { now: () => now });
   r.join("one", "One");
   r.join("two", "Two");
-  assert.equal(r.game.fighters.length, 4);
+  assert.equal(r.game.fighters.length, 8);
   assert.equal(r.captain, "one");
-  r.command("two", { kind: "size", size: 8 });
-  assert.equal(r.capacity, 4);
+  r.command("two", { kind: "size", size: 4 });
+  assert.equal(r.capacity, 8);
   r.command("one", { kind: "size", size: 8 });
   assert.equal(r.capacity, 8);
   r.command("two", { kind: "start" });
@@ -91,7 +91,7 @@ test("lobby rejects attacks and client coordinates, battle controls move only th
   r.command("one", { kind: "teleport", args: ["bad", null] });
   assert.ok(Number.isFinite(a.x));
 });
-test("shared results deadline retains members and starts one next round for everybody", () => {
+test("shared results deadline retains members in the lobby until the captain starts", () => {
   let now = 0;
   const r = new LobbyRoom("tdm", { now: () => now });
   r.join("one", "One");
@@ -108,9 +108,17 @@ test("shared results deadline retains members and starts one next round for ever
   assert.equal(r.phase, "results");
   now = 30000;
   r.tick(0.03);
-  assert.equal(r.phase, "countdown");
+  assert.equal(r.phase, "lobby");
   assert.equal(r.members.size, 2);
-  now = 35000;
+  now = 60000;
+  r.tick(0.03);
+  assert.equal(r.phase, "lobby");
+  r.command("two", { kind: "start" });
+  assert.equal(r.phase, "lobby");
+  assert.equal(r.members.get("two").ready, true);
+  r.command("one", { kind: "start" });
+  assert.equal(r.deadline, 65000);
+  now = 65000;
   r.tick(0.03);
   assert.equal(r.phase, "battle");
   assert.notEqual(r.roundId, first);
@@ -252,4 +260,60 @@ test("presentation interpolation never changes authoritative actor positions", a
     ),
   );
   assert.equal(a.x, x);
+});
+
+test("lobbies default to maximum capacity and forced forms cannot be overridden", async () => {
+  const { lobbySizes, forcedLobbyElement } =
+    await import("../src/multiplayer-protocol.js");
+  for (const mode of MULTIPLAYER_MODES) {
+    const r = new LobbyRoom(mode);
+    r.join("captain", "Captain", "water");
+    r.join("guest", "Guest", "dark");
+    assert.equal(r.capacity, lobbySizes(mode).at(-1));
+    const forced = forcedLobbyElement(mode);
+    if (forced) {
+      assert.ok(r.game.fighters.every((a) => a.element === forced));
+      r.command("guest", { kind: "profile", element: "fire" });
+      assert.equal(r.game.fighters[1].element, forced);
+      assert.ok(r.snapshot().members.every((m) => m.elementLocked));
+      r.startBattle();
+      assert.ok(
+        r.game.fighters
+          .filter((a) => !a.echo && (mode !== "zombies" || a.team === 0))
+          .every((a) => a.element === forced),
+      );
+    }
+  }
+});
+test("non-captain START broadcasts readiness and readiness resets between rounds", () => {
+  const r = new LobbyRoom("tdm");
+  r.join("a", "A");
+  r.join("b", "B");
+  r.command("b", { kind: "start" });
+  assert.equal(r.phase, "lobby");
+  assert.equal(r.game.fighters[1].lobbyReady, true);
+  const view = unpackGame(JSON.parse(JSON.stringify(r.snapshot().game)));
+  assert.equal(view.fighters[1].lobbyReady, true);
+  r.command("b", { kind: "profile", element: "water" });
+  assert.equal(r.game.fighters[1].lobbyReady, false);
+  r.command("b", { kind: "start" });
+  r.createLobby();
+  assert.ok(r.game.fighters.every((a) => !a.lobbyReady));
+});
+test("War shows assigned armies and only the current captain can change theirs", () => {
+  const r = new LobbyRoom("war");
+  for (let i = 0; i < 6; i++) r.join(String(i), "Player", "water");
+  r.command("2", { kind: "profile", element: "fire" });
+  assert.equal(r.game.fighters[2].element, "water");
+  assert.notEqual(r.game.fighters[5].element, "water");
+  for (let i = 0; i < 5; i++) r.leave(String(i));
+  assert.equal(r.captain, "5");
+  r.command("5", { kind: "profile", element: "dark" });
+  assert.equal(r.game.fighters[5].element, "dark");
+  const expected = r.game.fighters.map((a) => a.element);
+  r.startBattle();
+  assert.deepEqual(
+    r.game.fighters.map((a) => a.element),
+    expected,
+  );
 });

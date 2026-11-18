@@ -76,16 +76,16 @@ test("app menus, account, settings and scrollable mode lists fit phones without 
   expect(modes).toEqual([
     "tdm",
     "war",
-    "rush",
     "ctf",
-    "gridiron",
-    "zombies",
-    "boss",
-    "gauntlet-team",
-    "corruption",
-    "turnpike",
     "ffa",
+    "corruption",
+    "gridiron",
+    "turnpike",
+    "zombies",
+    "rush",
     "roulette",
+    "gauntlet-team",
+    "boss",
     "dungeon",
     "gauntlet",
   ]);
@@ -118,7 +118,7 @@ test("each Play mode has an accessible swipeable slideshow and Random opens a va
     )
     .not.toMatch(/^(duel|fused|fused3|team)$/);
   if (await page.evaluate(() => !!__app.lobby))
-    await expect(page.locator("#lobby-panel")).toBeVisible();
+    await expect(page.locator("#lobby-controls")).toBeVisible();
   else await expect(page.locator("#begin-btn")).toBeVisible();
 });
 test("Gauntlet reward selection advances waves and tier III starts the final boss", async ({

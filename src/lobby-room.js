@@ -3,7 +3,9 @@ import { beginStatistics } from "./match-statistics.js";
 import { BASE_FORMS } from "./player-preferences.js";
 import { MULTIPLAYER_MODES } from "./mode-catalog.js";
 import {
+  LOBBY_PROTOCOL,
   lobbySizes,
+  forcedLobbyElement,
   packGame,
   RESULTS_SECONDS,
   START_SECONDS,
@@ -25,7 +27,7 @@ export class LobbyRoom {
     this.now = now;
     this.members = new Map();
     this.order = 0;
-    this.capacity = lobbySizes(mode)[0];
+    this.capacity = lobbySizes(mode).at(-1);
     this.phase = "lobby";
     this.deadline = null;
     this.roundId = null;
@@ -38,13 +40,40 @@ export class LobbyRoom {
       null
     );
   }
+  memberElement(m) {
+    if (this.mode === "war") {
+      const captain = this.members.get(this.captain);
+      const captainSide = (captain?.seat || 0) % 2;
+      return m.seat % 2 === captainSide
+        ? captain?.element || "fire"
+        : this.warEnemy || "water";
+    }
+    return forcedLobbyElement(this.mode) || m.element;
+  }
+  refreshWar() {
+    if (this.mode !== "war") return;
+    const army = this.members.get(this.captain)?.element || "fire";
+    if (!this.warEnemy || this.warEnemy === army) {
+      const pool = BASE_FORMS.filter((e) => e !== army);
+      this.warEnemy = pool[Math.floor(Math.random() * pool.length)];
+    }
+    if (["lobby", "countdown"].includes(this.phase)) {
+      this.game.fighters.forEach((a, seat) =>
+        Object.assign(
+          a,
+          makeFighter(a.id, this.memberElement({ seat }), 0, a.x, a.y),
+        ),
+      );
+      for (const m of this.members.values()) this.applyMember(m);
+    }
+  }
   createLobby() {
     this.game = new Combat({ mode: "duel", mapId: "classic" });
     this.game.lobby = true;
     this.game.fighters = Array.from({ length: this.capacity }, (_, i) =>
       makeFighter(
         `seat-${i}`,
-        BASE_FORMS[i % 6],
+        forcedLobbyElement(this.mode) || BASE_FORMS[i % 6],
         0,
         220 + (i % 5) * 145,
         260 + Math.floor(i / 5) * 155,
@@ -54,7 +83,11 @@ export class LobbyRoom {
     this.game.humanInputs = new Map();
     this.phase = "lobby";
     this.deadline = null;
-    for (const m of this.members.values()) this.applyMember(m);
+    for (const m of this.members.values()) {
+      m.ready = false;
+      this.applyMember(m);
+    }
+    this.refreshWar();
   }
   applyMember(m) {
     const a = this.game.fighters[m.seat];
@@ -62,9 +95,10 @@ export class LobbyRoom {
     a.displayName = m.name;
     a.cosmetics = m.cosmetics || {};
     if (this.phase === "lobby" || this.phase === "countdown")
-      Object.assign(a, makeFighter(a.id, m.element, 0, a.x, a.y), {
+      Object.assign(a, makeFighter(a.id, this.memberElement(m), 0, a.x, a.y), {
         displayName: m.name,
         cosmetics: m.cosmetics || {},
+        lobbyReady: !!m.ready,
       });
   }
   join(id, name, element = "fire", cosmetics = {}) {
@@ -81,11 +115,13 @@ export class LobbyRoom {
       cosmetics: cleanCosmetics(cosmetics),
       seat,
       order: this.order++,
+      ready: false,
       input: { x: 0, y: 0 },
       lastInput: this.now(),
     };
     this.members.set(id, member);
     this.applyMember(member);
+    this.refreshWar();
     return member;
   }
   leave(id) {
@@ -98,6 +134,7 @@ export class LobbyRoom {
     if (actor) {
       actor.displayName = `AI ${m.seat + 1}`;
       actor.cosmetics = {};
+      actor.lobbyReady = false;
     }
     this.game.humanInputs?.delete(actor?.id);
     if (
@@ -113,6 +150,7 @@ export class LobbyRoom {
         this.game.matchStats = this.game.sessionActors.get(next.id).stats;
       }
     }
+    this.refreshWar();
     // Countdown cancellation prevents a new captain inheriting an unexpected start.
     if (this.phase === "countdown") {
       this.phase = "lobby";
@@ -144,10 +182,18 @@ export class LobbyRoom {
       return;
     }
     if (message.kind === "profile" && this.phase === "lobby") {
-      if (BASE_FORMS.includes(message.element)) m.element = message.element;
+      if (
+        !forcedLobbyElement(this.mode) &&
+        (this.mode !== "war" || id === this.captain) &&
+        BASE_FORMS.includes(message.element)
+      ) {
+        if (m.element !== message.element) m.ready = false;
+        m.element = message.element;
+      }
       if (message.cosmetics && typeof message.cosmetics === "object")
         m.cosmetics = cleanCosmetics(message.cosmetics);
       this.applyMember(m);
+      this.refreshWar();
       return;
     }
     if (
@@ -169,6 +215,15 @@ export class LobbyRoom {
     }
     if (
       message.kind === "start" &&
+      id !== this.captain &&
+      this.phase === "lobby"
+    ) {
+      m.ready = true;
+      this.applyMember(m);
+      return;
+    }
+    if (
+      message.kind === "start" &&
       id === this.captain &&
       this.phase === "lobby"
     ) {
@@ -186,7 +241,14 @@ export class LobbyRoom {
     const captain = this.members.get(this.captain);
     return new Combat({
       mode: this.mode,
-      element: captain?.element || "fire",
+      element:
+        this.mode === "war"
+          ? this.memberElement({ seat: 0 })
+          : captain?.element || "fire",
+      enemyElement:
+        this.mode === "war"
+          ? this.memberElement({ seat: this.capacity - 1 })
+          : undefined,
       size: this.mode === "gauntlet-team" ? this.capacity : this.capacity / 2,
       players: this.capacity,
       countdown: true,
@@ -239,10 +301,8 @@ export class LobbyRoom {
       return;
     }
     if (this.phase === "results" && now >= this.deadline) {
+      this.preparedGame = null;
       this.createLobby();
-      this.phase = "countdown";
-      this.preparedGame = this.buildBattle();
-      this.deadline = now + START_SECONDS * 1000;
       return;
     }
     g.humanInputs = new Map();
@@ -288,6 +348,7 @@ export class LobbyRoom {
   }
   snapshot() {
     return {
+      protocolVersion: LOBBY_PROTOCOL,
       roomId: this.id,
       mode: this.mode,
       nextMapId: this.preparedGame?.mapId,
@@ -298,9 +359,13 @@ export class LobbyRoom {
       serverNow: this.now(),
       roundId: this.roundId,
       sequence: this.sequence,
-      members: [...this.members.values()].map(
-        ({ input, lastInput, ...m }) => m,
-      ),
+      members: [...this.members.values()].map(({ input, lastInput, ...m }) => ({
+        ...m,
+        element: this.memberElement(m),
+        elementLocked:
+          !!forcedLobbyElement(this.mode) ||
+          (this.mode === "war" && m.id !== this.captain),
+      })),
       game: packGame(this.game),
     };
   }

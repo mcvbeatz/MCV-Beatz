@@ -1,4 +1,13 @@
-# Fusion Throwdown · v0.59.0
+# Fusion Throwdown · v0.60.0
+
+## v0.60.0 Lobby controls and captain-led rematches
+
+- Configured the online endpoint as `wss://mcv-beatz.onrender.com`. The Render service must deploy this release; `/health` reports lobby protocol 2 and older servers produce a clear update message.
+- Four buttons beside the movement stick replace the always-open settings panel: START, Players, Elemental, Cosmetics. Captain START begins a shared, full-screen five-second countdown; other players signal Ready! above their character. Settings open only when requested.
+- Rooms default to their maximum supported capacity. Non-captains can inspect the player limit but cannot change it. Required mode forms override defaults in both the lobby and match, with selection disabled. War previews assigned armies and reserves army changes for the captain.
+- Results pages remain manual throughout the 30-second window. Players return to the same lobby afterward and wait for captain START. Touch gestures over the scoreboard scroll the full report vertically while retaining horizontal column scrolling, including rotated phones.
+- Multiplayer order: Team Death Match, War, Capture the Flag, Free For All, Survive the Night, Gridiron, Turnpike Racing, Zombies, Fusion Rush, Elemental Roulette, Team Waves, Boss.
+- [Hosting and verification](backend/MULTIPLAYER.md). Guests continue to use clearly labelled AI-only rooms; combat rules and progression rewards are unchanged.
 
 ## v0.59.0 Shared lobbies and smoother rematches
 

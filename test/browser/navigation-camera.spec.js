@@ -65,8 +65,8 @@ test("Play separates Multiplayer and Solo, and Quick Match enters the correct fl
   await page.locator('[data-screen="team-battles"]').click();
   await expect(page.locator("[data-launch]")).toHaveCount(12);
   await page.locator('[data-launch="boss"]').click();
-  await expect(page.locator("#lobby-panel header")).toContainText("Boss");
-  await page.locator("[data-leave]").click();
+  await expect(page.locator("#lobby-status")).toContainText("Boss");
+  await page.locator("#leave-btn").click();
   await page.locator("#shell-back").click();
   await page.locator('[data-screen="solo-battles"]').click();
   await expect(page.locator("[data-launch]")).toHaveCount(2);
@@ -91,7 +91,7 @@ test("Play separates Multiplayer and Solo, and Quick Match enters the correct fl
       )
       .toBe(mode);
     await page.evaluate(() => (Math.random = window.savedRandom));
-    if (mode === "tdm") await page.locator("[data-leave]").click();
+    if (mode === "tdm") await page.locator("#leave-btn").click();
     else await page.locator("#change-mode-btn").click();
     await expect.poll(() => page.evaluate(() => __app.screen)).toBe(group);
   }
@@ -346,7 +346,7 @@ test("compact mode lists scroll with touch in normal and rotated landscape", asy
       .poll(() => page.locator(".mode-scroll").evaluate((e) => e.scrollTop))
       .toBeGreaterThan(60);
     await page.locator('[data-launch="boss"]').tap();
-    await expect(page.locator("#lobby-panel header")).toContainText("Boss");
+    await expect(page.locator("#lobby-status")).toContainText("Boss");
   }
   await client.detach();
   await context.close();

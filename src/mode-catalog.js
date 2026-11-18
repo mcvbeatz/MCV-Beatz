@@ -419,11 +419,18 @@ export const TEAM_MODES = [
   "gauntlet-team",
 ];
 export const MULTIPLAYER_MODES = [
-  ...TEAM_MODES,
-  "corruption",
-  "turnpike",
+  "tdm",
+  "war",
+  "ctf",
   "ffa",
+  "corruption",
+  "gridiron",
+  "turnpike",
+  "zombies",
+  "rush",
   "roulette",
+  "gauntlet-team",
+  "boss",
 ];
 export const SOLO_MODES = ["dungeon", "gauntlet"];
 export const PLAY_MODES = [...MULTIPLAYER_MODES, ...SOLO_MODES];

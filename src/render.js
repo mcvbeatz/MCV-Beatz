@@ -904,6 +904,16 @@ export class Renderer {
       c.save();
       c.globalAlpha = clearAllyHealth(a, game.player) ? 1 : body.alpha;
       this.healthIndicator(c, a, game.player);
+      if (game.lobby && a.lobbyReady) {
+        c.fillStyle = "#0a3029";
+        c.fillRect(a.x - 33, a.y - 108, 66, 24);
+        c.strokeStyle = "#ebcd85";
+        c.strokeRect(a.x - 33, a.y - 108, 66, 24);
+        c.font = "bold 16px sans-serif";
+        c.textAlign = "center";
+        c.fillStyle = "#ffdf91";
+        c.fillText("Ready!", a.x, a.y - 90);
+      }
       c.restore();
       if (a.ghost) {
         c.save();
