@@ -18,11 +18,19 @@ export function renderLobbyPanel(
     waiting = s.phase === "lobby";
   const catalog = cosmeticCatalog();
   if (!waiting) delete root.dataset.tab;
+  if (!captain || !waiting || client.sizeDraft?.size === s.capacity)
+    delete client.sizeDraft;
   const paint = () => {
     const tab = root.dataset.tab;
+    const draft = client.sizeDraft;
+    if (draft)
+      draft.kick = draft.kick.filter((id) =>
+        s.members.some((m) => m.id === id && id !== s.captain),
+      );
+    const excess = draft ? Math.max(0, s.members.length - draft.size) : 0;
     root.hidden = !tab;
     status.textContent = `${MODES[s.mode].name} · ${client.local ? "AI-only lobby" : "Online lobby"} · ${captain ? "You are captain" : "Captain: " + (s.members.find((m) => m.id === s.captain)?.name || "—")}`;
-    controls.innerHTML = `<button data-start ${!waiting ? "disabled" : ""} title="${captain ? "Start the five-second countdown" : "Show Ready! above your elemental"}">${icon("strike")}<strong>START</strong><small>${captain ? "Captain" : me.ready ? "Ready!" : "Signal ready"}</small></button>${[
+    controls.innerHTML = `<button data-start ${!waiting || draft ? "disabled" : ""} title="${captain ? "Start the five-second countdown" : "Show Ready! above your elemental"}">${icon("strike")}<strong>START</strong><small>${captain ? "Captain" : me.ready ? "Ready!" : "Signal ready"}</small></button>${[
       ["players", "team", "Players", String(s.capacity)],
       [
         "elemental",
@@ -57,7 +65,19 @@ export function renderLobbyPanel(
     let content = "";
     if (tab === "players") {
       const sizes = lobbySizes(s.mode);
-      content = `<p>${captain ? "Choose the lobby’s player limit." : "Only the captain can change the player limit."}${sizes.length === 1 ? " This mode requires eight players." : ""}</p><label>Players<select data-size ${!captain || !waiting || sizes.length === 1 ? "disabled" : ""}>${sizes.map((n) => `<option ${n === s.capacity ? "selected" : ""} ${n < s.members.length ? "disabled" : ""}>${n}</option>`).join("")}</select></label><ol class="lobby-members">${Array.from(
+      content = `<p>${captain ? "Choose the lobby’s player limit." : "Only the captain can change the player limit."}${sizes.length === 1 ? " This mode requires eight players." : ""}</p><label>Players<select data-size ${!captain || !waiting || sizes.length === 1 ? "disabled" : ""}>${sizes.map((n) => `<option ${n === (draft?.size ?? s.capacity) ? "selected" : ""}>${n}</option>`).join("")}</select></label>${
+        draft
+          ? `<fieldset class="lobby-kick-picker"><legend>Choose ${excess} player${excess === 1 ? "" : "s"} to remove</legend><p>The limit stays at ${s.capacity} until you confirm. Choose a higher limit above to keep everyone.</p>${s.members
+              .filter((m) => m.id !== s.captain)
+              .map(
+                (m) =>
+                  `<label><input type="checkbox" data-kick="${esc(m.id)}" ${draft.kick.includes(m.id) ? "checked" : ""}>${esc(m.name)}</label>`,
+              )
+              .join(
+                "",
+              )}<p data-size-error role="status"></p><button data-size-confirm ${draft.kick.length !== excess ? "disabled" : ""}>${excess ? `Remove ${excess} & ` : ""}Apply ${draft.size} players</button><button data-size-cancel>Keep current limit</button></fieldset>`
+          : ""
+      }<ol class="lobby-members">${Array.from(
         { length: s.capacity },
         (_, seat) => {
           const m = s.members.find((m) => m.seat === seat);
@@ -90,9 +110,34 @@ export function renderLobbyPanel(
       delete root.dataset.tab;
       paint();
     };
+    root.querySelector("[data-size]")?.addEventListener("change", (e) => {
+      const size = Number(e.target.value);
+      if (size < s.members.length) {
+        client.sizeDraft = { size, kick: [] };
+        paint();
+      } else {
+        delete client.sizeDraft;
+        onSize(size);
+        paint();
+      }
+    });
+    root.querySelectorAll("[data-kick]").forEach(
+      (el) =>
+        (el.onchange = () => {
+          const picked = new Set(client.sizeDraft.kick);
+          if (el.checked) picked.add(el.dataset.kick);
+          else picked.delete(el.dataset.kick);
+          client.sizeDraft.kick = [...picked];
+          paint();
+        }),
+    );
     root
-      .querySelector("[data-size]")
-      ?.addEventListener("change", (e) => onSize(Number(e.target.value)));
+      .querySelector("[data-size-confirm]")
+      ?.addEventListener("click", () => onSize(draft.size, [...draft.kick]));
+    root.querySelector("[data-size-cancel]")?.addEventListener("click", () => {
+      delete client.sizeDraft;
+      paint();
+    });
     root
       .querySelector("[data-element]")
       ?.addEventListener("change", (e) => onProfile(e.target.value));

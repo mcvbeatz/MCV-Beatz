@@ -211,3 +211,36 @@ for (const mode of ["duel", "fused", "fused3", "team"])
       await page.evaluate(() => __app.progressionStore().state.totals.matches),
     ).toBe(0);
   });
+
+test("reviewing a saved report shows honors without announcing achievements again", async ({
+  page,
+}) => {
+  await ready(page);
+  await finish(page, "ffa");
+  const before = await page.evaluate(() =>
+    JSON.stringify(__app.progressionStore().state),
+  );
+  await page.evaluate(async () => {
+    const { renderMatchReport } = await import("/src/progression-ui.js");
+    const g = __arena.game;
+    if (!g.progressReport.achievements.length)
+      throw Error("Expected flawless-match achievement fixture");
+    renderMatchReport(
+      document.querySelector("#match-report"),
+      g.progressReport,
+      g.progressState,
+      { review: true },
+    );
+  });
+  await page.locator("#match-report [data-next]").click();
+  await page.locator("#match-report [data-next]").click();
+  await expect(page.locator(".report-unlocks")).toBeVisible();
+  await expect(page.locator('.report-unlocks[role="status"]')).toHaveCount(0);
+  await expect(page.locator(".report-unlocks")).toHaveCSS(
+    "animation-name",
+    "none",
+  );
+  expect(
+    await page.evaluate(() => JSON.stringify(__app.progressionStore().state)),
+  ).toBe(before);
+});

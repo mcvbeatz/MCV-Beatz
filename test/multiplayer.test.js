@@ -317,3 +317,154 @@ test("War shows assigned armies and only the current captain can change theirs",
     expected,
   );
 });
+
+test("capacity reductions atomically require exactly the excess members, never the captain", () => {
+  const r = new LobbyRoom("ffa");
+  for (const id of ["a", "b", "c", "d"]) r.join(id, id);
+  for (const kick of [
+    undefined,
+    [],
+    ["b"],
+    ["b", "b"],
+    ["a", "b"],
+    ["b", "missing"],
+    ["b", "c", "d"],
+  ]) {
+    assert.throws(() => r.command("a", { kind: "size", size: 2, kick }));
+    assert.equal(r.capacity, 8);
+    assert.equal(r.members.size, 4);
+  }
+  r.command("b", { kind: "size", size: 2, kick: ["c", "d"] });
+  assert.equal(r.members.size, 4);
+  const result = r.command("a", { kind: "size", size: 2, kick: ["b", "d"] });
+  assert.deepEqual(result.kicked, ["b", "d"]);
+  assert.equal(r.capacity, 2);
+  assert.deepEqual([...r.members.keys()], ["a", "c"]);
+  assert.deepEqual(
+    [...r.members.values()].map((m) => m.seat),
+    [0, 1],
+  );
+  r.command("a", { kind: "size", size: 4 });
+  assert.equal(r.capacity, 4);
+});
+
+test("lobby directory, explicit creation/join, quick matchmaking, kick notices and stale-room protection", async () => {
+  const service = createLobbyServer({
+    verifyUser: async (token) => ({
+      id: token,
+      user_metadata: { username: token },
+    }),
+  });
+  await new Promise((r) => service.server.listen(0, "127.0.0.1", r));
+  const url = `ws://127.0.0.1:${service.server.address().port}`;
+  const connect = async () => {
+    const ws = new WebSocket(url);
+    await new Promise((resolve, reject) => {
+      ws.once("open", resolve);
+      ws.once("error", reject);
+    });
+    return ws;
+  };
+  const receive = (ws, kind, message) =>
+    new Promise((resolve, reject) => {
+      const timeout = setTimeout(() => {
+        ws.off("message", listen);
+        reject(new Error(`Missing ${kind}`));
+      }, 3000);
+      const listen = (raw) => {
+        const m = JSON.parse(raw);
+        if (m.kind === kind) {
+          clearTimeout(timeout);
+          ws.off("message", listen);
+          resolve(m);
+        }
+      };
+      ws.on("message", listen);
+      if (message) ws.send(JSON.stringify(message));
+    });
+  try {
+    const a = await connect(),
+      b = await connect(),
+      c = await connect(),
+      d = await connect();
+    let directory = await receive(a, "directory", {
+      kind: "browse",
+      token: "Alice",
+      mode: "ffa",
+    });
+    assert.deepEqual(directory.rooms, []);
+    assert.equal(service.rooms.size, 0);
+    const first = await receive(a, "state", {
+      kind: "join",
+      action: "create",
+      mode: "ffa",
+    });
+    directory = await receive(b, "directory", {
+      kind: "browse",
+      token: "Bob",
+      mode: "ffa",
+    });
+    assert.equal(directory.rooms[0].captainName, "Alice");
+    assert.equal(directory.rooms[0].humans, 1);
+    assert.equal(directory.rooms[0].roomId, first.roomId);
+    const second = await receive(b, "state", {
+      kind: "join",
+      action: "create",
+      mode: "ffa",
+    });
+    assert.notEqual(second.roomId, first.roomId);
+    const joined = await receive(c, "state", {
+      kind: "join",
+      token: "Chris",
+      action: "join",
+      roomId: first.roomId,
+      mode: "ffa",
+    });
+    assert.equal(joined.roomId, first.roomId);
+    const quick = await receive(d, "state", {
+      kind: "join",
+      token: "Dana",
+      action: "auto",
+      mode: "ffa",
+    });
+    assert.equal(quick.roomId, first.roomId);
+    const kicked = receive(d, "kicked");
+    a.send(JSON.stringify({ kind: "size", size: 2, kick: ["Dana"] }));
+    assert.match((await kicked).message, /captain reduced/i);
+    assert.equal(service.rooms.get(first.roomId).capacity, 2);
+    directory = await receive(d, "directory", { kind: "browse", mode: "ffa" });
+    assert.equal(
+      directory.rooms.find((r) => r.roomId === first.roomId).humans,
+      2,
+    );
+    const err = await receive(d, "error", {
+      kind: "join",
+      action: "join",
+      roomId: first.roomId,
+      mode: "ffa",
+    });
+    assert.match(err.message, /full/);
+    assert.equal(service.rooms.size, 2);
+    const fallback = await receive(d, "state", {
+      kind: "join",
+      action: "auto",
+      mode: "ffa",
+    });
+    assert.equal(fallback.roomId, second.roomId);
+    const e = await connect();
+    service.rooms.get(second.roomId).command("Bob", { kind: "size", size: 2 });
+    const third = await receive(e, "state", {
+      kind: "join",
+      token: "Eve",
+      mode: "ffa",
+    });
+    assert.notEqual(third.roomId, first.roomId);
+    assert.notEqual(third.roomId, second.roomId);
+    a.close();
+    await new Promise((r) => a.once("close", r));
+    await new Promise((r) => setTimeout(r, 40));
+    assert.equal(service.rooms.get(first.roomId).captain, "Chris");
+  } finally {
+    await service.close();
+  }
+});

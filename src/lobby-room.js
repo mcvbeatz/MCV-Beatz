@@ -201,17 +201,27 @@ export class LobbyRoom {
       id === this.captain &&
       this.phase === "lobby"
     ) {
+      if (!lobbySizes(this.mode).includes(message.size))
+        throw new Error("Choose a supported player limit.");
+      const excess = Math.max(0, this.members.size - message.size);
+      const kick = message.kick ?? [];
       if (
-        !lobbySizes(this.mode).includes(message.size) ||
-        message.size < this.members.size
+        !Array.isArray(kick) ||
+        kick.length !== excess ||
+        new Set(kick).size !== excess ||
+        kick.some((userId) => userId === id || !this.members.has(userId))
       )
-        throw new Error("Choose a size that fits everyone.");
+        throw new Error(
+          `Choose exactly ${excess} other players to remove, or choose a higher limit. The lobby has not changed.`,
+        );
+      // Validate the entire change before removing anyone or reassigning seats.
+      for (const userId of kick) this.leave(userId);
       this.capacity = message.size;
       [...this.members.values()]
         .sort((a, b) => a.order - b.order)
         .forEach((m, i) => (m.seat = i));
       this.createLobby();
-      return;
+      return { kicked: kick };
     }
     if (
       message.kind === "start" &&

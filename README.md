@@ -1,4 +1,12 @@
-# Fusion Throwdown · v0.60.0
+# Fusion Throwdown · v0.61.0
+
+## v0.61.0 Choose your lobby and revisit results
+
+- Multiplayer mode selection opens a live lobby browser showing captain usernames and human/total seats. Create your own room or join a chosen room. Guests are clearly offered private AI-only play or sign-in; two online players need different signed-in accounts.
+- Quick Match automatically joins an available room or creates one when none has space. The field appears only after the Colosseum lobby snapshot arrives, keeping the selected battle map out of the joining flow.
+- Captains reducing capacity below the current human count must select exactly who to remove and confirm, or choose a larger capacity. Validation is atomic on the server; kicked players return to the lobby browser.
+- The top-left Last Results button reopens the latest completed scoreboard, mastery and honors from the lobby without repeating rewards or account writes. The next captain-started countdown closes review.
+- Deploy the latest server commit on Render: `/health` must show `protocolVersion: 3`. No database changes are required. See [multiplayer setup](backend/MULTIPLAYER.md).
 
 ## v0.60.0 Lobby controls and captain-led rematches
 

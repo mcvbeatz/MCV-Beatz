@@ -5,6 +5,7 @@ import {
   saveDefaultElement,
   BASE_FORMS,
 } from "./player-preferences.js";
+import { renderLobbyBrowser } from "./lobby-browser.js";
 import { LobbyClient } from "./lobby-client.js";
 import { unpackGame, resultFor } from "./multiplayer-protocol.js";
 import { renderLobbyPanel } from "./lobby-ui.js";
@@ -71,13 +72,15 @@ export function createApp(api) {
       progressionStores.set(id, new ProgressionStore(id));
     return progressionStores.get(id);
   };
-  let accountSection = "overview";
+  let accountSection = "overview",
+    accountInitialization = Promise.resolve();
   let lobby = null,
     lobbyUrl = "",
     lobbyRound = null,
     lobbySignature = "",
     resultControls = null,
-    lobbyCountdown = null;
+    lobbyCountdown = null,
+    lastSession = null;
   const lobbyPanel = document.createElement("aside");
   lobbyPanel.id = "lobby-panel";
   lobbyPanel.hidden = true;
@@ -96,9 +99,55 @@ export function createApp(api) {
   lobbyClock.hidden = true;
   lobbyClock.setAttribute("role", "status");
   $("game-wrap").append(lobbyStatus, lobbyClock);
+  const lastResultsButton = document.createElement("button");
+  lastResultsButton.id = "last-results-btn";
+  lastResultsButton.textContent = "Last Results";
+  lastResultsButton.hidden = true;
+  document.querySelector(".arena-topline").prepend(lastResultsButton);
+  const lastResultsPanel = document.createElement("section");
+  lastResultsPanel.id = "last-results-panel";
+  lastResultsPanel.className = "game-overlay results-report";
+  lastResultsPanel.setAttribute("role", "dialog");
+  lastResultsPanel.setAttribute("aria-label", "Last session results");
+  lastResultsPanel.hidden = true;
+  $("game-wrap").append(lastResultsPanel);
+  enableOrientedScroll(lastResultsPanel);
+  function closeLastResults() {
+    lastResultsPanel.hidden = true;
+    lastResultsPanel.replaceChildren();
+    api.releaseInput();
+  }
+  lastResultsButton.onclick = () => {
+    if (!lastSession || lobby?.state?.phase !== "lobby") return;
+    api.releaseInput();
+    lastResultsPanel.hidden = false;
+    lastResultsPanel.innerHTML =
+      '<button data-close-results>Back to lobby</button><h2>Last session results</h2><div class="last-session-report"></div>';
+    lastResultsPanel.querySelector("[data-close-results]").onclick =
+      closeLastResults;
+    renderMatchReport(
+      lastResultsPanel.querySelector(".last-session-report"),
+      lastSession.report,
+      lastSession.state,
+      {
+        username: lastSession.username,
+        review: true,
+        onNext: () => sound.menuClick(),
+        onStage: () => (lastResultsPanel.scrollTop = 0),
+        onRecords: () => {
+          closeLastResults();
+          Promise.resolve(show("leaderboard")).then(renderSelfStats);
+        },
+        onChangeMode: () => show(category),
+      },
+    );
+  };
   function leaveLobby() {
     lobby?.close();
     lobby = null;
+    lastSession = null;
+    lastResultsButton.hidden = true;
+    closeLastResults();
     lobbyRound = null;
     lobbyCountdown = null;
     lobbySignature = "";
@@ -119,32 +168,81 @@ export function createApp(api) {
     };
   }
   function enterMode(id) {
-    if (id === "random")
-      id = PLAY_MODES[Math.floor(Math.random() * PLAY_MODES.length)];
-    return MULTIPLAYER_MODES.includes(id) ? openLobby(id) : chooseMode(id);
+    const quick = id === "random";
+    if (quick) id = PLAY_MODES[Math.floor(Math.random() * PLAY_MODES.length)];
+    return MULTIPLAYER_MODES.includes(id)
+      ? openLobby(id, false, { action: quick ? "auto" : "browse" })
+      : chooseMode(id);
   }
-  async function openLobby(id, offline = false) {
+  async function openLobby(id, offline = false, options = {}) {
     leaveLobby();
+    dissolve.cancel();
     api.chooseMode(id);
     category = "team-battles";
     api.selectElement(defaultElement(account.user));
-    setScreen("battle");
-    document.body.dataset.lobby = "true";
-    lobbyPanel.hidden = false;
-    lobbyPanel.innerHTML =
-      "<h2>Joining lobby…</h2><p>Preparing your place in the colosseum.</p>";
+    // Stay on a menu until the first authoritative lobby snapshot is ready.
+    // Quick Match must never expose the selected battle map as its lobby.
+    setScreen("lobbies");
+    enableOrientedScroll($("shell-content"));
+    const browsing = options.action === "browse";
+    let directory = {
+      mode: id,
+      loading: true,
+      message: browsing ? "" : "Joining a lobby…",
+    };
+    let directorySignature = "";
+    const paintDirectory = () => {
+      if (lobby !== client || screen !== "lobbies") return;
+      const signature = JSON.stringify(directory);
+      if (signature === directorySignature) return;
+      directorySignature = signature;
+      renderLobbyBrowser($("shell-content"), directory, {
+        onCreate: () => client.joinRoom(),
+        onJoin: (roomId) => client.joinRoom(roomId),
+        onRefresh: () => {
+          if (client.closed || client.socket?.readyState !== 1)
+            return openLobby(id, false, { action: "browse" });
+          directory.message = "";
+          directorySignature = "";
+          client.refresh();
+        },
+        onOffline: () => openLobby(id, true),
+        onAccount: () => show("account"),
+      });
+    };
     sound.prepareBattle(id);
     const profile = roomProfile();
     const client = new LobbyClient({
       url: lobbyUrl,
       account,
       onState: (state) => receiveLobby(state, client, profile),
+      onDirectory: (state) => {
+        directory = {
+          ...state,
+          message:
+            directory.message === "Joining a lobby…" ? "" : directory.message,
+        };
+        paintDirectory();
+      },
+      onKicked: (message) =>
+        openLobby(id, false, { action: "browse", message }),
       onError: (message) => {
         if (lobby !== client) return;
         api.releaseInput();
+        if (screen === "lobbies") {
+          directory = { ...directory, loading: false, message };
+          paintDirectory();
+          return;
+        }
+        const sizeError = lobbyPanel.querySelector("[data-size-error]");
+        if (client.sizeDraft && sizeError) {
+          sizeError.textContent = message;
+          return;
+        }
         lobbyPanel.hidden = false;
-        lobbyPanel.innerHTML = `<h2>Lobby connection</h2><p>${escapeHTML(message)}</p><button data-retry>Retry online</button><button data-offline>AI-only lobby</button><button data-exit>Back</button>`;
-        lobbyPanel.querySelector("[data-retry]").onclick = () => openLobby(id);
+        lobbyPanel.innerHTML = `<h2>Lobby notice</h2><p>${escapeHTML(message)}</p><button data-retry>Open lobbies</button><button data-offline>AI-only lobby</button><button data-exit>Back</button>`;
+        lobbyPanel.querySelector("[data-retry]").onclick = () =>
+          openLobby(id, false, { action: "browse" });
         lobbyPanel.querySelector("[data-offline]").onclick = () =>
           openLobby(id, true);
         lobbyPanel.querySelector("[data-exit]").onclick = () =>
@@ -152,8 +250,13 @@ export function createApp(api) {
       },
     });
     lobby = client;
+    directory.message = options.message || directory.message;
+    paintDirectory();
     try {
-      await client.connect(id, profile, offline);
+      await accountInitialization;
+      if (lobby !== client) return;
+      Object.assign(profile, roomProfile());
+      await client.connect(id, profile, offline, options);
     } catch (e) {
       client.onError(e.message);
     }
@@ -180,7 +283,10 @@ export function createApp(api) {
     g.networkCommand = (message) => client.send(message);
     g.update = (dt, input) => {
       updateRespawnCamera(g, dt, input);
-      client.move(input.x, input.y);
+      client.move(
+        lastResultsPanel.hidden ? input.x : 0,
+        lastResultsPanel.hidden ? input.y : 0,
+      );
     };
     g.advanceCelebration = () => {};
     // Local controls express actions; only the room server changes gameplay state.
@@ -217,7 +323,10 @@ export function createApp(api) {
       waiting !== !!old.lobby ||
       (state.phase === "battle" && lobbyRound !== state.roundId) ||
       !old.networked;
+    if (screen !== "battle") setScreen("battle");
     api.receiveGame(g, fresh);
+    lastResultsButton.hidden = state.phase !== "lobby" || !lastSession;
+    if (state.phase !== "lobby" && !lastResultsPanel.hidden) closeLastResults();
     document.body.dataset.lobby = String(waiting);
     lobbyControls.hidden = lobbyStatus.hidden = !waiting;
     if (!waiting) lobbyPanel.hidden = true;
@@ -255,7 +364,8 @@ export function createApp(api) {
           status: lobbyStatus,
           onOpen: api.releaseInput,
           onStart: () => client.send({ kind: "start" }),
-          onSize: (size) => client.send({ kind: "size", size }),
+          onSize: (size, kick = []) =>
+            client.send({ kind: "size", size, kick }),
           onProfile: (element) => {
             profile.element = element;
             client.send({ kind: "profile", ...profile });
@@ -382,6 +492,7 @@ export function createApp(api) {
         play: "PLAY",
         "team-battles": "MULTIPLAYER",
         "solo-battles": "SOLO",
+        lobbies: "MULTIPLAYER LOBBIES",
         elements: "ELEMENTS & FUSIONS",
         practice: "PRACTICE",
         tutorial: "TUTORIAL",
@@ -953,9 +1064,11 @@ export function createApp(api) {
           ? "tutorial"
           : screen === "tutorial"
             ? "practice"
-            : ["team-battles", "solo-battles"].includes(screen)
-              ? "play"
-              : "home",
+            : screen === "lobbies"
+              ? "team-battles"
+              : ["team-battles", "solo-battles"].includes(screen)
+                ? "play"
+                : "home",
     );
   };
   $("resume-btn").onclick = () => {
@@ -978,6 +1091,7 @@ export function createApp(api) {
       if (
         !control ||
         control.disabled ||
+        control.closest("#last-results-panel .report-actions") ||
         !control.closest("#app-shell, #app, #slides-dialog")
       )
         return;
@@ -1026,6 +1140,12 @@ export function createApp(api) {
         : store.status,
     };
     g.progressState = store.state;
+    if (lobby)
+      lastSession = structuredClone({
+        report: g.progressReport,
+        state: g.progressState,
+        username: matchTicket.displayName,
+      });
     $("save-status").textContent = matchTicket.practice
       ? "Practice · no progression rewards."
       : store.status;
@@ -1221,7 +1341,7 @@ export function createApp(api) {
       if (response.ok) config = await response.json();
     } catch {}
     lobbyUrl = config.multiplayerUrl || "";
-    account
+    accountInitialization = account
       .initialize(config)
       .catch((e) => console.warn("Account service unavailable:", e.message));
     const deepLink = new URLSearchParams(location.search).get("mode");
@@ -1266,6 +1386,9 @@ export function createApp(api) {
     progressionStore,
     chooseMode,
     openLobby,
+    get reviewingResults() {
+      return !lastResultsPanel.hidden;
+    },
     get lobbyActive() {
       return !!lobby;
     },

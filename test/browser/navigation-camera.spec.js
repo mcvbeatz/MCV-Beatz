@@ -65,6 +65,7 @@ test("Play separates Multiplayer and Solo, and Quick Match enters the correct fl
   await page.locator('[data-screen="team-battles"]').click();
   await expect(page.locator("[data-launch]")).toHaveCount(12);
   await page.locator('[data-launch="boss"]').click();
+  await page.locator('[data-offline]').click();
   await expect(page.locator("#lobby-status")).toContainText("Boss");
   await page.locator("#leave-btn").click();
   await page.locator("#shell-back").click();
@@ -346,6 +347,7 @@ test("compact mode lists scroll with touch in normal and rotated landscape", asy
       .poll(() => page.locator(".mode-scroll").evaluate((e) => e.scrollTop))
       .toBeGreaterThan(60);
     await page.locator('[data-launch="boss"]').tap();
+    await page.locator('[data-offline]').tap();
     await expect(page.locator("#lobby-status")).toContainText("Boss");
   }
   await client.detach();

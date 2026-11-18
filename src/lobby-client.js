@@ -1,15 +1,31 @@
 import { LOBBY_PROTOCOL } from "./multiplayer-protocol.js";
 import { LobbyRoom } from "./lobby-room.js";
 export class LobbyClient {
-  constructor({ url = "", account, onState, onError }) {
-    Object.assign(this, { url, account, onState, onError });
+  constructor({ url = "", account, onState, onError, onDirectory, onKicked }) {
+    Object.assign(this, {
+      url,
+      account,
+      onState,
+      onError,
+      onDirectory,
+      onKicked,
+    });
     this.closed = false;
   }
-  async connect(mode, profile, offline = false) {
+  async connect(
+    mode,
+    profile,
+    offline = false,
+    { action = "auto", roomId } = {},
+  ) {
     this.mode = mode;
     this.profile = profile;
     if (offline || !this.url || !this.account.user) {
       this.local = true;
+      if (action === "browse") {
+        this.onDirectory?.({ mode, rooms: [], local: true });
+        return;
+      }
       this.userId = this.account.user?.id || "guest";
       this.room = new LobbyRoom(mode);
       this.room.join(
@@ -48,7 +64,9 @@ export class LobbyClient {
     this.socket = new WebSocket(endpoint.href);
     this.socket.onopen = () =>
       this.send({
-        kind: "join",
+        kind: action === "browse" ? "browse" : "join",
+        action,
+        roomId,
         mode,
         token: data.session.access_token,
         ...profile,
@@ -57,15 +75,33 @@ export class LobbyClient {
       try {
         const msg = JSON.parse(event.data);
         if (msg.kind === "error") this.onError(msg.message);
-        else if (msg.kind === "state") this.receive(msg);
+        else if (msg.kind === "kicked") {
+          this.onKicked?.(msg.message);
+        } else if (["directory", "state"].includes(msg.kind)) {
+          if (!this.checkProtocol(msg)) return;
+          if (msg.kind === "directory") {
+            this.onDirectory?.(msg);
+            this.directoryTimer ??= setInterval(() => this.refresh(), 2500);
+          } else {
+            clearInterval(this.directoryTimer);
+            this.directoryTimer = null;
+            this.receive(msg);
+          }
+        }
       } catch {
         this.onError("Could not read the lobby state. Please rejoin.");
       }
     };
-    this.socket.onclose = () => {
+    this.socket.onclose = (event) => {
+      clearInterval(this.directoryTimer);
+      this.directoryTimer = null;
       if (!this.closed)
         this.onError(
-          "Disconnected. Your place is now controlled by AI. Rejoin a lobby to continue.",
+          event.reason === "Joined on another connection"
+            ? "This account connected in another browser. Use different accounts to play together."
+            : this.state
+              ? "Disconnected. Your place is now controlled by AI. Rejoin a lobby to continue."
+              : "Could not open the lobby directory. Retry, and make sure the latest server update is deployed on Render.",
         );
     };
     this.socket.onerror = () => {
@@ -75,15 +111,30 @@ export class LobbyClient {
         );
     };
   }
-  receive(state) {
-    if (this.closed) return;
+  checkProtocol(state) {
     if (state.protocolVersion !== LOBBY_PROTOCOL) {
       this.close();
       this.onError(
         "The lobby server needs the latest update. In Render, deploy the latest commit, then retry.",
       );
-      return;
+      return false;
     }
+    return true;
+  }
+  refresh() {
+    if (!this.state) this.send({ kind: "browse", mode: this.mode });
+  }
+  joinRoom(roomId = null) {
+    this.send({
+      kind: "join",
+      action: roomId ? "join" : "create",
+      roomId,
+      mode: this.mode,
+      ...this.profile,
+    });
+  }
+  receive(state) {
+    if (this.closed || !this.checkProtocol(state)) return;
     this.state = state;
     this.userId = state.userId;
     this.receivedAt = performance.now();
@@ -104,7 +155,7 @@ export class LobbyClient {
     if (this.closed) return;
     if (this.local) {
       try {
-        this.room.command(this.userId, message);
+        this.room?.command(this.userId, message);
       } catch (e) {
         this.onError(e.message);
       }
@@ -121,6 +172,7 @@ export class LobbyClient {
     this.send({ kind: "leave" });
     this.closed = true;
     clearInterval(this.timer);
+    clearInterval(this.directoryTimer);
     this.socket?.close();
   }
 }

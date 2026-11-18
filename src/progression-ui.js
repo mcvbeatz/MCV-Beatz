@@ -228,7 +228,14 @@ export function renderMatchReport(
   root,
   report,
   state,
-  { onRecords, onChangeMode, onNext, onStage, username = "Guest" } = {},
+  {
+    onRecords,
+    onChangeMode,
+    onNext,
+    onStage,
+    username = "Guest",
+    review = false,
+  } = {},
 ) {
   const m = report.match;
   if (m.practice || !SESSION_COLUMNS[m.mode]) {
@@ -237,7 +244,7 @@ export function renderMatchReport(
   }
   let stage = 0,
     animation = null,
-    honorsSeen = false;
+    honorsSeen = review;
   const titles = [
     "Match scoreboard",
     "Elemental Mastery",

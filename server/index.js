@@ -2,6 +2,7 @@ import { LOBBY_PROTOCOL } from "../src/multiplayer-protocol.js";
 import http from "node:http";
 import { pathToFileURL } from "node:url";
 import { WebSocketServer, WebSocket } from "ws";
+import { MULTIPLAYER_MODES } from "../src/mode-catalog.js";
 import { LobbyRoom } from "../src/lobby-room.js";
 export function createLobbyServer({
   verifyUser,
@@ -35,9 +36,9 @@ export function createLobbyServer({
   function leave(ws) {
     const c = clients.get(ws);
     if (c) {
-      c.room.leave(c.user.id);
+      c.room?.leave(c.user.id);
       clients.delete(ws);
-      if (!c.room.members.size) rooms.delete(c.room.id);
+      if (c.room && !c.room.members.size) rooms.delete(c.room.id);
     }
   }
   wss.on("connection", (ws) => {
@@ -58,37 +59,84 @@ export function createLobbyServer({
       try {
         const msg = JSON.parse(raw);
         let c = clients.get(ws);
-        if (msg.kind === "join" && !c && !busy) {
+        if (["browse", "join"].includes(msg.kind)) {
+          if (busy) return;
           busy = true;
-          const user = await verifyUser(msg.token);
-          if (ws.readyState !== WebSocket.OPEN) return;
-          if (!user?.id) throw new Error("Sign in to join an online lobby.");
-          for (const [other, member] of clients)
-            if (member.user.id === user.id) {
-              leave(other);
-              other.close(1000, "Joined on another connection");
-            }
-          let room = [...rooms.values()].find(
-            (r) =>
-              r.mode === msg.mode &&
-              r.phase === "lobby" &&
-              r.members.size < r.capacity,
-          );
-          if (!room) {
-            if (rooms.size >= maxRooms)
-              throw new Error("All rooms are busy. Try again shortly.");
-            room = new LobbyRoom(msg.mode);
-            rooms.set(room.id, room);
+          if (!MULTIPLAYER_MODES.includes(msg.mode))
+            throw new Error("Unknown multiplayer mode");
+          if (!c) {
+            const user = await verifyUser(msg.token);
+            if (ws.readyState !== WebSocket.OPEN) return;
+            if (!user?.id) throw new Error("Sign in to join an online lobby.");
+            for (const [other, member] of clients)
+              if (member.user.id === user.id) {
+                send(other, {
+                  kind: "error",
+                  message:
+                    "This account connected in another browser. Use different accounts to play together.",
+                });
+                leave(other);
+                other.close(1000, "Joined on another connection");
+              }
+            c = { user, room: null };
+            clients.set(ws, c);
+            clearTimeout(authTimeout);
           }
-          room.join(
-            user.id,
-            user.user_metadata?.username,
-            msg.element,
-            msg.cosmetics,
-          );
-          clients.set(ws, { user, room });
-          clearTimeout(authTimeout);
-          send(ws, { kind: "state", userId: user.id, ...room.snapshot() });
+          if (c.room) throw new Error("Leave your current lobby first.");
+          if (msg.kind === "browse") {
+            send(ws, {
+              kind: "directory",
+              protocolVersion: LOBBY_PROTOCOL,
+              mode: msg.mode,
+              rooms: [...rooms.values()]
+                .filter((r) => r.mode === msg.mode && r.phase === "lobby")
+                .map((r) => ({
+                  roomId: r.id,
+                  captainName: r.members.get(r.captain)?.name || "Player",
+                  humans: r.members.size,
+                  capacity: r.capacity,
+                })),
+            });
+          } else {
+            const action = msg.action || "auto";
+            if (!["auto", "create", "join"].includes(action))
+              throw new Error("Unknown lobby action");
+            let room =
+              action === "join"
+                ? rooms.get(msg.roomId)
+                : action === "auto"
+                  ? [...rooms.values()].find(
+                      (r) =>
+                        r.mode === msg.mode &&
+                        r.phase === "lobby" &&
+                        r.members.size < r.capacity,
+                    )
+                  : null;
+            if (
+              action === "join" &&
+              (!room ||
+                room.mode !== msg.mode ||
+                room.phase !== "lobby" ||
+                room.members.size >= room.capacity)
+            )
+              throw new Error(
+                "That lobby is full or no longer open. Refresh the list or create a lobby.",
+              );
+            if (!room) {
+              if (rooms.size >= maxRooms)
+                throw new Error("All rooms are busy. Try again shortly.");
+              room = new LobbyRoom(msg.mode);
+              rooms.set(room.id, room);
+            }
+            room.join(
+              c.user.id,
+              c.user.user_metadata?.username,
+              msg.element,
+              msg.cosmetics,
+            );
+            c.room = room;
+            send(ws, { kind: "state", userId: c.user.id, ...room.snapshot() });
+          }
           busy = false;
           return;
         }
@@ -98,7 +146,20 @@ export function createLobbyServer({
           ws.close(1000, "Left lobby");
           return;
         }
-        c.room.command(c.user.id, msg);
+        if (!c.room) return;
+        const result = c.room.command(c.user.id, msg);
+        for (const userId of result?.kicked || []) {
+          for (const [other, member] of clients) {
+            if (member.room === c.room && member.user.id === userId) {
+              member.room = null;
+              send(other, {
+                kind: "kicked",
+                message:
+                  "The captain reduced the player limit and removed you from this lobby. Choose another lobby or create your own.",
+              });
+            }
+          }
+        }
       } catch (error) {
         busy = false;
         send(ws, { kind: "error", message: error.message });
