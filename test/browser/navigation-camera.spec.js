@@ -1,9 +1,12 @@
 import { test, expect } from "@playwright/test";
+import { installLobbyService } from "./local-lobby-service.js";
+const routeLobby = installLobbyService(test);
 async function ready(page, orientation = "portrait") {
   await page.addInitScript((orientation) => {
     localStorage.setItem("elemental-settings", JSON.stringify({ orientation }));
     HTMLElement.prototype.requestFullscreen = undefined;
   }, orientation);
+  await routeLobby(page);
   await page.goto("/");
   await page.waitForFunction(() => window.__app?.screen === "home");
 }
@@ -65,7 +68,7 @@ test("Play separates Multiplayer and Solo, and Quick Match enters the correct fl
   await page.locator('[data-screen="team-battles"]').click();
   await expect(page.locator("[data-launch]")).toHaveCount(12);
   await page.locator('[data-launch="boss"]').click();
-  await page.locator('[data-offline]').click();
+  await page.locator("[data-create]").click();
   await expect(page.locator("#lobby-status")).toContainText("Boss");
   await page.locator("#leave-btn").click();
   await page.locator("#shell-back").click();
@@ -347,7 +350,7 @@ test("compact mode lists scroll with touch in normal and rotated landscape", asy
       .poll(() => page.locator(".mode-scroll").evaluate((e) => e.scrollTop))
       .toBeGreaterThan(60);
     await page.locator('[data-launch="boss"]').tap();
-    await page.locator('[data-offline]').tap();
+    await page.locator("[data-create]").tap();
     await expect(page.locator("#lobby-status")).toContainText("Boss");
   }
   await client.detach();

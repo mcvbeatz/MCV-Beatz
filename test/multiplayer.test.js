@@ -468,3 +468,131 @@ test("lobby directory, explicit creation/join, quick matchmaking, kick notices a
     await service.close();
   }
 });
+
+test("team choices enforce human limits, replace AI seats, and survive match starts and rematches", () => {
+  for (const mode of ["tdm", "war", "ctf", "rush", "gridiron"]) {
+    const r = new LobbyRoom(mode);
+    r.join("captain", "Captain", "water");
+    r.join("second", "Second", "fire");
+    r.command("captain", { kind: "team", team: 1 });
+    assert.equal(r.members.get("captain").seat % 2, 1, mode);
+    assert.equal(r.snapshot().members.find((m) => m.id === "captain").team, 1);
+    const cap = r.capacity / 2;
+    for (let i = 2; i < cap; i++) {
+      const id = `fill-${i}`;
+      r.join(id, id);
+      r.command(id, { kind: "team", team: 1 });
+    }
+    r.join("jade", "Jade");
+    assert.throws(() => r.command("jade", { kind: "team", team: 1 }), /full/);
+    assert.equal(r.snapshot().teams[1].users, cap);
+    assert.equal(r.snapshot().teams[0].users, 1);
+    r.startBattle();
+    for (const m of r.members.values()) {
+      const fighter = r.game.fighters.find((a) => a.id === m.actorId);
+      assert.equal(fighter.team, m.seat % 2, mode);
+      assert.equal(fighter.displayName, m.name);
+      if (mode === "war")
+        assert.equal(
+          fighter.element,
+          fighter.team === 1 ? "water" : r.warEnemy,
+        );
+    }
+    const seat = r.members.get("jade").seat;
+    r.command("jade", { kind: "team", team: 1 });
+    assert.equal(r.members.get("jade").seat, seat);
+    r.createLobby();
+    assert.equal(r.snapshot().teams[1].users, cap);
+  }
+  for (const mode of [
+    "ffa",
+    "corruption",
+    "zombies",
+    "turnpike",
+    "gauntlet-team",
+    "boss",
+    "roulette",
+  ]) {
+    const r = new LobbyRoom(mode);
+    r.join("a", "A");
+    r.command("a", { kind: "team", team: 1 });
+    assert.equal(r.members.get("a").seat, 0);
+    assert.deepEqual(r.snapshot().teams, []);
+  }
+});
+
+test("resizing preserves selected teams and rejects overfull teams before kicking anyone", () => {
+  const r = new LobbyRoom("tdm");
+  for (const id of ["a", "b", "c", "d", "e"]) r.join(id, id);
+  r.command("a", { kind: "team", team: 1 });
+  assert.throws(
+    () => r.command("a", { kind: "size", size: 4, kick: ["c"] }),
+    /too many players/,
+  );
+  assert.equal(r.members.size, 5);
+  assert.equal(r.capacity, 8);
+  r.command("a", { kind: "size", size: 4, kick: ["b"] });
+  assert.deepEqual(
+    [...r.members.values()].map((m) => [m.id, m.seat % 2]),
+    [
+      ["a", 1],
+      ["c", 0],
+      ["d", 1],
+      ["e", 0],
+    ],
+  );
+  assert.equal(r.capacity, 4);
+});
+
+test("unauthenticated guests share online rooms with verified accounts and cannot claim account identity", async () => {
+  let verifies = 0;
+  const service = createLobbyServer({
+    verifyUser: async (token) => {
+      verifies++;
+      if (token !== "valid") throw Error("Invalid session");
+      return { id: "signed-id", user_metadata: { username: "SignedPlayer" } };
+    },
+  });
+  await new Promise((r) => service.server.listen(0, "127.0.0.1", r));
+  const connect = (message) =>
+    new Promise((resolve, reject) => {
+      const ws = new WebSocket(
+        `ws://127.0.0.1:${service.server.address().port}`,
+      );
+      ws.on("error", reject);
+      ws.on("open", () => ws.send(JSON.stringify(message)));
+      ws.once("message", (raw) => resolve({ ws, state: JSON.parse(raw) }));
+    });
+  try {
+    const a = await connect({
+      kind: "join",
+      mode: "tdm",
+      guest: true,
+      id: "signed-id",
+      username: "Spoofed",
+    });
+    const b = await connect({ kind: "join", mode: "tdm", guest: true });
+    assert.equal(verifies, 0);
+    assert.equal(a.state.roomId, b.state.roomId);
+    assert.notEqual(a.state.userId, b.state.userId);
+    assert.match(a.state.userId, /^guest:/);
+    assert.equal(a.state.members[0].guest, true);
+    assert.match(a.state.members[0].name, /^Guest [A-F0-9]{6}$/);
+    const signed = await connect({ kind: "join", mode: "tdm", token: "valid" });
+    assert.equal(signed.state.roomId, a.state.roomId);
+    assert.equal(
+      signed.state.members.find((m) => m.id === "signed-id").guest,
+      false,
+    );
+    const invalid = await connect({
+      kind: "join",
+      mode: "tdm",
+      guest: true,
+      token: "invalid",
+    });
+    assert.equal(invalid.state.kind, "error");
+    assert.equal(service.rooms.get(a.state.roomId).members.size, 3);
+  } finally {
+    await service.close();
+  }
+});

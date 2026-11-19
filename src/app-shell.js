@@ -6,6 +6,8 @@ import {
   BASE_FORMS,
 } from "./player-preferences.js";
 import { renderLobbyBrowser } from "./lobby-browser.js";
+import { renderLobbyTeams } from "./lobby-teams.js";
+import { emptyProgress } from "./progression.js";
 import { LobbyClient } from "./lobby-client.js";
 import { unpackGame, resultFor } from "./multiplayer-protocol.js";
 import { renderLobbyPanel } from "./lobby-ui.js";
@@ -91,6 +93,11 @@ export function createApp(api) {
   lobbyControls.setAttribute("aria-label", "Lobby controls");
   lobbyControls.hidden = true;
   $("battle-controls").append(lobbyControls);
+  const lobbyTeams = document.createElement("nav");
+  lobbyTeams.id = "lobby-team-picker";
+  lobbyTeams.setAttribute("aria-label", "Choose a team");
+  lobbyTeams.hidden = true;
+  $("game-wrap").append(lobbyTeams);
   const lobbyStatus = document.createElement("p");
   lobbyStatus.id = "lobby-status";
   lobbyStatus.hidden = true;
@@ -153,6 +160,7 @@ export function createApp(api) {
     lobbySignature = "";
     lobbyPanel.hidden =
       lobbyControls.hidden =
+      lobbyTeams.hidden =
       lobbyStatus.hidden =
       lobbyClock.hidden =
         true;
@@ -188,6 +196,8 @@ export function createApp(api) {
     let directory = {
       mode: id,
       loading: true,
+      view: options.view || "choose",
+      signedIn: !!account.user,
       message: browsing ? "" : "Joining a lobby…",
     };
     let directorySignature = "";
@@ -197,17 +207,33 @@ export function createApp(api) {
       if (signature === directorySignature) return;
       directorySignature = signature;
       renderLobbyBrowser($("shell-content"), directory, {
-        onCreate: () => client.joinRoom(),
+        onCreate: () => {
+          if (
+            client.closed ||
+            (!client.local && client.socket?.readyState !== 1)
+          )
+            return openLobby(id, false, { action: "create" });
+          client.joinRoom();
+        },
+        onChooseJoin: () => {
+          directory.view = "join";
+          paintDirectory();
+          client.refresh();
+        },
+        onChooseBack: () => {
+          directory.view = "choose";
+          paintDirectory();
+        },
         onJoin: (roomId) => client.joinRoom(roomId),
         onRefresh: () => {
           if (client.closed || client.socket?.readyState !== 1)
-            return openLobby(id, false, { action: "browse" });
+            return openLobby(id, false, { action: "browse", view: "join" });
           directory.message = "";
           directorySignature = "";
           client.refresh();
         },
-        onOffline: () => openLobby(id, true),
-        onAccount: () => show("account"),
+        onAccount: () =>
+          Promise.resolve(show("account")).then(() => renderAuth()),
       });
     };
     sound.prepareBattle(id);
@@ -219,6 +245,8 @@ export function createApp(api) {
       onDirectory: (state) => {
         directory = {
           ...state,
+          view: directory.view,
+          signedIn: !!account.user,
           message:
             directory.message === "Joining a lobby…" ? "" : directory.message,
         };
@@ -240,11 +268,9 @@ export function createApp(api) {
           return;
         }
         lobbyPanel.hidden = false;
-        lobbyPanel.innerHTML = `<h2>Lobby notice</h2><p>${escapeHTML(message)}</p><button data-retry>Open lobbies</button><button data-offline>AI-only lobby</button><button data-exit>Back</button>`;
+        lobbyPanel.innerHTML = `<h2>Lobby notice</h2><p>${escapeHTML(message)}</p><button data-retry>Open lobbies</button><button data-exit>Back</button>`;
         lobbyPanel.querySelector("[data-retry]").onclick = () =>
           openLobby(id, false, { action: "browse" });
-        lobbyPanel.querySelector("[data-offline]").onclick = () =>
-          openLobby(id, true);
         lobbyPanel.querySelector("[data-exit]").onclick = () =>
           show("team-battles");
       },
@@ -330,6 +356,10 @@ export function createApp(api) {
     document.body.dataset.lobby = String(waiting);
     lobbyControls.hidden = lobbyStatus.hidden = !waiting;
     if (!waiting) lobbyPanel.hidden = true;
+    renderLobbyTeams(lobbyTeams, state, client.userId, (team) => {
+      api.releaseInput();
+      client.send({ kind: "team", team });
+    });
     if (state.phase === "battle" && lobbyRound !== state.roundId) {
       lobbyRound = state.roundId;
       start();
@@ -543,7 +573,7 @@ export function createApp(api) {
         )
         .join(
           "",
-        )}</nav><p class="shell-note">Shared online battles when connected, or AI-only lobbies.</p>`;
+        )}</nav><p class="shell-note">Shared battles. Six origins. Endless possibilities.</p>`;
     else if (next === "play") {
       category = "play";
       c.innerHTML = `<div class="screen-intro"><h1>Choose your battles.</h1><p>Find your team. Face the arena alone. Or let Quick Match decide.</p></div><nav class="battle-categories"><button data-screen="team-battles"><strong>Multiplayer</strong><span>Join a lobby and face the arena together →</span></button><button data-screen="solo-battles"><strong>Solo</strong><span>Dungeon and Solo Waves →</span></button><button id="quick-match"><strong>Quick Match</strong><span>A random Multiplayer or Solo mode →</span></button></nav>`;
@@ -904,7 +934,7 @@ export function createApp(api) {
       return;
     }
     if (account.recovery) form = "password";
-    c.innerHTML = `<div class="screen-intro"><h1>${{ signin: "Welcome back.", signup: "Join the colosseum.", reset: "Reset your password.", password: "Choose a new password." }[form]}</h1><p>${account.client ? "Guest progress is saved separately on this device. Sign in for account progress; saves are never merged automatically." : "Accounts are not connected yet. You can play as a guest; progress is saved locally on this device."}</p></div><form id="account-form" class="account-form">${form === "password" ? "" : '<label>Email<input name="email" type="email" autocomplete="email" required maxlength="254"></label>'}${form === "signup" ? '<label>Username<input name="username" autocomplete="username" required minlength="3" maxlength="24" pattern="[A-Za-z0-9_]+"></label>' : ""}${form === "reset" ? "" : `<label>Password<input name="password" type="password" autocomplete="${form === "signin" ? "current-password" : "new-password"}" required minlength="8" maxlength="128"></label>`}<button type="submit" ${!account.client ? "disabled" : ""}>${{ signin: "Sign in", signup: "Create account", reset: "Send recovery email", password: "Update password" }[form]}</button><p id="account-message" role="status"></p></form><div class="account-links"><button id="account-to-signin">Sign in</button><button id="account-to-signup">Create account</button><button id="account-to-reset">Forgot password?</button></div>`;
+    c.innerHTML = `<div class="screen-intro"><h1>${{ signin: "Welcome back.", signup: "Join the colosseum.", reset: "Reset your password.", password: "Choose a new password." }[form]}</h1><p>${account.client ? "Sign in to save your stats, mastery and rewards." : "Accounts are not connected yet. Guest matches do not save stats."}</p></div><form id="account-form" class="account-form">${form === "password" ? "" : '<label>Email<input name="email" type="email" autocomplete="email" required maxlength="254"></label>'}${form === "signup" ? '<label>Username<input name="username" autocomplete="username" required minlength="3" maxlength="24" pattern="[A-Za-z0-9_]+"></label>' : ""}${form === "reset" ? "" : `<label>Password<input name="password" type="password" autocomplete="${form === "signin" ? "current-password" : "new-password"}" required minlength="8" maxlength="128"></label>`}<button type="submit" ${!account.client ? "disabled" : ""}>${{ signin: "Sign in", signup: "Create account", reset: "Send recovery email", password: "Update password" }[form]}</button><p id="account-message" role="status"></p></form><div class="account-links"><button id="account-to-signin">Sign in</button><button id="account-to-signup">Create account</button><button id="account-to-reset">Forgot password?</button></div>`;
     for (const key of ["signin", "signup", "reset"])
       $(`account-to-${key}`).onclick = () => renderAuth(key);
     addProfileBack();
@@ -978,7 +1008,7 @@ export function createApp(api) {
         }),
       );
       $("account-message").textContent =
-        "Public leaderboard totals from signed-in Play matches. Guest progress stays private on this device.";
+        "Public leaderboard totals from signed-in Play matches. Guest matches do not save stats.";
     } catch (e) {
       if ($("account-message")) $("account-message").textContent = e.message;
     }
@@ -995,7 +1025,7 @@ export function createApp(api) {
   async function renderLeaderboard() {
     const revision = ++request;
     $("shell-content").innerHTML =
-      `<div class="screen-intro"><h1>Leaderboard</h1><p>Signed-in players · single-player AI matches</p></div><nav class="leader-sections"><button aria-current="page">Public Leaderboard</button><button id="self-stats-btn">My Stats</button></nav><label class="leader-filter">Rank by <select id="leader-metric"><option value="kd_ratio">KD Ratio</option><option value="kills">Kills</option><option value="deaths">Deaths</option><option value="wins">Games won</option><option value="losses">Games lost</option></select></label><div id="leader-table"></div><p id="leader-message" role="status">${account.client ? "Loading…" : "Leaderboards are not connected yet. Guest stats stay on this device; Practice does not record stats."}</p><div class="menu-pagination"><button id="leader-prev" ${leaderPage ? "" : "disabled"}>← Previous</button><span>Page ${leaderPage + 1}</span><button id="leader-next" disabled>Next →</button></div>`;
+      `<div class="screen-intro"><h1>Leaderboard</h1><p>Signed-in players · single-player AI matches</p></div><nav class="leader-sections"><button aria-current="page">Public Leaderboard</button><button id="self-stats-btn">My Stats</button></nav><label class="leader-filter">Rank by <select id="leader-metric"><option value="kd_ratio">KD Ratio</option><option value="kills">Kills</option><option value="deaths">Deaths</option><option value="wins">Games won</option><option value="losses">Games lost</option></select></label><div id="leader-table"></div><p id="leader-message" role="status">${account.client ? "Loading…" : "Leaderboards are not connected yet. Guest and Practice matches do not save stats."}</p><div class="menu-pagination"><button id="leader-prev" ${leaderPage ? "" : "disabled"}>← Previous</button><span>Page ${leaderPage + 1}</span><button id="leader-next" disabled>Next →</button></div>`;
     $("self-stats-btn").onclick = renderSelfStats;
     $("leader-metric").value = metric;
     $("leader-metric").onchange = (e) => {
@@ -1104,10 +1134,14 @@ export function createApp(api) {
     setScreen("battle");
     sound.unlock();
     matchTicket = account.startMatch(api.game().mode, category === "practice");
+    const roomMember = lobby?.state?.members.find((m) => m.id === lobby.userId);
+    if (roomMember?.guest) matchTicket.userId = null;
     matchTicket.store = progressionStore(matchTicket.userId);
     matchTicket.displayName =
+      roomMember?.name ||
       account.user?.user_metadata?.username ||
       (matchTicket.userId ? "Player" : "Guest");
+    api.game().player.displayName = matchTicket.displayName;
     const auraId = matchTicket.store.state.equipped.aura;
     api.game().cosmeticAura =
       cosmeticCatalog().find((c) => c.id === auraId)?.tone || null;
@@ -1132,25 +1166,26 @@ export function createApp(api) {
     if (matchTicket.practice) return;
     const snapshot = completedSnapshot(g, matchTicket);
     const store = matchTicket.store;
-    const report = !matchTicket.practice && store.complete(snapshot);
+    const signedIn =
+      !!matchTicket.userId && matchTicket.userId === account.user?.id;
+    const report = signedIn && store.complete(snapshot);
     g.progressReport = report || {
       match: snapshot,
-      rewardReason: matchTicket.practice
-        ? "Practice match · no progression rewards."
-        : store.status,
+      rewardReason: signedIn
+        ? store.status
+        : "Sign in to save stats and earn mastery XP.",
     };
-    g.progressState = store.state;
+    g.progressState = signedIn ? store.state : emptyProgress();
     if (lobby)
       lastSession = structuredClone({
         report: g.progressReport,
         state: g.progressState,
         username: matchTicket.displayName,
       });
-    $("save-status").textContent = matchTicket.practice
-      ? "Practice · no progression rewards."
-      : store.status;
-    if (!matchTicket.practice && matchTicket.userId === account.user?.id)
-      syncProgress(store);
+    $("save-status").textContent = signedIn
+      ? store.status
+      : "Guest match · stats are not saved.";
+    if (signedIn) syncProgress(store);
   }
   function showResults(g) {
     if (matchTicket?.practice) {
@@ -1200,6 +1235,7 @@ export function createApp(api) {
     completeProgress(g);
     sound.combat(g, screen === "battle" && !api.paused());
     if (lobby) {
+      api.positionLobbyTeams?.(lobbyTeams);
       const state = lobby.state,
         remaining = lobby.remaining();
       lobbyClock.hidden = state?.phase !== "countdown";
@@ -1293,7 +1329,9 @@ export function createApp(api) {
       ) {
         $("save-status").textContent = matchTicket.practice
           ? "Practice · no stats saved."
-          : matchTicket.store.status;
+          : !matchTicket.userId
+            ? "Guest match · stats are not saved."
+            : matchTicket.store.status;
         matchTicket.saved = true;
       } else {
         statsBusy = true;

@@ -567,7 +567,8 @@ export class Renderer {
     c.translate(a.x, a.y);
     // Leave room above the taller crowns and Air's floating silhouette.
     c.translate(0, -10 - 64 * (characterScale(a.element) - 1));
-    if (a.id !== viewer.id) {
+    const label = !a.echo && a.displayName;
+    if (a.id !== viewer.id || label) {
       c.fillStyle = "#23332b";
       c.fillRect(-22, -70, 44, 5);
       c.fillStyle = a.team === viewer.team ? "#9cd3bd" : "#d88b70";
@@ -576,7 +577,7 @@ export class Renderer {
       c.font = "8px monospace";
       c.textAlign = "center";
       // Small diamonds identify spirits and echoes without status labels.
-      if (a.ghost || a.echo) {
+      if ((a.ghost || a.echo) && !label) {
         c.beginPath();
         c.moveTo(0, -82);
         c.lineTo(4, -78);
@@ -592,6 +593,25 @@ export class Renderer {
       c.lineTo(4, -77);
       c.lineTo(0, -72);
       c.fill();
+    }
+    if (label) {
+      c.font = `600 ${Math.min(24, Math.max(14, 11 / (this.view?.scale || 1)))}px sans-serif`;
+      c.textAlign = "center";
+      c.textBaseline = "alphabetic";
+      c.lineJoin = "round";
+      c.lineWidth = 3;
+      c.strokeStyle = "#071c18";
+      c.fillStyle =
+        a.id === viewer.id
+          ? "#ffe5a2"
+          : a.team === viewer.team
+            ? "#c5f1dc"
+            : "#ffd0b5";
+      let name = String(label).slice(0, 24);
+      while (name.length > 3 && c.measureText(name).width > 172)
+        name = name.slice(0, -2) + "…";
+      c.strokeText(name, 0, -80);
+      c.fillText(name, 0, -80);
     }
     c.restore();
   }
@@ -905,14 +925,15 @@ export class Renderer {
       c.globalAlpha = clearAllyHealth(a, game.player) ? 1 : body.alpha;
       this.healthIndicator(c, a, game.player);
       if (game.lobby && a.lobbyReady) {
+        const readyY = a.y - 145 - 64 * (characterScale(a.element) - 1);
         c.fillStyle = "#0a3029";
-        c.fillRect(a.x - 33, a.y - 108, 66, 24);
+        c.fillRect(a.x - 33, readyY, 66, 24);
         c.strokeStyle = "#ebcd85";
-        c.strokeRect(a.x - 33, a.y - 108, 66, 24);
+        c.strokeRect(a.x - 33, readyY, 66, 24);
         c.font = "bold 16px sans-serif";
         c.textAlign = "center";
         c.fillStyle = "#ffdf91";
-        c.fillText("Ready!", a.x, a.y - 90);
+        c.fillText("Ready!", a.x, readyY + 18);
       }
       c.restore();
       if (a.ghost) {

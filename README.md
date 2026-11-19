@@ -1,4 +1,13 @@
-# Fusion Throwdown · v0.61.0
+# Fusion Throwdown · v0.62.0
+
+## v0.62.0 Guest multiplayer, teams and player names
+
+- Guests can create and join the same shared online lobbies as signed-in players. The server assigns each guest a unique identity/name; guest sessions cannot impersonate account IDs and invalid account tokens are rejected.
+- The mode-entry screen now has Create Lobby and Join Lobby, with a centered Sign in button underneath for guests. Removed the AI-only option and explanatory menu copy; there is no silent offline-room fallback.
+- Usernames appear above character health bars during lobby and match play, respecting invisibility and ally-health visibility. Ready! sits above the name.
+- Team Death Match, War, Capture the Flag, Fusion Rush and Gridiron offer Jade/Ember team buttons on the lobby floor. Full teams lock; switching replaces an AI seat. The server preserves team choices through start and rematches, including Gridiron’s differently ordered roster.
+- Only signed-in sessions save new statistics, mastery, achievements and rewards. Guests still see the current match scoreboard and can review it while in the lobby; existing legacy saves and settings are preserved.
+- Deploy the matching Render server update (`protocolVersion: 4`). No new database migration is required. See [multiplayer setup](backend/MULTIPLAYER.md).
 
 ## v0.61.0 Choose your lobby and revisit results
 

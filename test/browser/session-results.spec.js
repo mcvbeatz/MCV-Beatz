@@ -1,4 +1,5 @@
 import { test, expect } from "@playwright/test";
+import { signedTestAccount } from "./local-lobby-service.js";
 async function ready(page, orientation = "portrait") {
   await page.addInitScript((orientation) => {
     HTMLElement.prototype.requestFullscreen = undefined;
@@ -11,6 +12,7 @@ async function ready(page, orientation = "portrait") {
   await page.waitForFunction(() => window.__app?.screen === "home");
 }
 async function finish(page, mode) {
+  await signedTestAccount(page);
   await page.evaluate((mode) => __app.chooseMode(mode), mode);
   await page.locator("#begin-btn").click();
   await page.evaluate(() => {

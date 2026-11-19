@@ -1,3 +1,4 @@
+import { TEAM_LOBBY_MODES, lobbyTeam, lobbyTeamCounts } from "./lobby-teams.js";
 import { Combat, makeFighter } from "./combat.js";
 import { beginStatistics } from "./match-statistics.js";
 import { BASE_FORMS } from "./player-preferences.js";
@@ -61,7 +62,13 @@ export class LobbyRoom {
       this.game.fighters.forEach((a, seat) =>
         Object.assign(
           a,
-          makeFighter(a.id, this.memberElement({ seat }), 0, a.x, a.y),
+          makeFighter(
+            a.id,
+            this.memberElement({ seat }),
+            lobbyTeam(this.mode, seat) ?? 0,
+            a.x,
+            a.y,
+          ),
         ),
       );
       for (const m of this.members.values()) this.applyMember(m);
@@ -74,11 +81,12 @@ export class LobbyRoom {
       makeFighter(
         `seat-${i}`,
         forcedLobbyElement(this.mode) || BASE_FORMS[i % 6],
-        0,
+        lobbyTeam(this.mode, i) ?? 0,
         220 + (i % 5) * 145,
         260 + Math.floor(i / 5) * 155,
       ),
     );
+    this.game.fighters.forEach((a, i) => (a.displayName = `AI ${i + 1}`));
     this.game.player = this.game.fighters[0];
     this.game.humanInputs = new Map();
     this.phase = "lobby";
@@ -95,13 +103,23 @@ export class LobbyRoom {
     a.displayName = m.name;
     a.cosmetics = m.cosmetics || {};
     if (this.phase === "lobby" || this.phase === "countdown")
-      Object.assign(a, makeFighter(a.id, this.memberElement(m), 0, a.x, a.y), {
-        displayName: m.name,
-        cosmetics: m.cosmetics || {},
-        lobbyReady: !!m.ready,
-      });
+      Object.assign(
+        a,
+        makeFighter(
+          a.id,
+          this.memberElement(m),
+          lobbyTeam(this.mode, m.seat) ?? 0,
+          a.x,
+          a.y,
+        ),
+        {
+          displayName: m.name,
+          cosmetics: m.cosmetics || {},
+          lobbyReady: !!m.ready,
+        },
+      );
   }
-  join(id, name, element = "fire", cosmetics = {}) {
+  join(id, name, element = "fire", cosmetics = {}, { guest = false } = {}) {
     if (this.members.has(id)) return this.members.get(id);
     if (this.phase !== "lobby" || this.members.size >= this.capacity)
       throw new Error("This lobby is full or its round has started.");
@@ -110,6 +128,7 @@ export class LobbyRoom {
     while (used.has(seat)) seat++;
     const member = {
       id,
+      guest,
       name: String(name || "Player").slice(0, 24),
       element: BASE_FORMS.includes(element) ? element : "fire",
       cosmetics: cleanCosmetics(cosmetics),
@@ -181,6 +200,45 @@ export class LobbyRoom {
       m.lastInput = this.now();
       return;
     }
+    if (message.kind === "team") {
+      if (
+        this.phase !== "lobby" ||
+        !TEAM_LOBBY_MODES.has(this.mode) ||
+        ![0, 1].includes(message.team)
+      )
+        return;
+      if (m.seat % 2 === message.team) return;
+      const used = new Set(
+        [...this.members.values()].map((member) => member.seat),
+      );
+      const seat = Array.from({ length: this.capacity }, (_, i) => i).find(
+        (i) => i % 2 === message.team && !used.has(i),
+      );
+      if (seat === undefined) throw new Error("That team is full.");
+      const oldSeat = m.seat,
+        old = this.game.fighters[oldSeat];
+      Object.assign(
+        old,
+        makeFighter(
+          old.id,
+          this.memberElement({
+            seat: oldSeat,
+            element: BASE_FORMS[oldSeat % 6],
+          }),
+          oldSeat % 2,
+          old.x,
+          old.y,
+        ),
+        { displayName: `AI ${oldSeat + 1}`, cosmetics: {}, lobbyReady: false },
+      );
+      m.seat = seat;
+      m.ready = false;
+      m.input = { x: 0, y: 0 };
+      m.lastInput = 0;
+      this.applyMember(m);
+      this.refreshWar();
+      return;
+    }
     if (message.kind === "profile" && this.phase === "lobby") {
       if (
         !forcedLobbyElement(this.mode) &&
@@ -214,12 +272,27 @@ export class LobbyRoom {
         throw new Error(
           `Choose exactly ${excess} other players to remove, or choose a higher limit. The lobby has not changed.`,
         );
+      const retained = [...this.members.values()].filter(
+        (member) => !kick.includes(member.id),
+      );
+      for (const team of lobbyTeamCounts(this.mode, message.size, retained))
+        if (team.users > team.capacity)
+          throw new Error(
+            `${team.name} has too many players for that limit. Choose a higher limit or switch teams first.`,
+          );
       // Validate the entire change before removing anyone or reassigning seats.
       for (const userId of kick) this.leave(userId);
       this.capacity = message.size;
+      const nextSeat = [0, 1];
       [...this.members.values()]
         .sort((a, b) => a.order - b.order)
-        .forEach((m, i) => (m.seat = i));
+        .forEach((m, i) => {
+          if (TEAM_LOBBY_MODES.has(this.mode)) {
+            const team = m.seat % 2;
+            m.seat = nextSeat[team];
+            nextSeat[team] += 2;
+          } else m.seat = i;
+        });
       this.createLobby();
       return { kicked: kick };
     }
@@ -269,10 +342,16 @@ export class LobbyRoom {
     this.preparedGame = null;
     // The shared five-second lobby countdown has already completed.
     this.game.countdown = 0;
-    const roster =
+    let roster =
       this.mode === "zombies" || this.mode === "gauntlet-team"
         ? this.game.fighters.filter((a) => a.team === 0)
         : this.game.fighters;
+    if (TEAM_LOBBY_MODES.has(this.mode)) {
+      const jade = roster.filter((a) => a.team === 0),
+        ember = roster.filter((a) => a.team === 1);
+      roster = jade.flatMap((a, i) => [a, ember[i]]);
+    }
+    roster.forEach((a, i) => (a.displayName = `AI ${i + 1}`));
     this.seatIds = roster.map((a) => a.id);
     for (const m of this.members.values()) {
       const a = roster[m.seat];
@@ -363,6 +442,7 @@ export class LobbyRoom {
       mode: this.mode,
       nextMapId: this.preparedGame?.mapId,
       capacity: this.capacity,
+      teams: lobbyTeamCounts(this.mode, this.capacity, this.members.values()),
       phase: this.phase,
       captain: this.captain,
       deadline: this.deadline,
@@ -371,6 +451,7 @@ export class LobbyRoom {
       sequence: this.sequence,
       members: [...this.members.values()].map(({ input, lastInput, ...m }) => ({
         ...m,
+        team: lobbyTeam(this.mode, m.seat),
         element: this.memberElement(m),
         elementLocked:
           !!forcedLobbyElement(this.mode) ||

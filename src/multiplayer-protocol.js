@@ -1,6 +1,6 @@
 import { Combat } from "./combat.js";
 import { PortalSystem } from "./portals.js";
-export const LOBBY_PROTOCOL = 3;
+export const LOBBY_PROTOCOL = 4;
 export const RESULTS_SECONDS = 30;
 export const START_SECONDS = 5;
 export function packGame(game) {

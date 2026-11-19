@@ -29,7 +29,7 @@ export function renderLobbyPanel(
       );
     const excess = draft ? Math.max(0, s.members.length - draft.size) : 0;
     root.hidden = !tab;
-    status.textContent = `${MODES[s.mode].name} · ${client.local ? "AI-only lobby" : "Online lobby"} · ${captain ? "You are captain" : "Captain: " + (s.members.find((m) => m.id === s.captain)?.name || "—")}`;
+    status.textContent = `${MODES[s.mode].name} · ${client.local ? "Lobby" : "Online lobby"} · ${captain ? "You are captain" : "Captain: " + (s.members.find((m) => m.id === s.captain)?.name || "—")}`;
     controls.innerHTML = `<button data-start ${!waiting || draft ? "disabled" : ""} title="${captain ? "Start the five-second countdown" : "Show Ready! above your elemental"}">${icon("strike")}<strong>START</strong><small>${captain ? "Captain" : me.ready ? "Ready!" : "Signal ready"}</small></button>${[
       ["players", "team", "Players", String(s.capacity)],
       [
@@ -84,7 +84,7 @@ export function renderLobbyPanel(
           const badge = catalog.find((c) => c.id === m?.cosmetics?.badge),
             title = catalog.find((c) => c.id === m?.cosmetics?.title),
             frame = catalog.find((c) => c.id === m?.cosmetics?.frame);
-          return `<li class="${frame ? "member-frame tone-" + frame.tone : ""}">${badge ? `<span title="${esc(badge.name)}">${badge.symbol}</span> ` : ""}${m ? esc(m.name) + (m.id === s.captain ? " · Captain" : m.ready ? " · Ready!" : "") : `AI ${seat + 1}`}<small>${m ? esc(m.element) : "Available seat"}${title ? " · " + esc(title.name) : ""}</small></li>`;
+          return `<li class="${frame ? "member-frame tone-" + frame.tone : ""}">${badge ? `<span title="${esc(badge.name)}">${badge.symbol}</span> ` : ""}${m ? esc(m.name) + (m.id === s.captain ? " · Captain" : m.ready ? " · Ready!" : "") : `AI ${seat + 1}`}<small>${m ? esc(m.element) + (m.team == null ? "" : m.team === 0 ? " · Jade" : " · Ember") : "Available seat"}${title ? " · " + esc(title.name) : ""}</small></li>`;
         },
       ).join("")}</ol>`;
     } else if (tab === "elemental") {

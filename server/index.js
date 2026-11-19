@@ -48,7 +48,7 @@ export function createLobbyServer({
       windowAt = Date.now(),
       messages = 0;
     const authTimeout = setTimeout(() => {
-      if (!clients.has(ws)) ws.close(1008, "Sign in required");
+      if (!clients.has(ws)) ws.close(1008, "Lobby request required");
     }, 10000);
     ws.on("message", async (raw) => {
       if (Date.now() - windowAt > 1000) {
@@ -65,7 +65,17 @@ export function createLobbyServer({
           if (!MULTIPLAYER_MODES.includes(msg.mode))
             throw new Error("Unknown multiplayer mode");
           if (!c) {
-            const user = await verifyUser(msg.token);
+            const guest = msg.guest === true && msg.token == null;
+            const guestId = guest ? crypto.randomUUID() : null;
+            const user = guest
+              ? {
+                  id: `guest:${guestId}`,
+                  guest: true,
+                  user_metadata: {
+                    username: `Guest ${guestId.slice(0, 6).toUpperCase()}`,
+                  },
+                }
+              : { ...(await verifyUser(msg.token)), guest: false };
             if (ws.readyState !== WebSocket.OPEN) return;
             if (!user?.id) throw new Error("Sign in to join an online lobby.");
             for (const [other, member] of clients)
@@ -133,6 +143,7 @@ export function createLobbyServer({
               c.user.user_metadata?.username,
               msg.element,
               msg.cosmetics,
+              { guest: c.user.guest },
             );
             c.room = room;
             send(ws, { kind: "state", userId: c.user.id, ...room.snapshot() });
@@ -224,9 +235,9 @@ export function createLobbyServer({
 if (import.meta.url === pathToFileURL(process.argv[1] || "").href) {
   const url = process.env.SUPABASE_URL,
     key = process.env.SUPABASE_PUBLISHABLE_KEY;
-  if (!url || !key)
-    throw new Error("Set SUPABASE_URL and SUPABASE_PUBLISHABLE_KEY.");
   const verifyUser = async (token) => {
+    if (!url || !key)
+      throw new Error("Account sign-in is not configured on this server.");
     if (typeof token !== "string" || token.length > 4096)
       throw new Error("Sign in required");
     const response = await fetch(`${url.replace(/\/$/, "")}/auth/v1/user`, {

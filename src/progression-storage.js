@@ -139,7 +139,7 @@ export class ProgressionStore {
     this.key = storageKey(userId);
     this.status = userId
       ? "Saved on this device for this account. Cloud sync pending."
-      : "Guest progress is saved on this device only.";
+      : "Sign in to save stats and earn mastery XP.";
     this.save = {
       earned: { achievements: {}, unlocks: {} },
       version: STORAGE_VERSION,

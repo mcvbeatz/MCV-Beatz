@@ -20,7 +20,7 @@ export class LobbyClient {
   ) {
     this.mode = mode;
     this.profile = profile;
-    if (offline || !this.url || !this.account.user) {
+    if (offline) {
       this.local = true;
       if (action === "browse") {
         this.onDirectory?.({ mode, rooms: [], local: true });
@@ -33,6 +33,7 @@ export class LobbyClient {
         this.account.user?.user_metadata?.username || "Guest",
         profile.element,
         profile.cosmetics,
+        { guest: !this.account.user },
       );
       let frames = 0,
         last = performance.now();
@@ -48,6 +49,7 @@ export class LobbyClient {
       this.receive({ ...this.room.snapshot(), userId: this.userId });
       return;
     }
+    if (!this.url) throw new Error("The lobby server is not configured yet.");
     const endpoint = new URL(this.url);
     if (
       endpoint.protocol !== "wss:" &&
@@ -57,9 +59,14 @@ export class LobbyClient {
       )
     )
       throw new Error("The lobby server needs a secure wss:// address.");
-    const { data, error } = await this.account.client.auth.getSession();
-    if (error || !data.session)
-      throw new Error("Sign in again to join online.");
+    let token;
+    const guest = !this.account.user;
+    if (!guest) {
+      const { data, error } = await this.account.client.auth.getSession();
+      if (error || !data.session)
+        throw new Error("Sign in again to join online.");
+      token = data.session.access_token;
+    }
     if (this.closed) return;
     this.socket = new WebSocket(endpoint.href);
     this.socket.onopen = () =>
@@ -68,7 +75,8 @@ export class LobbyClient {
         action,
         roomId,
         mode,
-        token: data.session.access_token,
+        token,
+        guest,
         ...profile,
       });
     this.socket.onmessage = (event) => {
@@ -106,9 +114,7 @@ export class LobbyClient {
     };
     this.socket.onerror = () => {
       if (!this.closed)
-        this.onError(
-          "The lobby server is unavailable. Retry, or choose an AI-only lobby.",
-        );
+        this.onError("The lobby server is unavailable. Please retry.");
     };
   }
   checkProtocol(state) {

@@ -1,5 +1,8 @@
 import { test, expect } from "@playwright/test";
+import { installLobbyService } from "./local-lobby-service.js";
+const routeLobby = installLobbyService(test);
 const ready = async (page) => {
+  await routeLobby(page);
   await page.goto("/");
   await expect(page.locator('[data-screen="play"]')).toBeVisible();
 };
@@ -279,7 +282,7 @@ test("guest and unconfigured account views never show invented stats or usable s
   await ready(page);
   await page.locator('[data-screen="account"]').click();
   await expect(page.locator(".progress-storage")).toContainText(
-    "saved on this device",
+    "Sign in to save stats",
   );
   await page.locator("[data-auth]").click();
   await expect(

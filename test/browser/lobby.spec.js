@@ -54,11 +54,13 @@ test("lobby has four controls beside movement, hidden settings, maximum seats, a
   await page.locator("[data-screen=play]").click();
   await page.locator("[data-screen=team-battles]").click();
   await page.locator("[data-launch=ffa]").click();
-  await expect(page.locator(".lobby-browser")).toContainText(
-    "Sign in on each device",
-  );
-  await page.locator("[data-offline]").click();
-  await expect(page.locator("#lobby-status")).toContainText("AI-only lobby");
+  await expect(page.locator(".lobby-entry-actions button")).toHaveText([
+    "Create Lobby",
+    "Join Lobby",
+    "Sign in",
+  ]);
+  await page.locator("[data-create]").click();
+  await expect(page.locator("#lobby-status")).toContainText("Online lobby");
   await expect(page.locator("#lobby-panel")).toBeHidden();
   await expect(page.locator("#lobby-controls button")).toHaveCount(4);
   expect(await page.evaluate(() => __arena.game.mapId)).toBe("classic");
@@ -417,11 +419,12 @@ test("players choose captain-named lobbies; reducing capacity requires selected 
     await a.locator("[data-create]").click();
     await expect(a.locator("#lobby-status")).toContainText("You are captain");
     for (const p of [b, c]) {
+      await p.locator("[data-choose-join]").click();
       await p.locator("[data-refresh]").click();
       const row = p
         .locator(".open-lobby")
         .filter({ hasText: "Captain: Captain" });
-      await expect(row).toContainText("AI seats available");
+      await expect(row).toContainText("players");
       await row.locator("[data-join]").click();
       await expect(p.locator("#lobby-status")).toContainText(
         "Captain: Captain",
@@ -451,10 +454,12 @@ test("players choose captain-named lobbies; reducing capacity requires selected 
     );
     await expect.poll(() => room.capacity).toBe(2);
     expect([...room.members.keys()]).toEqual(["Captain", "Joiner"]);
+    await c.locator("[data-choose-join]").click();
     const row = c
       .locator(".open-lobby")
       .filter({ hasText: "Captain: Captain" });
     await expect(row.locator("[data-join]")).toBeDisabled();
+    await c.locator("[data-choose-back]").click();
     await c.locator("[data-create]").click();
     await expect(c.locator("#lobby-status")).toContainText("You are captain");
     expect(await c.evaluate(() => __app.lobby.state.roomId)).not.toBe(room.id);
@@ -578,6 +583,7 @@ test("the open-lobby list scrolls by touch on a rotated phone", async ({
       (await import("/src/orientation.js")).setOrientation("landscape");
       await __app.openLobby("ffa", false, { action: "browse" });
     });
+    await page.locator("[data-choose-join]").click();
     await expect(page.locator(".open-lobby")).toHaveCount(8);
     const rect = await page.locator("#shell-content").boundingBox();
     const cdp = await ctx.newCDPSession(page);

@@ -81,7 +81,7 @@ export function mountProgression(
       )
       .join(
         "",
-      )}</nav><p class="progress-storage" role="status">${esc(store.status)}</p><div class="progress-toolbar"><button data-auth>${user ? "Manage account" : "Sign in / Register"}</button>${/storage is unavailable|storage is unavailable or full|storage is full/.test(store.status) ? "<button data-save>Retry device save</button>" : ""}${user ? "<button data-sync>Retry sync</button>" : "<small>Guest saves stay on this device and never enter public leaderboards.</small>"}</div><section class="progress-content"></section>`;
+      )}</nav><p class="progress-storage" role="status">${esc(user ? store.status : "Sign in to save stats and earn mastery XP.")}</p><div class="progress-toolbar"><button data-auth>${user ? "Manage account" : "Sign in / Register"}</button>${/storage is unavailable|storage is unavailable or full|storage is full/.test(store.status) ? "<button data-save>Retry device save</button>" : ""}${user ? "<button data-sync>Retry sync</button>" : "<small>Guest matches do not save stats or progression.</small>"}</div><section class="progress-content"></section>`;
     for (const button of root.querySelectorAll("[data-tab]"))
       button.onclick = () => {
         tab = button.dataset.tab;
@@ -96,7 +96,7 @@ export function mountProgression(
         if (store.persist())
           store.status = store.userId
             ? "Progress saved on this device for this account."
-            : "Guest progress is saved on this device only.";
+            : "Guest matches do not save stats or progression.";
         render();
       };
     const sync = root.querySelector("[data-sync]");

@@ -54,7 +54,7 @@ export class AccountService {
   require() {
     if (!this.client)
       throw new Error(
-        "Accounts are not connected yet. You can play as a guest; progress is saved locally on this device.",
+        "Accounts are not connected yet. You can play as a guest; guest matches do not save stats.",
       );
     return this.client;
   }

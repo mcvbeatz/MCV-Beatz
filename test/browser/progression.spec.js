@@ -1,4 +1,5 @@
 import { test, expect } from "@playwright/test";
+import { signedTestAccount } from "./local-lobby-service.js";
 async function ready(page, orientation = "portrait") {
   await page.addInitScript((orientation) => {
     HTMLElement.prototype.requestFullscreen = undefined;
@@ -20,7 +21,7 @@ test("guest account exposes all progression panels, real artwork, filters and lo
   await page.locator('[data-screen="account"]').click();
   await expect(page.locator(".progress-tabs button")).toHaveCount(5);
   await expect(page.locator(".progress-storage")).toContainText(
-    "saved on this device",
+    "Sign in to save stats",
   );
   await page.locator('[data-tab="mastery"]').click();
   await expect(page.locator(".progress-content [data-element]")).toHaveCount(
@@ -40,12 +41,13 @@ test("guest account exposes all progression panels, real artwork, filters and lo
   await page.screenshot({ path: "/tmp/fusion-progression-portrait.png" });
   expect(errors).toEqual([]);
 });
-test("a completed Play match reports real events once, persists guest progress, and equips earned cosmetics", async ({
+test("a completed Play match reports real events once, persists signed-in progress, and equips earned cosmetics", async ({
   page,
 }) => {
   const errors = [];
   page.on("pageerror", (e) => errors.push(e.message));
   await ready(page);
+  await signedTestAccount(page);
   await page.evaluate(() => __app.chooseMode("tdm"));
   await page.locator("#begin-btn").click();
   await page.evaluate(() => {
@@ -87,6 +89,7 @@ test("a completed Play match reports real events once, persists guest progress, 
   await page.waitForFunction(() =>
     ["home", "setup"].includes(window.__app?.screen),
   );
+  await signedTestAccount(page);
   await page.evaluate(() => __app.openProgress());
   await expect(page.locator("#shell-content .progress-profile")).toHaveClass(
     /has-frame/,
