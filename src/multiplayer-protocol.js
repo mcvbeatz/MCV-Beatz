@@ -3,7 +3,38 @@ import { PortalSystem } from "./portals.js";
 export const LOBBY_PROTOCOL = 4;
 export const RESULTS_SECONDS = 30;
 export const START_SECONDS = 5;
-export function packGame(game) {
+// Stable IDs are opt-in for the negotiated delta transport. Recycle unreachable
+// nodes after a snapshot; references/cycles remain intact and memory stays bounded.
+export class SnapshotGraph {
+  constructor() {
+    this.root = null;
+  }
+  begin(root) {
+    if (this.root !== root) {
+      this.root = root;
+      this.ids = new Map();
+      this.free = [];
+      this.next = 0;
+    }
+    this.live = new Set();
+  }
+  id(value) {
+    this.live.add(value);
+    if (!this.ids.has(value))
+      this.ids.set(value, this.free.length ? this.free.pop() : this.next++);
+    return this.ids.get(value);
+  }
+  end() {
+    for (const [value, id] of this.ids)
+      if (!this.live.has(value)) {
+        this.ids.delete(value);
+        this.free.push(id);
+      }
+    this.live = null;
+  }
+}
+export function packGame(game, graph = null) {
+  graph?.begin(game);
   const seen = new Map(),
     nodes = [];
   const encode = (value) => {
@@ -11,9 +42,9 @@ export function packGame(game) {
     if (!value || typeof value !== "object")
       return typeof value === "function" ? null : value;
     if (seen.has(value)) return { ref: seen.get(value) };
-    const id = nodes.length;
+    const id = graph ? graph.id(value) : nodes.length;
     seen.set(value, id);
-    nodes.push(null);
+    nodes[id] = null;
     if (value instanceof Set)
       nodes[id] = { type: "set", data: [...value].map(encode) };
     else if (value instanceof Map)
@@ -31,22 +62,44 @@ export function packGame(game) {
             : value instanceof PortalSystem
               ? "portals"
               : "object",
-        data: Object.fromEntries(
-          Object.entries(value)
-            .filter(
-              ([k, v]) =>
-                typeof v !== "function" &&
-                !["humanInputs", "progressReport", "progressState"].includes(
-                  k,
-                ) &&
-                !/Cache|Crowd/.test(k),
-            )
-            .map(([k, v]) => [k, encode(v)]),
-        ),
+        data: graph
+          ? encodeFields(value)
+          : Object.fromEntries(
+              Object.entries(value)
+                .filter(
+                  ([k, v]) =>
+                    typeof v !== "function" &&
+                    ![
+                      "humanInputs",
+                      "progressReport",
+                      "progressState",
+                    ].includes(k) &&
+                    !/Cache|Crowd/.test(k),
+                )
+                .map(([k, v]) => [k, encode(v)]),
+            ),
       };
     return { ref: id };
   };
+  const encodeFields = (value) => {
+    const data = {};
+    for (const key of Object.keys(value)) {
+      const v = value[key];
+      if (
+        typeof v === "function" ||
+        key === "humanInputs" ||
+        key === "progressReport" ||
+        key === "progressState" ||
+        /Cache|Crowd/.test(key)
+      )
+        continue;
+      data[key] = encode(v);
+    }
+    return data;
+  };
   encode(game);
+  graph?.end();
+  for (let i = 0; i < nodes.length; i++) nodes[i] ??= null;
   return {
     mapState: game.map
       ? { activeRoom: game.map.activeRoom, travelRooms: game.map.travelRooms }
@@ -75,21 +128,24 @@ export function unpackGame(packet, previous = null) {
     if (!(key in rootData)) delete game[key];
   game._wireKeys = Object.keys(rootData);
   const values = packet.nodes.map((n) =>
-    n.type === "game"
-      ? game
-      : n.type === "portals"
-        ? new PortalSystem(game)
-        : n.type === "array"
-          ? []
-          : n.type === "map"
-            ? new Map()
-            : n.type === "set"
-              ? new Set()
-              : {},
+    !n
+      ? null
+      : n.type === "game"
+        ? game
+        : n.type === "portals"
+          ? new PortalSystem(game)
+          : n.type === "array"
+            ? []
+            : n.type === "map"
+              ? new Map()
+              : n.type === "set"
+                ? new Set()
+                : {},
   );
   const decode = (v) =>
     v && typeof v === "object" ? (v.map ? game.map : values[v.ref]) : v;
   packet.nodes.forEach((n, i) => {
+    if (!n) return;
     const value = values[i];
     if (n.type === "array") value.push(...n.data.map(decode));
     else if (n.type === "set") n.data.forEach((v) => value.add(decode(v)));

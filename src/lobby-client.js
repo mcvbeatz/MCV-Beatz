@@ -1,3 +1,5 @@
+import { SNAPSHOT_CODEC, SnapshotDecoder } from "./snapshot-delta.js";
+import { ClientNetworkDiagnostics } from "./network-diagnostics.js";
 import { LOBBY_PROTOCOL } from "./multiplayer-protocol.js";
 import { LobbyRoom } from "./lobby-room.js";
 export class LobbyClient {
@@ -11,6 +13,8 @@ export class LobbyClient {
       onKicked,
     });
     this.closed = false;
+    this.decoder = new SnapshotDecoder();
+    this.diagnostics = new ClientNetworkDiagnostics();
   }
   async connect(
     mode,
@@ -77,11 +81,44 @@ export class LobbyClient {
         mode,
         token,
         guest,
+        snapshotCodec: SNAPSHOT_CODEC,
         ...profile,
       });
     this.socket.onmessage = (event) => {
+      if (this.closed) return;
+      const start = performance.now();
       try {
         const msg = JSON.parse(event.data);
+        if (msg.kind === "pong") {
+          this.diagnostics.observe("roundTripMs", performance.now() - msg.at);
+          return;
+        }
+        if (msg.kind === "identity") {
+          if (!this.checkProtocol(msg)) return;
+          this.userId = msg.userId;
+          this.decoder.reset();
+          this.lastResync = null;
+          return;
+        }
+        if (msg.kind === "snapshot") {
+          const state = this.decoder.receive(msg);
+          if (!state) {
+            if (
+              msg.id > this.decoder.id &&
+              (!this.lastResync || performance.now() - this.lastResync >= 1000)
+            ) {
+              this.lastResync = performance.now();
+              this.diagnostics.resyncs++;
+              this.send({ kind: "resync" });
+            }
+            return;
+          }
+          this.diagnostics.snapshot(
+            new TextEncoder().encode(event.data).length,
+          );
+          this.acceptState({ ...state, userId: this.userId });
+          return;
+        }
         if (msg.kind === "error") this.onError(msg.message);
         else if (msg.kind === "kicked") {
           this.onKicked?.(msg.message);
@@ -91,16 +128,20 @@ export class LobbyClient {
             this.onDirectory?.(msg);
             this.directoryTimer ??= setInterval(() => this.refresh(), 2500);
           } else {
-            clearInterval(this.directoryTimer);
-            this.directoryTimer = null;
-            this.receive(msg);
+            this.diagnostics.snapshot(
+              new TextEncoder().encode(event.data).length,
+            );
+            this.acceptState(msg);
           }
         }
       } catch {
         this.onError("Could not read the lobby state. Please rejoin.");
+      } finally {
+        this.diagnostics.observe("receiveMs", performance.now() - start);
       }
     };
     this.socket.onclose = (event) => {
+      clearInterval(this.pingTimer);
       clearInterval(this.directoryTimer);
       this.directoryTimer = null;
       if (!this.closed)
@@ -116,6 +157,16 @@ export class LobbyClient {
       if (!this.closed)
         this.onError("The lobby server is unavailable. Please retry.");
     };
+  }
+  acceptState(state) {
+    clearInterval(this.directoryTimer);
+    this.directoryTimer = null;
+    this.receive(state);
+    if (this.closed) return;
+    this.pingTimer ??= setInterval(
+      () => this.send({ kind: "ping", at: performance.now() }),
+      5000,
+    );
   }
   checkProtocol(state) {
     if (state.protocolVersion !== LOBBY_PROTOCOL) {
@@ -178,6 +229,7 @@ export class LobbyClient {
     this.send({ kind: "leave" });
     this.closed = true;
     clearInterval(this.timer);
+    clearInterval(this.pingTimer);
     clearInterval(this.directoryTimer);
     this.socket?.close();
   }

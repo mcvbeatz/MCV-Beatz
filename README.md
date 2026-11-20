@@ -1,4 +1,12 @@
-# Fusion Throwdown · v0.62.0
+# Fusion Throwdown · v0.63.0
+
+## v0.63.0 Lossless multiplayer delta transport
+
+- Negotiated delta snapshots retain protocol-4 compatibility, all authoritative gameplay state, 30 Hz combat and 10 Hz snapshots. Stable graph references avoid resending unchanged state; each optimized room serializes once per update.
+- Full snapshots recover joins, reconnects, missing updates and slow sockets. Existing movement interpolation, account/progression behavior, matchmaking and combat are unchanged.
+- Optional aggregate Render Free diagnostics measure actual WebSocket socket bytes, serialized bytes, tick/serialization timings, process CPU and event-loop delay. Browser counters measure rendering FPS, receive times and ping RTT without recording identities or inputs.
+- Added multi-client, mixed-version, recovery and all-mode graph tests, plus repeatable server/browser benchmarks. See [measurements and deployment guidance](backend/NETWORK-PERFORMANCE.md).
+- Deploy the server and Pages client; no database migration is required. Protocol remains **4**, with optional `json-delta-v1` capability. Cached protocol-4 clients remain supported.
 
 ## v0.62.0 Guest multiplayer, teams and player names
 

@@ -1,4 +1,5 @@
 import { test, expect } from "@playwright/test";
+import { nameOf } from "../../src/combat.js";
 import { installLobbyService } from "./local-lobby-service.js";
 const routeLobby = installLobbyService(test);
 const ready = async (page) => {
@@ -189,7 +190,10 @@ test("Roulette shows the five-second preview then changes form without healing",
     g.time = 25;
     updateAdvanced(g);
   });
-  await expect(page.locator("#hud-name")).toHaveText(next.toUpperCase());
+  expect(await page.evaluate(() => __arena.game.player.element)).toBe(next);
+  await expect(page.locator("#hud-name")).toHaveText(
+    nameOf(next).toUpperCase(),
+  );
   await expect(page.locator("#health-label")).toHaveText("57 / 120 HP");
 });
 test("portrait orientation stays upright, preserves touch movement and fits all fused controls", async ({

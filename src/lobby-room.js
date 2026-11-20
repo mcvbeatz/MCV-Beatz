@@ -435,7 +435,7 @@ export class LobbyRoom {
       }
     }
   }
-  snapshot() {
+  snapshot(graph = null) {
     return {
       protocolVersion: LOBBY_PROTOCOL,
       roomId: this.id,
@@ -457,7 +457,7 @@ export class LobbyRoom {
           !!forcedLobbyElement(this.mode) ||
           (this.mode === "war" && m.id !== this.captain),
       })),
-      game: packGame(this.game),
+      game: packGame(this.game, graph),
     };
   }
 }

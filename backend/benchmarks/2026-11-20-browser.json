@@ -1,0 +1,341 @@
+{
+  "date": "2026-11-20T03:44:09.946Z",
+  "results": [
+    {
+      "name": "1v1",
+      "transport": "legacy",
+      "viewport": {
+        "width": 1280,
+        "height": 720
+      },
+      "diagnostics": {
+        "seconds": 10.010300000000745,
+        "receivedJsonBytes": 624655,
+        "receivedJsonBytesPerMinute": 3744073.604187408,
+        "snapshotsPerSecond": 9.98971059808323,
+        "renderFps": 59.702388095523744,
+        "snapshotAgeMs": 36.399999998509884,
+        "resyncs": 0,
+        "timings": {
+          "renderMs": {
+            "mean": 11.661474036817225,
+            "p95": 13.399999998509884,
+            "max": 27.199999999254942
+          },
+          "receiveMs": {
+            "mean": 0.682352941227602,
+            "p95": 0.9000000022351742,
+            "max": 4.300000000745058
+          },
+          "snapshotIntervalMs": {
+            "mean": 99.75656565658824,
+            "p95": 108,
+            "max": 112.59999999776483
+          },
+          "roundTripMs": {
+            "mean": 15.700000001117587,
+            "p95": 15.400000002235174,
+            "max": 16
+          }
+        }
+      },
+      "phase": "battle",
+      "fighters": 2,
+      "errors": []
+    },
+    {
+      "name": "4v4",
+      "transport": "legacy",
+      "viewport": {
+        "width": 1280,
+        "height": 720
+      },
+      "diagnostics": {
+        "seconds": 10.017199999999255,
+        "receivedJsonBytes": 1934115,
+        "receivedJsonBytesPerMinute": 11584764.205567287,
+        "snapshotsPerSecond": 9.982829533203633,
+        "renderFps": 59.30333556303222,
+        "snapshotAgeMs": 99.20000000298023,
+        "resyncs": 0,
+        "timings": {
+          "renderMs": {
+            "mean": 12.050000000048918,
+            "p95": 13.300000000745058,
+            "max": 24.700000002980232
+          },
+          "receiveMs": {
+            "mean": 0.8313725492460471,
+            "p95": 1.199999999254942,
+            "max": 3.600000001490116
+          },
+          "snapshotIntervalMs": {
+            "mean": 99.83434343432086,
+            "p95": 107.90000000223517,
+            "max": 111.80000000074506
+          },
+          "roundTripMs": {
+            "mean": 10.099999997764826,
+            "p95": 1.7999999970197678,
+            "max": 18.399999998509884
+          }
+        }
+      },
+      "phase": "battle",
+      "fighters": 8,
+      "errors": []
+    },
+    {
+      "name": "5v5",
+      "transport": "legacy",
+      "viewport": {
+        "width": 1280,
+        "height": 720
+      },
+      "diagnostics": {
+        "seconds": 10.023400000002235,
+        "receivedJsonBytes": 2441967,
+        "receivedJsonBytesPerMinute": 14617596.823429907,
+        "snapshotsPerSecond": 9.976654628167857,
+        "renderFps": 59.00089152450682,
+        "snapshotAgeMs": 127.09999999776483,
+        "resyncs": 0,
+        "timings": {
+          "renderMs": {
+            "mean": 12.060271646783185,
+            "p95": 15.399999998509884,
+            "max": 35.100000001490116
+          },
+          "receiveMs": {
+            "mean": 0.9558823529046541,
+            "p95": 1.4000000022351742,
+            "max": 3.300000000745058
+          },
+          "snapshotIntervalMs": {
+            "mean": 99.60707070708575,
+            "p95": 106.40000000223517,
+            "max": 115.80000000074506
+          },
+          "roundTripMs": {
+            "mean": 16.449999999254942,
+            "p95": 15.799999997019768,
+            "max": 17.100000001490116
+          }
+        }
+      },
+      "phase": "battle",
+      "fighters": 10,
+      "errors": []
+    },
+    {
+      "name": "Zombies",
+      "transport": "legacy",
+      "viewport": {
+        "width": 1280,
+        "height": 720
+      },
+      "diagnostics": {
+        "seconds": 10.039199999999255,
+        "receivedJsonBytes": 21893638,
+        "receivedJsonBytesPerMinute": 130848900.31079145,
+        "snapshotsPerSecond": 9.960953063989901,
+        "renderFps": 58.214619220758564,
+        "snapshotAgeMs": 65.10000000149012,
+        "resyncs": 0,
+        "timings": {
+          "renderMs": {
+            "mean": 11.12747440271639,
+            "p95": 13.299999997019768,
+            "max": 27.5
+          },
+          "receiveMs": {
+            "mean": 3.4529411763537166,
+            "p95": 5,
+            "max": 8.199999999254942
+          },
+          "snapshotIntervalMs": {
+            "mean": 99.43232323233076,
+            "p95": 135.19999999925494,
+            "max": 150.89999999850988
+          },
+          "roundTripMs": {
+            "mean": 16.15000000037253,
+            "p95": 16,
+            "max": 16.300000000745058
+          }
+        }
+      },
+      "phase": "battle",
+      "fighters": 110,
+      "errors": []
+    },
+    {
+      "name": "1v1",
+      "transport": "delta",
+      "viewport": {
+        "width": 1280,
+        "height": 720
+      },
+      "diagnostics": {
+        "seconds": 10.020400000002235,
+        "receivedJsonBytes": 93815,
+        "receivedJsonBytesPerMinute": 561744.0421538806,
+        "snapshotsPerSecond": 9.97964153127397,
+        "renderFps": 59.004412851181065,
+        "snapshotAgeMs": 72.80000000074506,
+        "resyncs": 0,
+        "timings": {
+          "renderMs": {
+            "mean": 12.164128595430485,
+            "p95": 13.699999999254942,
+            "max": 26.700000002980232
+          },
+          "receiveMs": {
+            "mean": 0.7480392156570566,
+            "p95": 1.300000000745058,
+            "max": 2.300000000745058
+          },
+          "snapshotIntervalMs": {
+            "mean": 99.66767676769182,
+            "p95": 107.5,
+            "max": 115.89999999850988
+          },
+          "roundTripMs": {
+            "mean": 16.049999997019768,
+            "p95": 15.799999997019768,
+            "max": 16.299999997019768
+          }
+        }
+      },
+      "phase": "battle",
+      "fighters": 2,
+      "errors": []
+    },
+    {
+      "name": "4v4",
+      "transport": "delta",
+      "viewport": {
+        "width": 1280,
+        "height": 720
+      },
+      "diagnostics": {
+        "seconds": 10.0135,
+        "receivedJsonBytes": 116478,
+        "receivedJsonBytesPerMinute": 697925.8001697707,
+        "snapshotsPerSecond": 9.986518200429419,
+        "renderFps": 59.204089375212114,
+        "snapshotAgeMs": 81.20000000298023,
+        "resyncs": 0,
+        "timings": {
+          "renderMs": {
+            "mean": 11.814333895400393,
+            "p95": 13.800000000745058,
+            "max": 24.300000000745058
+          },
+          "receiveMs": {
+            "mean": 0.9117647057727856,
+            "p95": 1.6000000014901161,
+            "max": 5.099999997764826
+          },
+          "snapshotIntervalMs": {
+            "mean": 99.66060606059101,
+            "p95": 109.19999999925494,
+            "max": 116.39999999850988
+          },
+          "roundTripMs": {
+            "mean": 9.549999998882413,
+            "p95": 1.3999999985098839,
+            "max": 17.699999999254942
+          }
+        }
+      },
+      "phase": "battle",
+      "fighters": 8,
+      "errors": []
+    },
+    {
+      "name": "5v5",
+      "transport": "delta",
+      "viewport": {
+        "width": 1280,
+        "height": 720
+      },
+      "diagnostics": {
+        "seconds": 10.01760000000149,
+        "receivedJsonBytes": 142955,
+        "receivedJsonBytesPerMinute": 856223.0474363844,
+        "snapshotsPerSecond": 10.082255230792303,
+        "renderFps": 58.704311971486426,
+        "snapshotAgeMs": 32.400000002235174,
+        "resyncs": 0,
+        "timings": {
+          "renderMs": {
+            "mean": 12.297278911496202,
+            "p95": 14.5,
+            "max": 27.5
+          },
+          "receiveMs": {
+            "mean": 0.8786407765905255,
+            "p95": 1.5,
+            "max": 3.300000000745058
+          },
+          "snapshotIntervalMs": {
+            "mean": 99.51800000000745,
+            "p95": 109.09999999776483,
+            "max": 115.20000000298023
+          },
+          "roundTripMs": {
+            "mean": 16.199999999254942,
+            "p95": 14.5,
+            "max": 17.899999998509884
+          }
+        }
+      },
+      "phase": "battle",
+      "fighters": 10,
+      "errors": []
+    },
+    {
+      "name": "Zombies",
+      "transport": "delta",
+      "viewport": {
+        "width": 1280,
+        "height": 720
+      },
+      "diagnostics": {
+        "seconds": 10.022300000000746,
+        "receivedJsonBytes": 3768906,
+        "receivedJsonBytesPerMinute": 22563120.24185897,
+        "snapshotsPerSecond": 10.077527114533838,
+        "renderFps": 59.50178505355156,
+        "snapshotAgeMs": 8.400000002235174,
+        "resyncs": 0,
+        "timings": {
+          "renderMs": {
+            "mean": 10.969411764725917,
+            "p95": 13,
+            "max": 32.899999998509884
+          },
+          "receiveMs": {
+            "mean": 3.2155339806837944,
+            "p95": 6.100000001490116,
+            "max": 7.399999998509884
+          },
+          "snapshotIntervalMs": {
+            "mean": 99.43099999997764,
+            "p95": 122.89999999850988,
+            "max": 141.60000000149012
+          },
+          "roundTripMs": {
+            "mean": 21.449999999254942,
+            "p95": 19.800000000745058,
+            "max": 23.099999997764826
+          }
+        }
+      },
+      "phase": "battle",
+      "fighters": 110,
+      "errors": []
+    }
+  ]
+}

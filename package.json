@@ -1,6 +1,6 @@
 {
   "name": "elemental-colosseum",
-  "version": "0.62.0",
+  "version": "0.63.0",
   "private": true,
   "type": "module",
   "scripts": {
@@ -10,7 +10,9 @@
     "test": "node --test test/*.test.js",
     "test:browser": "playwright test",
     "deploy:pages": "bash scripts/deploy-pages.sh",
-    "start:server": "node server/index.js"
+    "start:server": "node server/index.js",
+    "bench:network": "node scripts/network-benchmark/run.js",
+    "bench:network:browser": "node scripts/network-benchmark/browser.js"
   },
   "devDependencies": {
     "@playwright/test": "^1.56.0",

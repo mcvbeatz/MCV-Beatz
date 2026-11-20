@@ -54,3 +54,7 @@ For manual local play, set the server environment variables above, allow `http:/
 - **Session expired:** sign out/in; confirm server URL/key belong to this Supabase project.
 - **People in separate rooms:** both must choose the same mode while there is space and before the countdown starts. Existing active/full rooms are not joinable.
 - **Progress could not sync:** run the existing SQL migration/verification and inspect the account's fallback message. Lobby connectivity does not automatically configure progression tables.
+
+## Network performance
+
+Protocol 4 now supports negotiated `json-delta-v1` snapshots without breaking older clients. See [performance measurements, diagnostics and deployment](NETWORK-PERFORMANCE.md). Combat still ticks at 30 Hz and snapshots at 10 Hz; Render Free diagnostics need only `NETWORK_DIAGNOSTICS=1`. No database changes are required.

@@ -1,0 +1,359 @@
+{
+  "date": "2026-11-20T03:45:45.957Z",
+  "node": "v24.19.0",
+  "seconds": 15,
+  "results": [
+    {
+      "name": "1v1",
+      "mode": "ffa",
+      "players": 2,
+      "transport": "legacy",
+      "compression": true,
+      "compressionLevel": 6,
+      "report": {
+        "seconds": 15.001335999,
+        "playerSeconds": 30.034000000000006,
+        "roomSeconds": 15.017000000000003,
+        "snapshots": 151,
+        "serializedBytes": 2036128,
+        "wireBytes": 93512,
+        "timings": {
+          "combatMs": {
+            "count": 453,
+            "mean": 0.1399324944812713,
+            "p95": 0.27735800000027666,
+            "max": 1.6249870000001465
+          },
+          "packMs": {
+            "count": 151,
+            "mean": 0.14458149668866135,
+            "p95": 0.23417300000073737,
+            "max": 1.0875180000002729
+          },
+          "serializeMs": {
+            "count": 302,
+            "mean": 0.04721773509931642,
+            "p95": 0.09396099999958096,
+            "max": 0.3095370000010007
+          },
+          "snapshotBytes": {
+            "count": 302,
+            "mean": 6742.145695364238,
+            "p95": 7312,
+            "max": 7692
+          },
+          "tickMs": {
+            "count": 453,
+            "mean": 0.28780927593821,
+            "p95": 0.7062939999996161,
+            "max": 2.725193999998737
+          },
+          "sendCompletionMs": {
+            "count": 302,
+            "mean": 0.5411139006621879,
+            "p95": 1.076441000000159,
+            "max": 2.3935789999995905
+          }
+        },
+        "wireBytesPerPlayerMinute": 186812.27941666107,
+        "snapshotsPerSecond": 10.055270693214355,
+        "cpuMs": 480.654,
+        "cpuMsPerSecond": 32.040746239670966,
+        "eventLoopUtilization": 0.022348686548439738,
+        "eventLoopDelayMs": {
+          "mean": 20.112349637583893,
+          "p95": 20.692991,
+          "max": 22.052863
+        }
+      },
+      "fighters": 2,
+      "phase": "battle",
+      "client": {
+        "snapshotBytes": {
+          "count": 151,
+          "mean": 6742.145695364238,
+          "p95": 7312
+        },
+        "wireSnapshotBytes": {
+          "count": 151,
+          "mean": 309.44370860927154,
+          "p95": 533
+        },
+        "snapshotIntervalMs": {
+          "count": 150,
+          "mean": 99.44835045999999,
+          "p95": 100.81798200000048
+        },
+        "websocketRttMs": {
+          "count": 30,
+          "mean": 0.35209393333335964,
+          "p95": 0.5720920000003389
+        }
+      }
+    },
+    {
+      "name": "4v4",
+      "mode": "tdm",
+      "players": 8,
+      "transport": "legacy",
+      "compression": true,
+      "compressionLevel": 6,
+      "report": {
+        "seconds": 15.001449525,
+        "playerSeconds": 120.17600000000014,
+        "roomSeconds": 15.022000000000018,
+        "snapshots": 151,
+        "serializedBytes": 26533192,
+        "wireBytes": 1226588,
+        "timings": {
+          "combatMs": {
+            "count": 453,
+            "mean": 0.2560991434879022,
+            "p95": 0.5222270000012941,
+            "max": 4.3800370000008115
+          },
+          "packMs": {
+            "count": 151,
+            "mean": 0.39365068211918997,
+            "p95": 1.2286199999998644,
+            "max": 3.7844500000001062
+          },
+          "serializeMs": {
+            "count": 1208,
+            "mean": 0.08907622516558142,
+            "p95": 0.15649500000017724,
+            "max": 2.215205999999853
+          },
+          "snapshotBytes": {
+            "count": 1208,
+            "mean": 21964.562913907284,
+            "p95": 24240,
+            "max": 25874
+          },
+          "tickMs": {
+            "count": 453,
+            "mean": 0.7893969580574011,
+            "p95": 2.373143999999229,
+            "max": 7.887308999999732
+          },
+          "sendCompletionMs": {
+            "count": 1208,
+            "mean": 1.0397737913907155,
+            "p95": 2.1552959999999075,
+            "max": 18.334340999999768
+          }
+        },
+        "wireBytesPerPlayerMinute": 612395.8194647842,
+        "snapshotsPerSecond": 10.05192384502728,
+        "cpuMs": 1133.356,
+        "cpuMsPerSecond": 75.54976591503747,
+        "eventLoopUtilization": 0.04576028961954029,
+        "eventLoopDelayMs": {
+          "mean": 20.125718021505378,
+          "p95": 20.824063,
+          "max": 22.790143
+        }
+      },
+      "fighters": 8,
+      "phase": "battle",
+      "client": {
+        "snapshotBytes": {
+          "count": 151,
+          "mean": 21964.562913907284,
+          "p95": 24318
+        },
+        "wireSnapshotBytes": {
+          "count": 151,
+          "mean": 1015.3377483443709,
+          "p95": 1609
+        },
+        "snapshotIntervalMs": {
+          "count": 150,
+          "mean": 99.50107125333331,
+          "p95": 102.30418599999757
+        },
+        "websocketRttMs": {
+          "count": 30,
+          "mean": 0.43574896666674856,
+          "p95": 1.9299370000007912
+        }
+      }
+    },
+    {
+      "name": "5v5",
+      "mode": "war",
+      "players": 10,
+      "transport": "legacy",
+      "compression": true,
+      "compressionLevel": 6,
+      "report": {
+        "seconds": 15.001009643000002,
+        "playerSeconds": 150.09000000000015,
+        "roomSeconds": 15.009,
+        "snapshots": 151,
+        "serializedBytes": 41673860,
+        "wireBytes": 2001430,
+        "timings": {
+          "combatMs": {
+            "count": 453,
+            "mean": 0.2700952339955881,
+            "p95": 0.4277640000000247,
+            "max": 3.575424999999086
+          },
+          "packMs": {
+            "count": 151,
+            "mean": 0.3791010132450562,
+            "p95": 0.5949860000000626,
+            "max": 2.657883000000311
+          },
+          "serializeMs": {
+            "count": 1510,
+            "mean": 0.11789406622517391,
+            "p95": 0.168402999999671,
+            "max": 12.547937000000275
+          },
+          "snapshotBytes": {
+            "count": 1510,
+            "mean": 27598.582781456953,
+            "p95": 30177,
+            "max": 32076
+          },
+          "tickMs": {
+            "count": 453,
+            "mean": 1.061994644591625,
+            "p95": 3.2911559999993187,
+            "max": 14.322049000000334
+          },
+          "sendCompletionMs": {
+            "count": 1510,
+            "mean": 1.4502393622516756,
+            "p95": 2.6368509999992966,
+            "max": 13.824498999999832
+          }
+        },
+        "wireBytesPerPlayerMinute": 800091.9448330994,
+        "snapshotsPerSecond": 10.06063028849357,
+        "cpuMs": 1322.425,
+        "cpuMsPerSecond": 88.15573294542143,
+        "eventLoopUtilization": 0.0554434868261354,
+        "eventLoopDelayMs": {
+          "mean": 20.11711364295302,
+          "p95": 20.856831,
+          "max": 35.586047
+        }
+      },
+      "fighters": 10,
+      "phase": "battle",
+      "client": {
+        "snapshotBytes": {
+          "count": 151,
+          "mean": 27598.582781456953,
+          "p95": 30157
+        },
+        "wireSnapshotBytes": {
+          "count": 151,
+          "mean": 1325.41059602649,
+          "p95": 2019
+        },
+        "snapshotIntervalMs": {
+          "count": 150,
+          "mean": 99.39249675999997,
+          "p95": 102.5980070000005
+        },
+        "websocketRttMs": {
+          "count": 30,
+          "mean": 0.41454480000005184,
+          "p95": 0.7244510000018636
+        }
+      }
+    },
+    {
+      "name": "Zombies",
+      "mode": "zombies",
+      "players": 8,
+      "transport": "legacy",
+      "compression": true,
+      "compressionLevel": 6,
+      "report": {
+        "seconds": 15.001557784000001,
+        "playerSeconds": 120.09600000000003,
+        "roomSeconds": 15.012000000000004,
+        "snapshots": 151,
+        "serializedBytes": 265830968,
+        "wireBytes": 25519108,
+        "timings": {
+          "combatMs": {
+            "count": 452,
+            "mean": 2.100962252212428,
+            "p95": 7.104329000000234,
+            "max": 21.60147199999983
+          },
+          "packMs": {
+            "count": 151,
+            "mean": 2.7584027880794317,
+            "p95": 6.095229000000472,
+            "max": 12.888510000000679
+          },
+          "serializeMs": {
+            "count": 1208,
+            "mean": 0.986153844370865,
+            "p95": 1.7754839999997785,
+            "max": 5.072448999999324
+          },
+          "snapshotBytes": {
+            "count": 1208,
+            "mean": 220058.74834437086,
+            "p95": 223672,
+            "max": 224038
+          },
+          "tickMs": {
+            "count": 452,
+            "mean": 6.632302955752214,
+            "p95": 19.886069000000134,
+            "max": 50.76001499999984
+          },
+          "sendCompletionMs": {
+            "count": 1208,
+            "mean": 6.797350113410602,
+            "p95": 12.869591000000582,
+            "max": 29.98271299999942
+          }
+        },
+        "wireBytesPerPlayerMinute": 12749354.516386887,
+        "snapshotsPerSecond": 10.058619770849983,
+        "cpuMs": 5878.806,
+        "cpuMsPerSecond": 391.87970240464455,
+        "eventLoopUtilization": 0.23446327168901582,
+        "eventLoopDelayMs": {
+          "mean": 21.353891241084167,
+          "p95": 33.849343,
+          "max": 55.148543
+        }
+      },
+      "fighters": 111,
+      "phase": "battle",
+      "client": {
+        "snapshotBytes": {
+          "count": 151,
+          "mean": 220058.74834437086,
+          "p95": 223669
+        },
+        "wireSnapshotBytes": {
+          "count": 151,
+          "mean": 21120.50331125828,
+          "p95": 21431
+        },
+        "snapshotIntervalMs": {
+          "count": 150,
+          "mean": 99.59574024666668,
+          "p95": 109.5826209999941
+        },
+        "websocketRttMs": {
+          "count": 30,
+          "mean": 3.3188292333334783,
+          "p95": 17.216067000001203
+        }
+      }
+    }
+  ]
+}
