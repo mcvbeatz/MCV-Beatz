@@ -1,6 +1,6 @@
 # Movement prediction — implementation and approval guide
 
-**Prepared on a working branch. Not deployed.** Production remains v0.63.0 until the owner explicitly approves publication. Do not run the Pages deployment script or push these changes to the Render deployment branch before approval.
+**Deployment approved by the owner on 2026-11-24.** The implementation was reviewed as commit `dfbb981`. The approval authorizes publishing the source and Pages client. Confirm the running Render version with `/health` as described below; a Git push alone is not proof that Render has finished deploying.
 
 ## Architecture and authority
 
@@ -67,9 +67,9 @@ BENCH_TRANSPORT=delta BENCH_PREDICTION=0 BENCH_OUTPUT=/tmp/wire-off.json npm run
 BENCH_TRANSPORT=delta BENCH_PREDICTION=1 BENCH_OUTPUT=/tmp/wire-on.json npm run bench:network
 ```
 
-## Owner instructions — no live action until approval
+## Owner deployment and verification instructions
 
-**Right now: nothing needs changing on Render, GitHub Pages or Supabase. The live version is unchanged.** After you approve deployment, the source and website can be published for you. If you deploy yourself, follow these steps only after approval:
+The owner approved deployment on 2026-11-24. No Supabase changes are required. These steps describe publication and verification; follow the deployment status reported with the release to determine whether any manual Render action remains.
 
 1. **Render:** after merging the approved working branch into `main`, open [Render Dashboard](https://dashboard.render.com/), select the **mcv-beatz** Web Service, then **Events**. If automatic deployment already shows the approved commit as Live, no manual deployment is needed. Otherwise click **Manual Deploy → Deploy latest commit**. A server restart ends in-memory rooms, so do this between sessions.
 2. **GitHub Pages:** the new browser build must also be published. This repository publishes built files to `gh-pages`; merging source into `main` alone does not publish them. The existing `npm run deploy:pages` builds, tests and publishes them. I can perform this after approval. In GitHub, open **MCV-Beatz → Settings → Pages** and keep the current `gh-pages` source; do not change hosting settings or upload the source folder as the website. When I publish it for you, no additional manual Pages action is needed.
@@ -169,7 +169,7 @@ The baseline supports a combination of network round-trip and snapshot/presentat
 ## Verification and remaining limits
 
 - `npm test`: **534 passed**, including the existing combat/ability/map/progression/protocol tests and new sequence, replay, correction, bounded-history, authority and negotiation tests.
-- `npm run build`: **passed**. The production build was created locally only; the publishing script was not run.
+- `npm run build`: **passed**. This result was recorded before approval; publication was deliberately deferred until the owner approved it.
 - Relevant existing Playwright suites: **46 passed** across `app-shell`, `guest-teams`, `lobby-results-scroll`, `lobby`, `navigation-camera`, `network-performance`, `progression` and `session-results`.
 - New Playwright suite: **11 passed**. Covers all eight requested modes with two simultaneous human-controlled clients, landscape keyboard plus portrait touch, delayed/jittered WebSockets, remote/server synchronization, release, mixed negotiation, reconnect, developer comparison URLs, and server-directed knockback/teleport/death/form corrections.
 - The first combined browser run found a new test-fixture problem: the Rush assertion dereferenced a null prediction while a legitimate server-only effect suspended it. The final test uses a seeded real roster/map/AI and waits for the ordinary-movement precondition; it keeps the original movement assertions. A separate test verifies unsafe authoritative transitions. Live-AI benchmark results were **not** replaced by the seeded test results.

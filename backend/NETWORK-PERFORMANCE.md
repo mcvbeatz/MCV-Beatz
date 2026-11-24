@@ -1,6 +1,6 @@
 # Multiplayer transport and performance
 
-For the prepared client-side movement update, see [prediction measurements, compatibility and owner instructions](MOVEMENT-PREDICTION.md). That update is not published until the owner approves it; the v0.63 transport measurements below describe the preceding release.
+For the prepared client-side movement update, see [prediction measurements, compatibility and owner instructions](MOVEMENT-PREDICTION.md). The owner approved that update for deployment on 2026-11-24; the v0.63 transport measurements below describe the preceding release.
 
 ## Compatibility and deployment
 

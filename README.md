@@ -1,4 +1,4 @@
-# Fusion Throwdown · v0.64.0 (prepared; not published)
+# Fusion Throwdown · v0.64.0
 
 ## v0.64.0 Local movement prediction and reconciliation
 
@@ -6,7 +6,7 @@
 - Small corrections settle smoothly; unsafe abilities, teleports, knockback, respawns and stale updates fall back to server state. Remote players retain interpolation. Input history/replay is bounded.
 - Optional `movement-v1` negotiation preserves protocol **4**, delta snapshots, compression, shared serialization and old-client/server fallback.
 - Added developer-only `?netdebug=1` diagnostics and `?prediction=0` comparison URLs, controlled latency benchmarks and multi-client/mobile regression tests.
-- [Measured results, architecture, complete file inventory, limitations, iPhone verification and deployment/rollback instructions](backend/MOVEMENT-PREDICTION.md). No required environment variables or Supabase changes. **Do not deploy to Render or Pages until the owner explicitly approves.**
+- [Measured results, architecture, complete file inventory, limitations, iPhone verification and deployment/rollback instructions](backend/MOVEMENT-PREDICTION.md). No required environment variables or Supabase changes. Deployment approved by the owner on 2026-11-24.
 
 ## v0.63.0 Lossless multiplayer delta transport
 
