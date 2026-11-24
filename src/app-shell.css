@@ -1648,7 +1648,7 @@ body[data-screen="solo-battles"] #shell-content {
   inset: 0;
   background: white;
   pointer-events: none;
-  z-index: 1200;
+  z-index: 1;
 }
 #battle-countdown[hidden],
 #flash-whiteout[hidden] {

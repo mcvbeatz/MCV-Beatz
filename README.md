@@ -1,4 +1,13 @@
-# Fusion Throwdown · v0.64.0
+# Fusion Throwdown · v0.65.0
+
+## v0.65.0 Music, menu sounds and sports countdowns
+
+- Gridiron uses Gridiron2; War uses Don't Let Up2, retaining no smoke on Ember Caldera. Win/loss recordings are replaced by A Win is a Win2 and Downcast2, preserving existing volume settings.
+- Turnpike cycles Kuuler and Obey. Dungeon loops Taking it Back. Both continue through all results screens without switching to outcome music.
+- Ice Spike2 replaces the per-icicle effect. Cancel plays for Back, Leave and close controls and respects the SFX setting.
+- Flash covers the battlefield beneath the HUD and touch controls in both orientations.
+- Online Gridiron and Turnpike show a synchronized three-second field countdown after the five-second lobby countdown. Movement, combat and the clock wait until Go; Gridiron's opening whistle sounds then. Existing touchdown celebrations are unchanged.
+- Deploy both the Pages build and latest Render source for all changes. Protocol remains **4**, including optional delta snapshots and movement prediction; no new environment variables or Supabase migrations are required.
 
 ## v0.64.0 Local movement prediction and reconciliation
 

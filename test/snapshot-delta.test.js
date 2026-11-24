@@ -15,6 +15,40 @@ import {
 } from "../src/multiplayer-protocol.js";
 const wire = (value) => JSON.parse(JSON.stringify(value));
 const frame = (json) => JSON.parse(json);
+// Equivalent graphs can enumerate object fields in different orders after a
+// full root replacement followed by a delta. Compare all values and reference
+// identities with canonical numbering; only object-key enumeration (including
+// the decoder's _wireKeys bookkeeping set) is irrelevant to gameplay.
+function canonicalGraph(packet) {
+  const ids = new Map(),
+    nodes = [];
+  const visit = (value, field) => {
+    if (!value || typeof value !== "object" || !("ref" in value)) return value;
+    if (ids.has(value.ref)) return { ref: ids.get(value.ref) };
+    const id = nodes.length,
+      node = packet.nodes[value.ref];
+    ids.set(value.ref, id);
+    nodes.push(null);
+    let data;
+    if (node.type === "array" || node.type === "set") {
+      data = node.data.map((v) => visit(v));
+      if (field === "_wireKeys") data.sort();
+    } else if (node.type === "map") {
+      data = node.data.map(([k, v]) => [visit(k), visit(v)]);
+    } else {
+      data = Object.fromEntries(
+        Object.keys(node.data)
+          .sort()
+          .map((k) => [k, visit(node.data[k], k)]),
+      );
+    }
+    nodes[id] = { type: node.type, data };
+    return { ref: id };
+  };
+  visit({ ref: 0 });
+  return { ...packet, nodes };
+}
+
 test("lossless deltas handle arrays, removed keys, nulls, strings and JSON semantics", () => {
   const cases = [
     null,
@@ -59,8 +93,8 @@ test("every mode round-trips evolving authoritative state, effects, references a
       assert.deepEqual(actual, expected, `${mode} frame ${i}`);
       const restored = unpackGame(actual.game);
       assert.deepEqual(
-        wire(packGame(restored)),
-        wire(packGame(unpackGame(wire(room.snapshot().game)))),
+        canonicalGraph(wire(packGame(restored))),
+        canonicalGraph(wire(packGame(unpackGame(wire(room.snapshot().game))))),
         `${mode} legacy equivalence ${i}`,
       );
       assert.equal(

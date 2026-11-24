@@ -2,25 +2,40 @@ export const SELECTION_URL = new URL(
   "./assets/sfx/selection.mp3",
   import.meta.url,
 ).href;
-let recording;
+export const CANCEL_URL = new URL("./assets/sfx/cancel.mp3", import.meta.url)
+  .href;
+const recordings = new Map();
 // Fetch before the first interaction; decode once the gesture unlocks audio.
-export function prepareSelectionRecording() {
-  if (!recording) {
-    recording = fetch(SELECTION_URL)
-      .then((response) => {
-        if (!response.ok)
-          throw new Error(`Selection sound: ${response.status}`);
-        return response.arrayBuffer();
-      })
-      .catch((error) => {
-        recording = null;
-        throw error;
-      });
+export function prepareMenuRecording(url) {
+  if (!recordings.has(url)) {
+    recordings.set(
+      url,
+      fetch(url)
+        .then((response) => {
+          if (!response.ok) throw new Error(`Menu sound: ${response.status}`);
+          return response.arrayBuffer();
+        })
+        .catch((error) => {
+          recordings.delete(url);
+          throw error;
+        }),
+    );
   }
-  return recording;
+  return recordings.get(url);
+}
+export function prepareSelectionRecording() {
+  return prepareMenuRecording(SELECTION_URL);
+}
+export function isCancelControl(control) {
+  const label = `${control.id || ""} ${control.getAttribute("aria-label") || ""} ${control.textContent || ""}`;
+  return (
+    /\b(back|leave|cancel|close|return)\b/i.test(label) ||
+    /^[\s←]*(?:[x×✕✖]|←.*)$/i.test(control.textContent.trim())
+  );
 }
 export class MenuClickSfx {
-  constructor(context, volume) {
+  constructor(context, volume, url = SELECTION_URL) {
+    this.url = url;
     this.context = context;
     this.buffer = null;
     this.voices = new Set();
@@ -35,7 +50,7 @@ export class MenuClickSfx {
   async load() {
     this.loading = true;
     try {
-      const data = await prepareSelectionRecording();
+      const data = await prepareMenuRecording(this.url);
       this.buffer = await this.context.decodeAudioData(data.slice(0));
       this.loadError = null;
       if (

@@ -347,8 +347,9 @@ export class LobbyRoom {
   startBattle() {
     this.game = this.preparedGame || this.buildBattle();
     this.preparedGame = null;
-    // The shared five-second lobby countdown has already completed.
-    this.game.countdown = 0;
+    // The lobby countdown is complete. Sports modes also give everyone three
+    // locked seconds on the actual field; the fourth second displays Go!
+    this.game.countdown = ["gridiron", "turnpike"].includes(this.mode) ? 4 : 0;
     let roster =
       this.mode === "zombies" || this.mode === "gauntlet-team"
         ? this.game.fighters.filter((a) => a.team === 0)

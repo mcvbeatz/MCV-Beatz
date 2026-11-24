@@ -188,7 +188,8 @@ test("Every Ice and Abyssal icicle starts Ice Spike, including sustained firing"
     expect(result.played).toBe(true);
     expect(result.buffer).toBe(true);
     expect(result.duration).toBe(result.expected);
-    expect(result.duration).toBeGreaterThan(1.6);
+    expect(result.duration).toBeGreaterThan(1.3);
+    expect(result.duration).toBeLessThan(1.4);
     expect(result.projectiles).toBe(41);
     expect(result.accepted).toBe(result.projectiles);
     expect(result.voices).toBeLessThanOrEqual(32);

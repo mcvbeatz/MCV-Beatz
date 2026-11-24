@@ -4,7 +4,15 @@ export const BATTLE_TRACKS = [
   "none-other",
   "sick",
 ];
+export const RACING_TRACKS = ["kuuler", "obey"];
 export const TRACK_URLS = {
+  gridiron: new URL("./assets/music/gridiron.mp3", import.meta.url).href,
+  "taking-it-back": new URL(
+    "./assets/music/taking-it-back.mp3",
+    import.meta.url,
+  ).href,
+  kuuler: new URL("./assets/music/kuuler.mp3", import.meta.url).href,
+  obey: new URL("./assets/music/obey.mp3", import.meta.url).href,
   "dont-let-up": new URL("./assets/music/dont-let-up.mp3", import.meta.url)
     .href,
   "watch-and-learn": new URL(
@@ -26,14 +34,15 @@ export const TRACK_URLS = {
   "no-escape": new URL("./assets/music/no-escape.mp3", import.meta.url).href,
 };
 export class BattlePlaylist {
-  constructor(random = Math.random) {
+  constructor(random = Math.random, tracks = BATTLE_TRACKS) {
+    this.tracks = [...tracks];
     this.random = random;
     this.remaining = [];
     this.last = null;
   }
   next() {
     if (!this.remaining.length) {
-      this.remaining = [...BATTLE_TRACKS];
+      this.remaining = [...this.tracks];
       for (let i = this.remaining.length - 1; i > 0; i--) {
         const j = Math.floor(this.random() * (i + 1));
         [this.remaining[i], this.remaining[j]] = [
@@ -41,7 +50,7 @@ export class BattlePlaylist {
           this.remaining[i],
         ];
       }
-      if (this.remaining[0] === this.last)
+      if (this.remaining.length > 1 && this.remaining[0] === this.last)
         [this.remaining[0], this.remaining[1]] = [
           this.remaining[1],
           this.remaining[0],
@@ -53,6 +62,8 @@ export class BattlePlaylist {
 export function musicScene(screen, game) {
   if (screen === "loading") return "loading";
   if (screen !== "battle") return "menu";
+  // These playlists continue uninterrupted through every results page.
+  if (["turnpike", "dungeon"].includes(game.mode)) return game.mode;
   if (game.finished)
     return game.result === "victory"
       ? "victory"
@@ -61,5 +72,5 @@ export function musicScene(screen, game) {
         : "draw";
   if (game.mode === "corruption") return "corruption";
   if (game.mapId === "volcano") return "volcano";
-  return game.mode === "war" ? "war" : "battle";
+  return ["war", "gridiron"].includes(game.mode) ? game.mode : "battle";
 }

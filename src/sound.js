@@ -1,9 +1,16 @@
-import { BattlePlaylist, TRACK_URLS } from "./music-catalog.js";
-import { MenuClickSfx, prepareSelectionRecording } from "./menu-sfx.js";
+import { BattlePlaylist, RACING_TRACKS, TRACK_URLS } from "./music-catalog.js";
+import {
+  MenuClickSfx,
+  prepareSelectionRecording,
+  prepareMenuRecording,
+  CANCEL_URL,
+} from "./menu-sfx.js";
 import { CombatSfx } from "./combat-sfx.js";
 const SCENE_TRACKS = {
   corruption: "no-escape",
   war: "dont-let-up",
+  gridiron: "gridiron",
+  dungeon: "taking-it-back",
   volcano: "no-smoke",
   victory: "a-win-is-a-win",
   defeat: "downcast",
@@ -13,6 +20,7 @@ export class Soundtrack {
   constructor(settings) {
     this.settings = settings;
     prepareSelectionRecording().catch(() => {});
+    prepareMenuRecording(CANCEL_URL).catch(() => {});
     this.context = null;
     this.music = null;
     this.scene = null;
@@ -21,9 +29,12 @@ export class Soundtrack {
     this.trackId = null;
     this.desiredTrackId = null;
     this.trackGeneration = 0;
-    this.playlist = new BattlePlaylist();
-    this.battleTrackId = null;
-    this.preparedBattleTrackId = null;
+    this.playlists = {
+      battle: new BattlePlaylist(),
+      turnpike: new BattlePlaylist(Math.random, RACING_TRACKS),
+    };
+    this.selectedTracks = {};
+    this.preparedTracks = {};
     this.warMapPreload = null;
     this.menuBuffer = null;
     this.menuLoading = null;
@@ -50,6 +61,7 @@ export class Soundtrack {
           this.music =
           this.sfx =
           this.menuSfx =
+          this.cancelSfx =
           this.menuSource =
           this.trackSource =
             null;
@@ -76,6 +88,11 @@ export class Soundtrack {
       }
       this.sfx ||= new CombatSfx(this.context, this.settings.sfx);
       this.menuSfx ||= new MenuClickSfx(this.context, this.settings.sfx);
+      this.cancelSfx ||= new MenuClickSfx(
+        this.context,
+        this.settings.sfx,
+        CANCEL_URL,
+      );
       this.prepareMenu();
       return true;
     } catch {
@@ -106,17 +123,20 @@ export class Soundtrack {
     if (!this.clickAt || this.context?.state !== "running") return;
     const recent = performance.now() - this.clickAt < 500;
     this.clickAt = 0;
-    if (recent && !document.hidden && this.settings.sfx) this.menuSfx?.play();
+    if (recent && !document.hidden && this.settings.sfx)
+      (this.clickKind === "cancel" ? this.cancelSfx : this.menuSfx)?.play();
   }
   setScene(mode, paused = false, restart = false) {
     if (!restart && this.scene === mode && this.paused === paused) return;
-    if (mode === "battle" && (restart || !this.battleTrackId))
-      this.battleTrackId = this.preparedBattleTrackId || this.playlist.next();
-    if (restart && mode === "battle") this.preparedBattleTrackId = null;
+    const playlist = this.playlists[mode];
+    if (playlist && (restart || !this.selectedTracks[mode]))
+      this.selectedTracks[mode] = this.preparedTracks[mode] || playlist.next();
+    if (restart && playlist) delete this.preparedTracks[mode];
     this.scene = mode;
     this.paused = paused;
-    this.desiredTrackId =
-      mode === "battle" ? this.battleTrackId : SCENE_TRACKS[mode] || null;
+    this.desiredTrackId = playlist
+      ? this.selectedTracks[mode]
+      : SCENE_TRACKS[mode] || null;
     if (restart) {
       this.trackEnded = false;
       if (this.track) this.track.currentTime = 0;
@@ -126,11 +146,11 @@ export class Soundtrack {
   prepareBattle(mode) {
     // Reserve the exact shuffled song that Start will play, rather than choosing
     // another after the countdown is already visible. Loading remains silent.
-    const scene = mode === "corruption" || mode === "war" ? mode : "battle";
-    const id =
-      scene === "battle"
-        ? (this.preparedBattleTrackId ||= this.playlist.next())
-        : SCENE_TRACKS[scene];
+    const scene = SCENE_TRACKS[mode] || this.playlists[mode] ? mode : "battle";
+    const playlist = this.playlists[scene];
+    const id = playlist
+      ? (this.preparedTracks[scene] ||= playlist.next())
+      : SCENE_TRACKS[scene];
     this.prepareTrack(id);
     if (mode === "war" && !this.warMapPreload) {
       // War's opponent/map is rolled at Start; warm the volcanic exception too.
@@ -151,9 +171,9 @@ export class Soundtrack {
       this.track.addEventListener("ended", () => {
         if (!this.track.ended) return;
         this.trackEnded = true;
-        if (this.scene === "battle") {
-          this.battleTrackId = this.playlist.next();
-          this.desiredTrackId = this.battleTrackId;
+        if (this.playlists[this.scene]) {
+          this.selectedTracks[this.scene] = this.playlists[this.scene].next();
+          this.desiredTrackId = this.selectedTracks[this.scene];
           this.sync();
         }
       });
@@ -167,7 +187,13 @@ export class Soundtrack {
       this.playBlocked = false;
       this.playPending = false;
       this.track.src = TRACK_URLS[id];
-      this.track.loop = ["no-smoke", "a-win-is-a-win", "downcast"].includes(id);
+      this.track.loop = [
+        "no-smoke",
+        "a-win-is-a-win",
+        "downcast",
+        "gridiron",
+        "taking-it-back",
+      ].includes(id);
       this.track.load();
     }
     if (this.context && this.music && !this.trackSource) {
@@ -234,7 +260,10 @@ export class Soundtrack {
     source.start(0, this.menuOffset);
   }
   sync() {
-    if (document.hidden) this.menuSfx?.stop();
+    if (document.hidden) {
+      this.menuSfx?.stop();
+      this.cancelSfx?.stop();
+    }
     if (
       this.paused ||
       document.hidden ||
@@ -284,6 +313,7 @@ export class Soundtrack {
     if (kind === "sfx") {
       this.sfx?.volume(this.settings.sfx);
       this.menuSfx?.volume(this.settings.sfx);
+      this.cancelSfx?.volume(this.settings.sfx);
     }
     if (kind === "music" && this.music)
       this.music.gain.setTargetAtTime(
@@ -321,8 +351,9 @@ export class Soundtrack {
       });
     }
   }
-  menuClick() {
+  menuClick(kind = "selection") {
     if (!this.settings.sfx || document.hidden) return;
+    this.clickKind = kind;
     this.clickAt = performance.now();
     this.unlock();
   }

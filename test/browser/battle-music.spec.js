@@ -204,7 +204,7 @@ for (const mode of PLAY_MODES) {
     expect(opening.rate).toBe(1);
     if (mode === "war") {
       expect(opening.id).toBe("dont-let-up");
-      expect(opening.duration).toBeCloseTo(183.192, 2);
+      expect(opening.duration).toBeCloseTo(196.848, 2);
     }
     // Crossing Go must continue the same recording, not restart it.
     await page.evaluate(() => {

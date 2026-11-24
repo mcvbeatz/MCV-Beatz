@@ -49,6 +49,8 @@ test("all multiplayer modes can start, share a graph snapshot, and preserve loca
     r.join("one", "One", "water");
     r.join("two", "Two", "dark");
     r.startBattle();
+    // Sports modes now hold on-field play before participation time accrues.
+    while (r.game.countingDown) r.tick(0.03);
     for (let i = 0; i < 15; i++) r.tick(0.03);
     const copy = unpackGame(JSON.parse(JSON.stringify(packGame(r.game))));
     assert.equal(copy.mode, mode);

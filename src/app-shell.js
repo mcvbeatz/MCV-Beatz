@@ -22,6 +22,7 @@ import {
 } from "./progression-ui.js";
 import { cosmeticCatalog } from "./rewards.js";
 import { createMenuDissolve } from "./menu-transition.js";
+import { isCancelControl } from "./menu-sfx.js";
 import { musicScene } from "./music-catalog.js";
 import { icon } from "./icons.js";
 import { portraitMarkup, paintPortraits } from "./characters.js";
@@ -139,7 +140,7 @@ export function createApp(api) {
       {
         username: lastSession.username,
         review: true,
-        onNext: () => sound.menuClick(),
+        onNext: (kind) => sound.menuClick(kind),
         onStage: () => (lastResultsPanel.scrollTop = 0),
         onRecords: () => {
           closeLastResults();
@@ -1120,15 +1121,21 @@ export function createApp(api) {
   document.addEventListener(
     "click",
     (event) => {
+      const control = event.target.closest?.("button, a, input, select");
+      if (!control || control.disabled) return;
+      // Results Next/Back own their click sound through onNext, exactly once.
       if (
-        screen === "loading" ||
-        (screen === "battle" && lobby?.state?.phase !== "lobby")
+        control.closest(".report-actions") &&
+        control.matches("[data-next], [data-previous]")
       )
         return;
-      const control = event.target.closest?.("button, a, input, select");
+      if (isCancelControl(control)) {
+        sound.menuClick("cancel");
+        return;
+      }
       if (
-        !control ||
-        control.disabled ||
+        screen === "loading" ||
+        (screen === "battle" && lobby?.state?.phase !== "lobby") ||
         control.closest("#last-results-panel .report-actions") ||
         !control.closest("#app-shell, #app, #slides-dialog")
       )
@@ -1221,7 +1228,7 @@ export function createApp(api) {
       g.progressState,
       {
         username: matchTicket.displayName,
-        onNext: () => sound.menuClick(),
+        onNext: (kind) => sound.menuClick(kind),
         onStage: (stage) => {
           $("game-overlay").dataset.reportStage = String(stage);
           $("overlay-play").hidden = stage !== 2;

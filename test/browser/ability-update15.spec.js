@@ -50,7 +50,7 @@ test("Play countdown freezes the whole match, releases movement on Go, and Pract
   await page.locator("#begin-btn").click();
   await expect(page.locator("#battle-countdown")).toBeHidden();
 });
-test("Dark has separate Blindness, Mud has direct shortcuts, and Flash uses a full-screen fading white overlay", async ({
+test("Dark has separate Blindness, Mud has direct shortcuts, and Flash fades the field below the HUD", async ({
   page,
 }) => {
   await ready(page);
@@ -65,8 +65,8 @@ test("Dark has separate Blindness, Mud has direct shortcuts, and Flash uses a fu
   await expect(page.locator("#flash-whiteout")).toBeVisible();
   await expect(page.locator("#flash-whiteout")).toHaveCSS("opacity", "1");
   const box = await page.locator("#flash-whiteout").boundingBox();
-  expect(box.width).toBe(1280);
-  expect(box.height).toBe(720);
+  const field = await page.locator("#game-wrap").boundingBox();
+  expect(box).toEqual(field);
   await page.evaluate(() => {
     __arena.game.player.whiteout = 1;
   });

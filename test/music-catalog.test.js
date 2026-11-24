@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import {
   BattlePlaylist,
   BATTLE_TRACKS,
+  RACING_TRACKS,
   musicScene,
 } from "../src/music-catalog.js";
 import { MODES } from "../src/mode-catalog.js";
@@ -24,19 +25,40 @@ test("all modes route battle, map and team outcome music with dedicated War musi
     const game = { mode, mapId: "garden", finished: false };
     assert.equal(
       musicScene("battle", game),
-      mode === "corruption" ? "corruption" : mode === "war" ? "war" : "battle",
+      ["corruption", "war", "gridiron", "turnpike", "dungeon"].includes(mode)
+        ? mode
+        : "battle",
     );
     game.mapId = "volcano";
     assert.equal(
       musicScene("battle", game),
-      mode === "corruption" ? "corruption" : "volcano",
+      ["turnpike", "dungeon", "corruption"].includes(mode) ? mode : "volcano",
     );
     for (const result of ["victory", "defeat", "draw"]) {
       game.finished = true;
       game.result = result;
-      assert.equal(musicScene("battle", game), result);
+      assert.equal(
+        musicScene("battle", game),
+        ["turnpike", "dungeon"].includes(mode) ? mode : result,
+      );
       assert.equal(musicScene("setup", game), "menu");
     }
     assert.equal(musicScene("loading", game), "loading");
   }
+});
+
+test("racing alternates its two songs independently of the ordinary battle playlist", () => {
+  const racing = new BattlePlaylist(() => 0.5, RACING_TRACKS);
+  const songs = Array.from({ length: 8 }, () => racing.next());
+  assert.deepEqual(songs, [
+    "kuuler",
+    "obey",
+    "kuuler",
+    "obey",
+    "kuuler",
+    "obey",
+    "kuuler",
+    "obey",
+  ]);
+  assert.equal(new Set(songs).size, 2);
 });

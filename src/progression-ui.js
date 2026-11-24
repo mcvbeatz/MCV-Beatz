@@ -341,7 +341,7 @@ export function renderMatchReport(
       render();
     });
     root.querySelector("[data-previous]")?.addEventListener("click", () => {
-      onNext?.();
+      onNext?.("cancel");
       stage--;
       render();
     });
