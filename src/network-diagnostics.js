@@ -6,12 +6,35 @@ export class ClientNetworkDiagnostics {
   reset() {
     this.started = performance.now();
     this.values = {};
+    this.counts = {};
+    this.inputAt = null;
+    this.lastDraw = null;
     this.bytes = 0;
     this.snapshots = 0;
     this.frames = 0;
     this.frameSeconds = 0;
     this.resyncs = 0;
     this.lastSnapshot = null;
+  }
+  inputEvent() {
+    this.inputEventAt = performance.now();
+  }
+  armMovement() {
+    this.inputAt = this.inputEventAt ?? performance.now();
+  }
+  drawPosition(p) {
+    if (
+      this.inputAt !== null &&
+      this.lastDraw &&
+      Math.hypot(p.x - this.lastDraw.x, p.y - this.lastDraw.y) > 0.25
+    ) {
+      this.observe("inputToDrawMs", performance.now() - this.inputAt);
+      this.inputAt = null;
+    }
+    this.lastDraw = { x: p.x, y: p.y };
+  }
+  count(key) {
+    this.counts[key] = (this.counts[key] || 0) + 1;
   }
   observe(key, value) {
     const s = (this.values[key] ||= { n: 0, sum: 0, max: 0, values: [] });
@@ -39,6 +62,7 @@ export class ClientNetworkDiagnostics {
     const seconds = (performance.now() - this.started) / 1000;
     return {
       seconds,
+      counters: { ...this.counts },
       receivedJsonBytes: this.bytes,
       receivedJsonBytesPerMinute: (this.bytes * 60) / seconds,
       snapshotsPerSecond: this.snapshots / seconds,

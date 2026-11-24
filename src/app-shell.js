@@ -306,12 +306,20 @@ export function createApp(api) {
     g.spectatorFocus = !g.player.alive ? localFocus : null;
     g.networked = true;
     g.lobby = waiting;
+    client.prediction.reconcile(
+      g,
+      member.movementAck,
+      `${state.roomId}:${state.roundId}:${state.phase}:${member.seat}`,
+    );
+    g.localPrediction = client.prediction;
+
     g.networkCommand = (message) => client.send(message);
     g.update = (dt, input) => {
       updateRespawnCamera(g, dt, input);
       client.move(
         lastResultsPanel.hidden ? input.x : 0,
         lastResultsPanel.hidden ? input.y : 0,
+        dt,
       );
     };
     g.advanceCelebration = () => {};

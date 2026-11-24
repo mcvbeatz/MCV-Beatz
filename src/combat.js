@@ -1,3 +1,5 @@
+import { integrateMovement } from "./movement-physics.js";
+export { FLOOD_WATER_SPEED } from "./movement-physics.js";
 import {
   beginStatistics,
   trackTime,
@@ -244,7 +246,6 @@ export const canUseSkill = (a, form, kind) =>
     extraSkillsFor(a.element).some((s) => s.form === form && s.kind === kind));
 export const VOG_RADIUS = (500 / Math.sqrt(3)) * 0.6 * 0.8;
 export const FLASH_RADIUS = VOG_RADIUS * 0.85;
-export const FLOOD_WATER_SPEED = 1.25;
 export const quicksandImmune = (a) => a.parts.includes("earth");
 export const BURST_HIT_RANGE = 28 * 1.3;
 export const BURST_DAMAGE = 22;
@@ -862,88 +863,8 @@ export class Combat {
     );
   }
   move(a, dx, dy, dt) {
-    if (this.countingDown || (!a.alive && !a.ghost) || !inWorld(a)) return;
-    if (a.blink && Math.hypot(a.knockX, a.knockY) > 1) a.blink = null;
-    const shocked = this.isShocked(a);
-    if (a.prisonHp > 0 || a.blink || shocked) {
-      a.vx = a.vy = a.knockX = a.knockY = a.movingTime = 0;
-      // A trapped burst keeps its animation and action duration, but cannot move.
-      if (a.blink || shocked) a.burst = 0;
-      a.gaitDistance = 0;
-      return;
-    }
     const old = { x: a.x, y: a.y };
-    const length = Math.hypot(dx, dy),
-      magnitude = Math.min(1, length);
-    if (length) {
-      dx /= length;
-      dy /= length;
-    }
-    const movementHealth =
-      this.mode === "corruption" || a.zombieEnemy
-        ? (a.hp / a.maxHp) * 120
-        : a.hp;
-    const swimming =
-      a.parts.includes("water") &&
-      this.hazards.some(
-        (h) =>
-          h.kind === "flood" &&
-          h.life > 0 &&
-          inWorld(h) &&
-          distance(a, h) <= h.r,
-      );
-    let speed =
-      150 *
-      (swimming ? FLOOD_WATER_SPEED : 1) *
-      (a.waveSpeed || 1) *
-      (a.ghost
-        ? 1.1
-        : movementHealth < 40
-          ? 0.55 + (0.45 * movementHealth) / 40
-          : 1) *
-      (this.flying(a) ? 1.28 : 1) *
-      (a.boost > 0 ? 1.7 : 1) *
-      (a.charging ? 0.65 : 1) *
-      (a.slow > 0 ? 0.48 : 1) *
-      (a.shield ? 0.32 : 1) *
-      (a.element === "invincible" ? 0.85 : 1);
-    if (this.mode === "turnpike")
-      speed *= (this.map.onTrack(a) ? 1 : 0.18) * (a.ghost ? 0.5 : 1);
-    const blend = this.flying(a) ? Math.min(1, dt * 4) : 1;
-    a.vx += (dx * speed * magnitude - a.vx) * blend;
-    a.vy += (dy * speed * magnitude - a.vy) * blend;
-    if (a.burst > 0) {
-      const burstSpeed =
-        this.mode === "turnpike" && !this.map.onTrack(a) ? 650 * 0.18 : 650;
-      a.vx = a.burstX * burstSpeed;
-      a.vy = a.burstY * burstSpeed;
-    }
-    if (this.map)
-      this.map.move(
-        a,
-        a.x + (a.vx + a.knockX) * dt,
-        a.y + (a.vy + a.knockY) * dt,
-      );
-    else {
-      a.x = clamp(a.x + (a.vx + a.knockX) * dt, 135, 889);
-      a.y = clamp(a.y + (a.vy + a.knockY) * dt, 175, 560);
-    }
-    a.knockX *= Math.exp(-7 * dt);
-    a.knockY *= Math.exp(-7 * dt);
-    a.movingTime =
-      (length || a.burst > 0) && distance(old, a) > 0.05
-        ? a.movingTime + dt
-        : 0;
-    // Accumulate only voluntary ground travel, not knockback, blocked input or dashes.
-    const moved = distance(old, a);
-    a.gaitDistance =
-      length && moved > 0.05 && a.burst <= 0
-        ? ((a.gaitDistance || 0) + Math.min(moved, speed * magnitude * dt)) % 75
-        : 0;
-    if (length) {
-      a.fx = dx;
-      a.fy = dy;
-    }
+    if (!integrateMovement(this, a, dx, dy, dt)) return;
     if (checkWarChasms(this, a, old)) return;
     this.autoLock(a);
   }

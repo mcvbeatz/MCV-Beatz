@@ -53,6 +53,8 @@ for (const [name, mode, players] of [
         mode,
         guest: true,
         snapshotCodec: optimized ? SNAPSHOT_CODEC : undefined,
+        movementPrediction:
+          process.env.BENCH_PREDICTION === "1" ? "movement-v1" : undefined,
         element: i % 2 ? "water" : "fire",
       }),
     );
@@ -66,7 +68,14 @@ for (const [name, mode, players] of [
     n++;
     sockets.forEach((ws, i) => {
       const a = n * 0.04 + (i * Math.PI * 2) / players;
-      ws.send(JSON.stringify({ kind: "move", x: Math.cos(a), y: Math.sin(a) }));
+      ws.send(
+        JSON.stringify({
+          kind: "move",
+          x: Math.cos(a),
+          y: Math.sin(a),
+          ...(process.env.BENCH_PREDICTION === "1" ? { seq: n } : {}),
+        }),
+      );
       if (n % 8 === 0) ws.send(JSON.stringify({ kind: "strike" }));
       if (n % 50 === 1) ws.send(JSON.stringify({ kind: "startCharge" }));
       if (n % 50 === 35 && mode !== "zombies")
@@ -101,6 +110,7 @@ for (const [name, mode, players] of [
     name,
     mode,
     players,
+    prediction: process.env.BENCH_PREDICTION === "1",
     transport: optimized ? "delta" : "legacy",
     compression: process.env.BENCH_COMPRESSION !== "0",
     compressionLevel: Number(process.env.WS_COMPRESSION_LEVEL || 6),

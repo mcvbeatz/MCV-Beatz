@@ -1,3 +1,8 @@
+import {
+  acceptMovement,
+  neutralMovement,
+  acknowledgeMovement,
+} from "./movement-ack.js";
 import { TEAM_LOBBY_MODES, lobbyTeam, lobbyTeamCounts } from "./lobby-teams.js";
 import { Combat, makeFighter } from "./combat.js";
 import { beginStatistics } from "./match-statistics.js";
@@ -183,6 +188,7 @@ export class LobbyRoom {
       this.game.fighters.find((a) => a.id === m.actorId) ||
       this.game.fighters[m.seat];
     if (message.kind === "neutral") {
+      neutralMovement(m);
       m.input = { x: 0, y: 0 };
       m.lastInput = 0;
       if (a) {
@@ -193,6 +199,7 @@ export class LobbyRoom {
       return;
     }
     if (message.kind === "move") {
+      if (!acceptMovement(m, message)) return;
       m.input = {
         x: Math.max(-1, Math.min(1, Number(message.x) || 0)),
         y: Math.max(-1, Math.min(1, Number(message.y) || 0)),
@@ -434,6 +441,7 @@ export class LobbyRoom {
         }
       }
     }
+    acknowledgeMovement(this, dt);
   }
   snapshot(graph = null) {
     return {
@@ -449,14 +457,16 @@ export class LobbyRoom {
       serverNow: this.now(),
       roundId: this.roundId,
       sequence: this.sequence,
-      members: [...this.members.values()].map(({ input, lastInput, ...m }) => ({
-        ...m,
-        team: lobbyTeam(this.mode, m.seat),
-        element: this.memberElement(m),
-        elementLocked:
-          !!forcedLobbyElement(this.mode) ||
-          (this.mode === "war" && m.id !== this.captain),
-      })),
+      members: [...this.members.values()].map(
+        ({ input, lastInput, moveState, ...m }) => ({
+          ...m,
+          team: lobbyTeam(this.mode, m.seat),
+          element: this.memberElement(m),
+          elementLocked:
+            !!forcedLobbyElement(this.mode) ||
+            (this.mode === "war" && m.id !== this.captain),
+        }),
+      ),
       game: packGame(this.game, graph),
     };
   }

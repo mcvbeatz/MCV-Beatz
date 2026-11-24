@@ -1,5 +1,7 @@
 # Multiplayer transport and performance
 
+For the prepared client-side movement update, see [prediction measurements, compatibility and owner instructions](MOVEMENT-PREDICTION.md). That update is not published until the owner approves it; the v0.63 transport measurements below describe the preceding release.
+
 ## Compatibility and deployment
 
 Gameplay protocol remains **4**. `json-delta-v1` is a negotiated, optional transport extension; it is not a new combat protocol. New clients advertise `snapshotCodec` in their first browse/join request. The server replies with a private `identity` message followed by shared `snapshot` frames. Old protocol-4 clients receive their original `state` messages. New clients also accept the old server's `state` messages. Mixed rooms are supported (they require both graph formats, so update browsers to get the full benefit).

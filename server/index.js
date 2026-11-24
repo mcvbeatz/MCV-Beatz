@@ -1,3 +1,4 @@
+import { enableMovement, MOVEMENT_CAPABILITY } from "../src/movement-ack.js";
 import { LOBBY_PROTOCOL, SnapshotGraph } from "../src/multiplayer-protocol.js";
 import http from "node:http";
 import { performance } from "node:perf_hooks";
@@ -11,6 +12,7 @@ export function createLobbyServer({
   verifyUser,
   origins = [],
   maxRooms = 12,
+  prediction = process.env.MOVEMENT_PREDICTION !== "0",
   diagnostics = process.env.NETWORK_DIAGNOSTICS === "1",
   compression = process.env.WS_COMPRESSION !== "0",
   compressionLevel = Number(process.env.WS_COMPRESSION_LEVEL || 6),
@@ -38,6 +40,7 @@ export function createLobbyServer({
         rooms: rooms.size,
         protocolVersion: LOBBY_PROTOCOL,
         snapshotCodec: SNAPSHOT_CODEC,
+        movementPrediction: prediction ? MOVEMENT_CAPABILITY : null,
       }),
     );
   });
@@ -140,6 +143,10 @@ export function createLobbyServer({
               user,
               room: null,
               delta: msg.snapshotCodec === SNAPSHOT_CODEC,
+              prediction:
+                prediction &&
+                msg.movementPrediction === MOVEMENT_CAPABILITY &&
+                msg.snapshotCodec === SNAPSHOT_CODEC,
               frameId: 0,
             };
             clients.set(ws, c);
@@ -198,12 +205,14 @@ export function createLobbyServer({
               msg.cosmetics,
               { guest: c.user.guest },
             );
+            if (c.prediction) enableMovement(room.members.get(c.user.id));
             c.room = room;
             metrics.setActive(ws, true);
             c.frameId = 0;
             if (c.delta)
               send(ws, {
                 kind: "identity",
+                movementPrediction: c.prediction ? MOVEMENT_CAPABILITY : null,
                 protocolVersion: LOBBY_PROTOCOL,
                 userId: c.user.id,
               });

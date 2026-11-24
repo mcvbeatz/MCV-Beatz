@@ -1,0 +1,849 @@
+{
+  "date": "2026-11-23T16:37:52.455Z",
+  "results": [
+    {
+      "mode": "ffa",
+      "condition": {
+        "rtt": 0
+      },
+      "prediction": false,
+      "inputToDrawMs": [
+        98.10000000000582,
+        137.29999999998836,
+        120.29999999998836,
+        103.20000000001164
+      ],
+      "diagnostics": {
+        "seconds": 4.9845999999999915,
+        "receivedJsonBytes": 77240,
+        "receivedJsonBytesPerMinute": 929743.6103197865,
+        "snapshotsPerSecond": 10.030895157083835,
+        "renderFps": 59.60145291083859,
+        "snapshotAgeMs": 36.5,
+        "resyncs": 0,
+        "timings": {
+          "renderMs": {
+            "count": 297,
+            "mean": 0.6387205387202349,
+            "p95": 1.7999999999883585,
+            "max": 2.3999999999941792
+          },
+          "receiveMs": {
+            "count": 51,
+            "mean": 0.909803921568228,
+            "p95": 1.6000000000058208,
+            "max": 2.6000000000058208
+          },
+          "snapshotIntervalMs": {
+            "count": 49,
+            "mean": 99.27551020408163,
+            "p95": 103.39999999999418,
+            "max": 109.60000000000582
+          },
+          "roundTripMs": {
+            "count": 1,
+            "mean": 15.200000000011642,
+            "p95": 15.200000000011642,
+            "max": 15.200000000011642
+          }
+        }
+      },
+      "phase": "battle",
+      "server": {
+        "seconds": 4.987221725,
+        "playerSeconds": 4.999999999999998,
+        "roomSeconds": 4.999999999999998,
+        "snapshots": 50,
+        "serializedBytes": 77278,
+        "deltaFrames": 50,
+        "wireBytes": 12207,
+        "roomWireBytes": 12207,
+        "timings": {
+          "combatMs": {
+            "count": 151,
+            "mean": 0.2801958940397357,
+            "p95": 0.6356859999996232,
+            "max": 1.8498930000005203
+          },
+          "tickMs": {
+            "count": 151,
+            "mean": 0.5281435761589638,
+            "p95": 1.2386230000001888,
+            "max": 1.8616600000004837
+          },
+          "packMs": {
+            "count": 50,
+            "mean": 0.17338024000004226,
+            "p95": 0.25436199999967357,
+            "max": 0.26308500000050117
+          },
+          "encodeMs": {
+            "count": 50,
+            "mean": 0.3836221599998862,
+            "p95": 0.5353349999995771,
+            "max": 0.8712709999999788
+          },
+          "fullSnapshotBytes": {
+            "count": 50,
+            "mean": 6741.78,
+            "p95": 6974,
+            "max": 6981
+          },
+          "snapshotBytes": {
+            "count": 50,
+            "mean": 1544.8,
+            "p95": 2028,
+            "max": 2114
+          },
+          "sendCompletionMs": {
+            "count": 51,
+            "mean": 0.6263197843136368,
+            "p95": 1.4732169999997495,
+            "max": 4.061085000000276
+          },
+          "serializeMs": {
+            "count": 1,
+            "mean": 0.012017999999443418,
+            "p95": 0.012017999999443418,
+            "max": 0.012017999999443418
+          }
+        },
+        "wireBytesPerPlayerMinute": 146484.00000000006,
+        "snapshotsPerSecond": 10.000000000000004,
+        "cpuMs": 289.685,
+        "cpuMsPerSecond": 58.08544636142079,
+        "eventLoopUtilization": 0.05066436584739904,
+        "eventLoopDelayMs": {
+          "mean": 20.11301829959514,
+          "p95": 20.889599,
+          "max": 21.905407
+        }
+      },
+      "errors": []
+    },
+    {
+      "mode": "ffa",
+      "condition": {
+        "rtt": 40
+      },
+      "prediction": false,
+      "inputToDrawMs": [
+        112.80000000001746,
+        120.39999999999418,
+        171.10000000000582,
+        184.10000000000582
+      ],
+      "diagnostics": {
+        "seconds": 4.9652999999999885,
+        "receivedJsonBytes": 76737,
+        "receivedJsonBytesPerMinute": 927279.3184701853,
+        "snapshotsPerSecond": 10.0698850019133,
+        "renderFps": 59.599315413268805,
+        "snapshotAgeMs": 81,
+        "resyncs": 0,
+        "timings": {
+          "receiveMs": {
+            "count": 51,
+            "mean": 0.8745098039182588,
+            "p95": 1.3999999999941792,
+            "max": 2.2999999999883585
+          },
+          "renderMs": {
+            "count": 296,
+            "mean": 0.6753378378386048,
+            "p95": 1.7999999999883585,
+            "max": 3.5
+          },
+          "snapshotIntervalMs": {
+            "count": 49,
+            "mean": 99.6734693877551,
+            "p95": 117.5,
+            "max": 118.70000000001164
+          },
+          "roundTripMs": {
+            "count": 1,
+            "mean": 52.70000000001164,
+            "p95": 52.70000000001164,
+            "max": 52.70000000001164
+          }
+        }
+      },
+      "phase": "battle",
+      "server": {
+        "seconds": 4.966547013,
+        "playerSeconds": 4.985999999999997,
+        "roomSeconds": 4.985999999999997,
+        "snapshots": 50,
+        "serializedBytes": 76780,
+        "deltaFrames": 50,
+        "wireBytes": 12001,
+        "roomWireBytes": 12001,
+        "timings": {
+          "combatMs": {
+            "count": 150,
+            "mean": 0.2363642866666972,
+            "p95": 0.3674030000001949,
+            "max": 0.9855429999988701
+          },
+          "tickMs": {
+            "count": 150,
+            "mean": 0.46191875999995924,
+            "p95": 1.0258630000007543,
+            "max": 1.604354000000967
+          },
+          "packMs": {
+            "count": 50,
+            "mean": 0.17681016000002273,
+            "p95": 0.25560399999994843,
+            "max": 0.44479900000078487
+          },
+          "encodeMs": {
+            "count": 50,
+            "mean": 0.35541170000011335,
+            "p95": 0.5043289999994158,
+            "max": 0.7246099999993021
+          },
+          "fullSnapshotBytes": {
+            "count": 50,
+            "mean": 6751.58,
+            "p95": 6982,
+            "max": 6990
+          },
+          "snapshotBytes": {
+            "count": 50,
+            "mean": 1534.82,
+            "p95": 2051,
+            "max": 2121
+          },
+          "sendCompletionMs": {
+            "count": 51,
+            "mean": 0.6489556274511914,
+            "p95": 2.1028339999975287,
+            "max": 3.8462060000001657
+          },
+          "serializeMs": {
+            "count": 1,
+            "mean": 0.009313999998994404,
+            "p95": 0.009313999998994404,
+            "max": 0.009313999998994404
+          }
+        },
+        "wireBytesPerPlayerMinute": 144416.36582430816,
+        "snapshotsPerSecond": 10.028078620136387,
+        "cpuMs": 284.212,
+        "cpuMsPerSecond": 57.22527125104655,
+        "eventLoopUtilization": 0.04855494168470206,
+        "eventLoopDelayMs": {
+          "mean": 20.15028035918367,
+          "p95": 20.922367,
+          "max": 21.757951
+        }
+      },
+      "errors": []
+    },
+    {
+      "mode": "ffa",
+      "condition": {
+        "rtt": 80
+      },
+      "prediction": false,
+      "inputToDrawMs": [
+        168,
+        136.5,
+        121.10000000000582,
+        114.60000000000582
+      ],
+      "diagnostics": {
+        "seconds": 4.9717999999999885,
+        "receivedJsonBytes": 73438,
+        "receivedJsonBytesPerMinute": 886254.4752403577,
+        "snapshotsPerSecond": 10.056719900237361,
+        "renderFps": 59.599315413268826,
+        "snapshotAgeMs": 20.5,
+        "resyncs": 0,
+        "timings": {
+          "renderMs": {
+            "count": 296,
+            "mean": 0.6324324324319801,
+            "p95": 1.8000000000174623,
+            "max": 2.1000000000058208
+          },
+          "receiveMs": {
+            "count": 51,
+            "mean": 0.8705882352957155,
+            "p95": 1.6999999999825377,
+            "max": 1.900000000023283
+          },
+          "snapshotIntervalMs": {
+            "count": 49,
+            "mean": 99.6816326530611,
+            "p95": 114.5,
+            "max": 120.39999999999418
+          },
+          "roundTripMs": {
+            "count": 1,
+            "mean": 83.60000000000582,
+            "p95": 83.60000000000582,
+            "max": 83.60000000000582
+          }
+        }
+      },
+      "phase": "battle",
+      "server": {
+        "seconds": 4.973126208000002,
+        "playerSeconds": 4.9769999999999985,
+        "roomSeconds": 4.9769999999999985,
+        "snapshots": 50,
+        "serializedBytes": 73477,
+        "deltaFrames": 50,
+        "wireBytes": 10067,
+        "roomWireBytes": 10067,
+        "timings": {
+          "combatMs": {
+            "count": 150,
+            "mean": 0.21774869333348762,
+            "p95": 0.3607429999974556,
+            "max": 1.0317420000028505
+          },
+          "packMs": {
+            "count": 50,
+            "mean": 0.15317551999993156,
+            "p95": 0.2368769999993674,
+            "max": 0.33300099999905797
+          },
+          "encodeMs": {
+            "count": 50,
+            "mean": 0.3946429000003263,
+            "p95": 0.6762280000002647,
+            "max": 1.5569719999984954
+          },
+          "fullSnapshotBytes": {
+            "count": 50,
+            "mean": 6687.44,
+            "p95": 6906,
+            "max": 6924
+          },
+          "snapshotBytes": {
+            "count": 50,
+            "mean": 1468.76,
+            "p95": 1841,
+            "max": 1873
+          },
+          "tickMs": {
+            "count": 150,
+            "mean": 0.45349827333324355,
+            "p95": 1.0496399999974528,
+            "max": 2.061099999998987
+          },
+          "sendCompletionMs": {
+            "count": 51,
+            "mean": 0.6131325490199493,
+            "p95": 2.2797390000014275,
+            "max": 2.8919800000003306
+          },
+          "serializeMs": {
+            "count": 1,
+            "mean": 0.012258999999176012,
+            "p95": 0.012258999999176012,
+            "max": 0.012258999999176012
+          }
+        },
+        "wireBytesPerPlayerMinute": 121362.2664255576,
+        "snapshotsPerSecond": 10.046212577858151,
+        "cpuMs": 246.806,
+        "cpuMsPerSecond": 49.62793817759469,
+        "eventLoopUtilization": 0.04238875347036672,
+        "eventLoopDelayMs": {
+          "mean": 20.166931853061225,
+          "p95": 20.856831,
+          "max": 23.576575
+        }
+      },
+      "errors": []
+    },
+    {
+      "mode": "ffa",
+      "condition": {
+        "rtt": 150
+      },
+      "prediction": false,
+      "inputToDrawMs": [
+        268.1000000000058,
+        217.10000000000582,
+        251.5,
+        283.80000000001746
+      ],
+      "diagnostics": {
+        "seconds": 4.968699999999982,
+        "receivedJsonBytes": 71798,
+        "receivedJsonBytesPerMinute": 867003.441544069,
+        "snapshotsPerSecond": 10.062994344597215,
+        "renderFps": 59.60051546391742,
+        "snapshotAgeMs": 51.79999999998836,
+        "resyncs": 0,
+        "timings": {
+          "renderMs": {
+            "count": 296,
+            "mean": 0.641554054054231,
+            "p95": 1.7999999999883585,
+            "max": 2.2000000000116415
+          },
+          "receiveMs": {
+            "count": 51,
+            "mean": 0.8745098039205415,
+            "p95": 1.2999999999883585,
+            "max": 2.3999999999941792
+          },
+          "snapshotIntervalMs": {
+            "count": 49,
+            "mean": 99.34693877551021,
+            "p95": 117.70000000001164,
+            "max": 120.39999999999418
+          },
+          "roundTripMs": {
+            "count": 1,
+            "mean": 152.40000000002328,
+            "p95": 152.40000000002328,
+            "max": 152.40000000002328
+          }
+        }
+      },
+      "phase": "battle",
+      "server": {
+        "seconds": 4.970819270999996,
+        "playerSeconds": 4.943999999999996,
+        "roomSeconds": 4.943999999999996,
+        "snapshots": 50,
+        "serializedBytes": 71673,
+        "deltaFrames": 50,
+        "wireBytes": 10078,
+        "roomWireBytes": 10078,
+        "timings": {
+          "combatMs": {
+            "count": 149,
+            "mean": 0.2714309261743786,
+            "p95": 0.4045190000033472,
+            "max": 1.0096489999996265
+          },
+          "tickMs": {
+            "count": 149,
+            "mean": 0.5928647181206409,
+            "p95": 1.353426000001491,
+            "max": 5.851622000001953
+          },
+          "packMs": {
+            "count": 50,
+            "mean": 0.3481334400000196,
+            "p95": 0.5183400000023539,
+            "max": 4.636335000002873
+          },
+          "encodeMs": {
+            "count": 50,
+            "mean": 0.4483203799993498,
+            "p95": 0.6187110000028042,
+            "max": 0.6830569999983709
+          },
+          "fullSnapshotBytes": {
+            "count": 50,
+            "mean": 6667.42,
+            "p95": 6886,
+            "max": 6916
+          },
+          "snapshotBytes": {
+            "count": 50,
+            "mean": 1432.68,
+            "p95": 1732,
+            "max": 1871
+          },
+          "sendCompletionMs": {
+            "count": 51,
+            "mean": 0.5024044509806188,
+            "p95": 1.7165319999985513,
+            "max": 2.1140900000027614
+          },
+          "serializeMs": {
+            "count": 1,
+            "mean": 0.018207999994046986,
+            "p95": 0.018207999994046986,
+            "max": 0.018207999994046986
+          }
+        },
+        "wireBytesPerPlayerMinute": 122305.82524271854,
+        "snapshotsPerSecond": 10.113268608414247,
+        "cpuMs": 269.991,
+        "cpuMsPerSecond": 54.315191376025425,
+        "eventLoopUtilization": 0.04886087340299399,
+        "eventLoopDelayMs": {
+          "mean": 20.134737170731707,
+          "p95": 20.873215,
+          "max": 22.183935
+        }
+      },
+      "errors": []
+    },
+    {
+      "mode": "ffa",
+      "condition": {
+        "rtt": 250
+      },
+      "prediction": false,
+      "inputToDrawMs": [
+        350.20000000001164,
+        354.69999999998254,
+        300.80000000001746,
+        352.4000000000233
+      ],
+      "diagnostics": {
+        "seconds": 4.983,
+        "receivedJsonBytes": 76794,
+        "receivedJsonBytesPerMinute": 924671.8844069839,
+        "snapshotsPerSecond": 10.034115994380896,
+        "renderFps": 59.601452910838596,
+        "snapshotAgeMs": 67.60000000000582,
+        "resyncs": 0,
+        "timings": {
+          "renderMs": {
+            "count": 297,
+            "mean": 0.6797979797976662,
+            "p95": 1.7999999999883585,
+            "max": 2.8000000000174623
+          },
+          "receiveMs": {
+            "count": 51,
+            "mean": 0.8999999999993152,
+            "p95": 1.2000000000116415,
+            "max": 2.1000000000058208
+          },
+          "snapshotIntervalMs": {
+            "count": 49,
+            "mean": 99.30408163265294,
+            "p95": 120,
+            "max": 125.69999999998254
+          },
+          "roundTripMs": {
+            "count": 1,
+            "mean": 251.60000000000582,
+            "p95": 251.60000000000582,
+            "max": 251.60000000000582
+          }
+        }
+      },
+      "phase": "battle",
+      "server": {
+        "seconds": 4.983920051000001,
+        "playerSeconds": 5.001000000000002,
+        "roomSeconds": 5.001000000000002,
+        "snapshots": 51,
+        "serializedBytes": 78294,
+        "deltaFrames": 51,
+        "wireBytes": 12541,
+        "roomWireBytes": 12541,
+        "timings": {
+          "combatMs": {
+            "count": 151,
+            "mean": 0.2232307019870534,
+            "p95": 0.36574000000109663,
+            "max": 0.7626469999959227
+          },
+          "packMs": {
+            "count": 51,
+            "mean": 0.15545576470621575,
+            "p95": 0.25947000000451226,
+            "max": 0.30546899999899324
+          },
+          "encodeMs": {
+            "count": 51,
+            "mean": 0.3496095490189356,
+            "p95": 0.5022249999965425,
+            "max": 0.7103289999940898
+          },
+          "fullSnapshotBytes": {
+            "count": 51,
+            "mean": 6829.019607843137,
+            "p95": 7500,
+            "max": 7659
+          },
+          "snapshotBytes": {
+            "count": 51,
+            "mean": 1534.4313725490197,
+            "p95": 2171,
+            "max": 2277
+          },
+          "tickMs": {
+            "count": 151,
+            "mean": 0.44534299999960414,
+            "p95": 1.0229289999988396,
+            "max": 1.2413680000026943
+          },
+          "sendCompletionMs": {
+            "count": 52,
+            "mean": 0.5615319230768924,
+            "p95": 2.2881219999981113,
+            "max": 3.844963999996253
+          },
+          "serializeMs": {
+            "count": 1,
+            "mean": 0.013471000005665701,
+            "p95": 0.013471000005665701,
+            "max": 0.013471000005665701
+          }
+        },
+        "wireBytesPerPlayerMinute": 150461.90761847625,
+        "snapshotsPerSecond": 10.197960407918412,
+        "cpuMs": 232.692,
+        "cpuMsPerSecond": 46.68854990025601,
+        "eventLoopUtilization": 0.04166429170094329,
+        "eventLoopDelayMs": {
+          "mean": 20.164160259109313,
+          "p95": 20.905983,
+          "max": 22.478847
+        }
+      },
+      "errors": []
+    },
+    {
+      "mode": "ffa",
+      "condition": {
+        "rtt": 150,
+        "jitter": 50
+      },
+      "prediction": false,
+      "inputToDrawMs": [
+        353,
+        315.8999999999942,
+        285.6000000000058,
+        254
+      ],
+      "diagnostics": {
+        "seconds": 4.994200000000012,
+        "receivedJsonBytes": 61210,
+        "receivedJsonBytesPerMinute": 735373.0327179511,
+        "snapshotsPerSecond": 10.011613471627063,
+        "renderFps": 60.001605394124184,
+        "snapshotAgeMs": 132.10000000000582,
+        "resyncs": 0,
+        "timings": {
+          "renderMs": {
+            "count": 299,
+            "mean": 0.66421404682247,
+            "p95": 2,
+            "max": 3.7000000000116415
+          },
+          "receiveMs": {
+            "count": 51,
+            "mean": 0.8392156862737109,
+            "p95": 1.1999999999825377,
+            "max": 1.8000000000174623
+          },
+          "snapshotIntervalMs": {
+            "count": 49,
+            "mean": 97.56938775510193,
+            "p95": 180.69999999998254,
+            "max": 185.89999999999418
+          },
+          "roundTripMs": {
+            "count": 1,
+            "mean": 199.69999999998254,
+            "p95": 199.69999999998254,
+            "max": 199.69999999998254
+          }
+        }
+      },
+      "phase": "battle",
+      "server": {
+        "seconds": 4.995702163999995,
+        "playerSeconds": 5.006999999999997,
+        "roomSeconds": 5.006999999999997,
+        "snapshots": 50,
+        "serializedBytes": 61225,
+        "deltaFrames": 50,
+        "wireBytes": 6031,
+        "roomWireBytes": 6031,
+        "timings": {
+          "combatMs": {
+            "count": 151,
+            "mean": 0.2040429139073336,
+            "p95": 0.2586589999991702,
+            "max": 1.8262370000011288
+          },
+          "tickMs": {
+            "count": 151,
+            "mean": 0.42833596026451276,
+            "p95": 0.9350969999941299,
+            "max": 5.023267999997188
+          },
+          "packMs": {
+            "count": 50,
+            "mean": 0.13532363999940572,
+            "p95": 0.21909999999479624,
+            "max": 0.26170400000410154
+          },
+          "encodeMs": {
+            "count": 50,
+            "mean": 0.30436376000041493,
+            "p95": 0.39535500000056345,
+            "max": 0.5332420000049751
+          },
+          "fullSnapshotBytes": {
+            "count": 50,
+            "mean": 6324.56,
+            "p95": 6398,
+            "max": 6417
+          },
+          "snapshotBytes": {
+            "count": 50,
+            "mean": 1223.74,
+            "p95": 1422,
+            "max": 1469
+          },
+          "sendCompletionMs": {
+            "count": 51,
+            "mean": 0.49830401960835113,
+            "p95": 1.4902930000025663,
+            "max": 4.177816000003077
+          },
+          "serializeMs": {
+            "count": 1,
+            "mean": 0.008241999996243976,
+            "p95": 0.008241999996243976,
+            "max": 0.008241999996243976
+          }
+        },
+        "wireBytesPerPlayerMinute": 72270.82085080892,
+        "snapshotsPerSecond": 9.986019572598368,
+        "cpuMs": 220.097,
+        "cpuMsPerSecond": 44.05727018437207,
+        "eventLoopUtilization": 0.04011820568980105,
+        "eventLoopDelayMs": {
+          "mean": 20.19541125203252,
+          "p95": 20.987903,
+          "max": 24.526847
+        }
+      },
+      "errors": []
+    },
+    {
+      "mode": "ffa",
+      "condition": {
+        "rtt": 80,
+        "dropEvery": 13,
+        "stallEvery": 17
+      },
+      "prediction": false,
+      "inputToDrawMs": [
+        182.59999999997672,
+        453.5,
+        285.79999999998836
+      ],
+      "diagnostics": {
+        "seconds": 5.0145,
+        "receivedJsonBytes": 55697,
+        "receivedJsonBytesPerMinute": 666431.3490876459,
+        "snapshotsPerSecond": 4.7861202512713135,
+        "renderFps": 59.00236009440375,
+        "snapshotAgeMs": 27.70000000001164,
+        "resyncs": 5,
+        "timings": {
+          "renderMs": {
+            "count": 295,
+            "mean": 0.8227118644052406,
+            "p95": 2,
+            "max": 12.699999999982538
+          },
+          "receiveMs": {
+            "count": 48,
+            "mean": 0.5333333333310293,
+            "p95": 1.2999999999883585,
+            "max": 1.3999999999941792
+          },
+          "snapshotIntervalMs": {
+            "count": 23,
+            "mean": 208.16956521739104,
+            "p95": 614,
+            "max": 1312.7999999999884
+          },
+          "roundTripMs": {
+            "count": 1,
+            "mean": 120.19999999998254,
+            "p95": 120.19999999998254,
+            "max": 120.19999999998254
+          }
+        }
+      },
+      "phase": "battle",
+      "server": {
+        "seconds": 5.016877723000005,
+        "playerSeconds": 5.019999999999996,
+        "roomSeconds": 5.019999999999996,
+        "snapshots": 50,
+        "serializedBytes": 102090,
+        "deltaFrames": 45,
+        "resyncs": 5,
+        "keyframes": 5,
+        "wireBytes": 12287,
+        "roomWireBytes": 12287,
+        "timings": {
+          "combatMs": {
+            "count": 151,
+            "mean": 0.22103127814577436,
+            "p95": 0.37211999999999534,
+            "max": 0.888106999998854
+          },
+          "tickMs": {
+            "count": 151,
+            "mean": 0.45551349006646036,
+            "p95": 1.0636200000008103,
+            "max": 1.5160809999943012
+          },
+          "packMs": {
+            "count": 50,
+            "mean": 0.17402672000054736,
+            "p95": 0.3451389999972889,
+            "max": 0.49114900000131456
+          },
+          "encodeMs": {
+            "count": 50,
+            "mean": 0.35089330000002517,
+            "p95": 0.45028699999966193,
+            "max": 0.5234569999956875
+          },
+          "fullSnapshotBytes": {
+            "count": 50,
+            "mean": 6866.78,
+            "p95": 7136,
+            "max": 7149
+          },
+          "snapshotBytes": {
+            "count": 50,
+            "mean": 2041.04,
+            "p95": 6977,
+            "max": 7100
+          },
+          "sendCompletionMs": {
+            "count": 51,
+            "mean": 0.6213853137254345,
+            "p95": 1.7147299999996903,
+            "max": 5.762967000002391
+          },
+          "serializeMs": {
+            "count": 1,
+            "mean": 0.008952999996836297,
+            "p95": 0.008952999996836297,
+            "max": 0.008952999996836297
+          }
+        },
+        "wireBytesPerPlayerMinute": 146856.5737051794,
+        "snapshotsPerSecond": 9.960159362549808,
+        "cpuMs": 274.882,
+        "cpuMsPerSecond": 54.79144902013386,
+        "eventLoopUtilization": 0.053420521111155105,
+        "eventLoopDelayMs": {
+          "mean": 20.32038920325203,
+          "p95": 21.102591,
+          "max": 45.744127
+        }
+      },
+      "errors": []
+    }
+  ]
+}

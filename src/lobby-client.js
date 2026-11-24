@@ -1,3 +1,8 @@
+import {
+  MovementPrediction,
+  MOVEMENT_PREDICTION,
+  predictionRequested,
+} from "./movement-prediction.js";
 import { SNAPSHOT_CODEC, SnapshotDecoder } from "./snapshot-delta.js";
 import { ClientNetworkDiagnostics } from "./network-diagnostics.js";
 import { LOBBY_PROTOCOL } from "./multiplayer-protocol.js";
@@ -15,6 +20,7 @@ export class LobbyClient {
     this.closed = false;
     this.decoder = new SnapshotDecoder();
     this.diagnostics = new ClientNetworkDiagnostics();
+    this.prediction = new MovementPrediction(this.diagnostics);
   }
   async connect(
     mode,
@@ -82,6 +88,9 @@ export class LobbyClient {
         token,
         guest,
         snapshotCodec: SNAPSHOT_CODEC,
+        movementPrediction: !predictionRequested()
+          ? undefined
+          : MOVEMENT_PREDICTION,
         ...profile,
       });
     this.socket.onmessage = (event) => {
@@ -96,6 +105,10 @@ export class LobbyClient {
         if (msg.kind === "identity") {
           if (!this.checkProtocol(msg)) return;
           this.userId = msg.userId;
+          this.prediction.enabled =
+            msg.movementPrediction === MOVEMENT_PREDICTION &&
+            predictionRequested();
+          this.prediction.clear();
           this.decoder.reset();
           this.lastResync = null;
           return;
@@ -141,6 +154,7 @@ export class LobbyClient {
       }
     };
     this.socket.onclose = (event) => {
+      this.prediction.clear();
       clearInterval(this.pingTimer);
       clearInterval(this.directoryTimer);
       this.directoryTimer = null;
@@ -210,6 +224,7 @@ export class LobbyClient {
   }
   send(message) {
     if (this.closed) return;
+    if (message.kind === "neutral") this.prediction.clear();
     if (this.local) {
       try {
         this.room?.command(this.userId, message);
@@ -219,15 +234,29 @@ export class LobbyClient {
     } else if (this.socket?.readyState === 1)
       this.socket.send(JSON.stringify(message));
   }
-  move(x, y) {
+  move(x, y, dt = 0) {
     const now = performance.now();
-    if (now - (this.lastMove || 0) < 45) return;
-    this.lastMove = now;
-    this.send({ kind: "move", x, y });
+    if ((x || y) && !(this.previousInput?.x || this.previousInput?.y))
+      this.diagnostics.armMovement();
+    this.previousInput = { x, y };
+    const predict = this.prediction.enabled;
+    if (predict) this.prediction.setInput(x, y);
+    const released =
+      x === 0 && y === 0 && (this.lastVector?.x || this.lastVector?.y);
+    if (now - (this.lastMove || 0) >= 45 || released) {
+      this.lastMove = now;
+      this.lastVector = { x, y };
+      this.send({
+        kind: "move",
+        ...(predict ? this.prediction.command() : { x, y }),
+      });
+    }
+    if (predict) this.prediction.advance(dt, now);
   }
   close() {
     this.send({ kind: "leave" });
     this.closed = true;
+    this.prediction.clear();
     clearInterval(this.timer);
     clearInterval(this.pingTimer);
     clearInterval(this.directoryTimer);
