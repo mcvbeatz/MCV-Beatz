@@ -55,7 +55,7 @@ test("The original No Escape recording plays once at native speed only for Survi
   const paused = await page.evaluate(() => __app.sound.track.currentTime);
   await page.waitForTimeout(250);
   expect(await page.evaluate(() => __app.sound.track.currentTime)).toBe(paused);
-  await page.locator("#overlay-play").click();
+  await page.locator("#battle-settings-dialog [data-resume]").click();
   await expect
     .poll(() => page.evaluate(() => __app.sound.track.currentTime))
     .toBeGreaterThan(paused + 0.1);
@@ -164,7 +164,7 @@ test("Survive the Night music starts during the countdown and never restarts aft
   await expect
     .poll(() => page.evaluate(() => __app.sound.track.paused))
     .toBe(true);
-  await page.locator("#overlay-play").click();
+  await page.locator("#battle-settings-dialog [data-resume]").click();
   await expect
     .poll(() => page.evaluate(() => __app.sound.track.currentTime))
     .toBeGreaterThan(duringCountdown);

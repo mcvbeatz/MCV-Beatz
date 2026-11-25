@@ -86,6 +86,14 @@ export class AccountService {
     });
     if (error) throw error;
   }
+  async newEmail(email) {
+    if (!this.user) throw new Error("Sign in to change your email.");
+    const { error } = await this.require().auth.updateUser(
+      { email },
+      { emailRedirectTo: new URL("./", location.href).href },
+    );
+    if (error) throw error;
+  }
   async newPassword(password) {
     const { error } = await this.require().auth.updateUser({ password });
     if (error) throw error;

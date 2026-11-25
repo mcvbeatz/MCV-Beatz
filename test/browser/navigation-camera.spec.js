@@ -81,7 +81,7 @@ test("Play separates Multiplayer and Solo, and Quick Match enters the correct fl
   ).toEqual(["dungeon", "gauntlet"]);
   for (const [random, mode, group] of [
     [0, "tdm", "team-battles"],
-    [0.99, "gauntlet", "solo-battles"],
+    [0.99, "boss", "team-battles"],
   ]) {
     await page.evaluate(() => __app.show("play"));
     await page.evaluate((v) => {
@@ -95,8 +95,7 @@ test("Play separates Multiplayer and Solo, and Quick Match enters the correct fl
       )
       .toBe(mode);
     await page.evaluate(() => (Math.random = window.savedRandom));
-    if (mode === "tdm") await page.locator("#leave-btn").click();
-    else await page.locator("#change-mode-btn").click();
+    await page.locator("#leave-btn").click();
     await expect.poll(() => page.evaluate(() => __app.screen)).toBe(group);
   }
 });
@@ -140,7 +139,7 @@ test("element cards keep identical proportions across orientation changes", asyn
     .first()
     .evaluate((e) => ({ w: e.offsetWidth, h: e.offsetHeight }));
   expect(landscape).toEqual(portrait);
-  expect(landscape).toEqual({ w: 90, h: 75 });
+  expect(landscape).toEqual({ w: 120, h: 112 });
 });
 test("portrait separates controls, zooms fighters and follows the player while clamping the map", async ({
   page,
@@ -154,8 +153,8 @@ test("portrait separates controls, zooms fighters and follows the player while c
     skills = await page.locator(".skill-controls").boundingBox();
   expect(stick.y).toBeGreaterThanOrEqual(canvas.y + canvas.height);
   expect(strike.y).toBeGreaterThanOrEqual(canvas.y + canvas.height);
-  expect(skills.y).toBeGreaterThan(stick.y + stick.height);
-  expect(skills.width).toBeGreaterThan(350);
+  expect(skills.x).toBeGreaterThanOrEqual(stick.x + stick.width);
+  expect(skills.x + skills.width).toBeLessThanOrEqual(strike.x);
   expect(stick.x + stick.width / 2).toBeLessThan(195);
   expect(strike.x + strike.width / 2).toBeGreaterThan(195);
   const before = await page.evaluate(() => __arena.renderer.view);

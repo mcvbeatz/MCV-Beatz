@@ -235,7 +235,7 @@ test("War pauses, resumes and restarts Don't Let Up, then uses the team outcome 
   await page.evaluate(() => {
     __app.sound.track.currentTime = 40;
   });
-  await page.locator("#overlay-play").click();
+  await page.locator("#battle-settings-dialog [data-resume]").click();
   await expect
     .poll(() => page.evaluate(() => __app.sound.track.currentTime))
     .toBeGreaterThan(40);

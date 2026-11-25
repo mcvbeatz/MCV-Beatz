@@ -1,4 +1,5 @@
 import { test, expect } from "@playwright/test";
+import { signedTestAccount } from "./local-lobby-service.js";
 import { createLobbyServer } from "../../server/index.js";
 let service, url;
 test.beforeAll(async () => {
@@ -47,7 +48,7 @@ async function ready(page, id = null) {
       };
     }, id);
 }
-test("lobby has four controls beside movement, hidden settings, maximum seats, and selectable forms/cosmetics", async ({
+test("lobby has four controls beside movement, hidden player-settings panel, maximum seats, and selectable forms/cosmetics", async ({
   page,
 }) => {
   await ready(page);
@@ -86,6 +87,8 @@ test("lobby has four controls beside movement, hidden settings, maximum seats, a
   await page.locator('[data-lobby-tab="cosmetics"]').click();
   await expect(page.locator('[data-cosmetic="aura"]')).toBeVisible();
   await page.locator("#leave-btn").click();
+  await signedTestAccount(page);
+  await page.evaluate(() => { __app.account.client.auth.updateUser = async () => ({error:null}); });
   await page.evaluate(() => __app.show("account"));
   await page.locator(".profile-name").click();
   await page.locator('[data-default="earth"]').click();
@@ -498,6 +501,7 @@ test("Quick Match joins an open online room and all guest multiplayer quick lobb
     expect(await b.evaluate(() => __app.lobby.state.roomId)).toBe(
       await a.evaluate(() => __app.lobby.state.roomId),
     );
+    await a.evaluate(() => __app.show("play"));
     await b.evaluate(() => (__app.account.user = null));
     const modes = [
       "tdm",
@@ -517,7 +521,7 @@ test("Quick Match joins an open online room and all guest multiplayer quick lobb
       await b.evaluate(async (i) => {
         await __app.show("play");
         const original = Math.random;
-        Math.random = () => (i + 0.1) / 14;
+        Math.random = () => (i + 0.1) / 12;
         document.querySelector("#quick-match").click();
         Math.random = original;
       }, i);

@@ -169,15 +169,15 @@ export function createLobbyServer({
             });
           } else {
             const action = msg.action || "auto";
-            if (!["auto", "create", "join"].includes(action))
+            if (!["auto", "quick", "create", "join"].includes(action))
               throw new Error("Unknown lobby action");
             let room =
               action === "join"
                 ? rooms.get(msg.roomId)
-                : action === "auto"
+                : ["auto", "quick"].includes(action)
                   ? [...rooms.values()].find(
                       (r) =>
-                        r.mode === msg.mode &&
+                        (action === "quick" || r.mode === msg.mode) &&
                         r.phase === "lobby" &&
                         r.members.size < r.capacity,
                     )
