@@ -12,7 +12,7 @@
 
 ## Deployment
 
-These changes are prepared in the repository; they have not been published as part of this update.
+The owner approved v0.66.0 publication on 2026-11-25. Source was merged into main and its build was pushed to gh-pages; the workspace could not verify the hosted Render rollout.
 
 Deploy the new Render server before publishing the client so global Quick Match is available. Old clients still work with the updated server; protocol remains 4, delta snapshots and movement prediction are unchanged. A previous server rejects the new `quick` action rather than silently creating an unrelated room.
 
@@ -26,3 +26,14 @@ Publish the tested Pages build using the existing deployment script when the rel
 - 66 relevant Chromium browser scenarios passed across the regression suite and focused reruns. Coverage includes guest gating, managed account confirmations/errors, signed-in cosmetics, persisted settings, both orientations/layouts, 44-pixel modal controls, all 25 elemental profiles, two-client lobbies, music pause/resume, progression and camera/touch interactions.
 - `npm run build`: production build passed.
 - Browser account tests use a mock Supabase client; they do not send real email or change a real user's password. Physical iPhone testing and hosted email delivery remain owner-side checks after deployment approval.
+
+
+## v0.66.1 layout corrections
+
+- Reduce setup typography, spacing and card sizes. Portrait keeps the illustrated profile and full kit together; short portrait places passives alongside comparison bars. Landscape places the carousel beside the profile, with artwork, abilities and comparisons in separate columns. All information remains available, with overflow scrolling retained as an accessibility fallback for unusually small viewports or enlarged text.
+- Use logical app container dimensions rather than physical-screen media queries, so Auto-Rotation and forced orientations use the same setup layout.
+- Give native settings selects explicit 44px height, 16px text, normal line height and zero vertical padding to avoid cropped Safari text. Remove the Standard/Strike Cluster explanatory paragraph.
+- Rotate and constrain the battle Settings dialog explicitly: native modal dialogs enter the browser top layer and do not inherit the orientation root's transform. Lobby membership and offline pause/resume remain intact.
+- Browser regressions cover all 25 profiles at 390×844, 844×390 and 375×667, both forced rotations, touch controls, readable selects, resizing an open dialog, shared lobbies and offline resume. Tests wait for the browser's asynchronous resize/close events before checking their results.
+
+This patch is client-only. Publish the Pages build; no additional Render deployment, environment variables or Supabase migration is needed beyond the v0.66.0 server requirement above. Physical iPhone Safari verification remains a device-side check.
