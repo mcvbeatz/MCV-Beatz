@@ -33,7 +33,7 @@ for (const mode of ["turnpike", "dungeon"]) {
       await begin(page, mode);
       const id = await page.evaluate(() => __app.sound.trackId);
       expect(
-        mode === "dungeon" ? ["taking-it-back"] : ["kuuler", "obey"],
+        mode === "dungeon" ? ["taking-it-back"] : ["kuuler", "good-golly"],
       ).toContain(id);
       await page.evaluate((result) => {
         window.resultTrack = __app.sound.track;
@@ -68,7 +68,7 @@ for (const mode of ["turnpike", "dungeon"]) {
         await expect
           .poll(() => page.evaluate(() => __app.sound.trackId))
           .not.toBe(id);
-        expect(["kuuler", "obey"]).toContain(
+        expect(["kuuler", "good-golly"]).toContain(
           await page.evaluate(() => __app.sound.trackId),
         );
         await expect

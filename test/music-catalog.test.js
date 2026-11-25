@@ -52,13 +52,13 @@ test("racing alternates its two songs independently of the ordinary battle playl
   const songs = Array.from({ length: 8 }, () => racing.next());
   assert.deepEqual(songs, [
     "kuuler",
-    "obey",
+    "good-golly",
     "kuuler",
-    "obey",
+    "good-golly",
     "kuuler",
-    "obey",
+    "good-golly",
     "kuuler",
-    "obey",
+    "good-golly",
   ]);
   assert.equal(new Set(songs).size, 2);
 });

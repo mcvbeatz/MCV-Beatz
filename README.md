@@ -1,4 +1,8 @@
-# Fusion Throwdown · v0.66.0
+# Fusion Throwdown · v0.66.2
+
+## v0.66.2 Racing music
+
+- MCV- Good Golly replaces Obey in the Turnpike Racing playlist. It alternates with Kuuler and continues through results, retaining existing volume and playback behavior. No server or database changes are required.
 
 ## v0.66.0 Account access, controls and battle setup
 

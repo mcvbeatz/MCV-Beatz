@@ -4,7 +4,7 @@ export const BATTLE_TRACKS = [
   "none-other",
   "sick",
 ];
-export const RACING_TRACKS = ["kuuler", "obey"];
+export const RACING_TRACKS = ["kuuler", "good-golly"];
 export const TRACK_URLS = {
   gridiron: new URL("./assets/music/gridiron.mp3", import.meta.url).href,
   "taking-it-back": new URL(
@@ -12,7 +12,7 @@ export const TRACK_URLS = {
     import.meta.url,
   ).href,
   kuuler: new URL("./assets/music/kuuler.mp3", import.meta.url).href,
-  obey: new URL("./assets/music/obey.mp3", import.meta.url).href,
+  "good-golly": new URL("./assets/music/good-golly.mp3", import.meta.url).href,
   "dont-let-up": new URL("./assets/music/dont-let-up.mp3", import.meta.url)
     .href,
   "watch-and-learn": new URL(
