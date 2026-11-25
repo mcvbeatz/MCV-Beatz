@@ -45,7 +45,7 @@ test("Waves selection can change, waits seven seconds and freezes while paused",
   expect(await page.evaluate(() => __arena.game.rewardRemaining)).toBe(
     remaining,
   );
-  await page.locator("#pause-btn").click();
+  await page.locator("#battle-settings-dialog [data-resume]").click();
   await expect(page.locator("#wave-reward")).toBeHidden({ timeout: 8500 });
   expect(
     await page.evaluate(() => ({

@@ -9,7 +9,7 @@ export function setOrientation(value = preference) {
   preference = value;
   const w = window.innerWidth,
     h = window.innerHeight;
-  const landscape = preference === "landscape";
+  const landscape = preference === "auto" ? w >= h : preference === "landscape";
   angle = landscape && h > w ? 90 : !landscape && w > h ? -90 : 0;
   const width = landscape ? Math.max(w, h) : Math.min(w, h);
   const height = landscape ? Math.min(w, h) : Math.max(w, h);
@@ -19,7 +19,8 @@ export function setOrientation(value = preference) {
     "app-rotation": `${angle}deg`,
   }))
     document.documentElement.style.setProperty(`--${key}`, val);
-  root.dataset.orientation = preference;
+  root.dataset.orientation = landscape ? "landscape" : "portrait";
+  document.body.classList.toggle("portrait-play", !landscape);
   root.dataset.rotation = String(angle);
 }
 export const orientationAngle = () => angle;

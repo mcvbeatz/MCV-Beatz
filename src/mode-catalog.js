@@ -486,7 +486,7 @@ export const CONTROL_SLIDES = [
   ],
   [
     "Play your way",
-    "Settings controls music, SFX, orientation and hold/release or tap/tap charging. Portrait follows your fighter, with movement and Strike above the skills. Leave returns to battle setup; unfinished matches can be resumed.",
+    "Settings controls music, SFX, Auto-Rotation or a fixed orientation, Ability Charging and Ability Layout. Standard places skills between Move and Strike; Strike Cluster groups them beside and above Strike. Solo play pauses in Settings; online play continues. Leave returns to battle setup; unfinished solo matches can be resumed.",
     "⚙",
     "guides/control-settings.png",
   ],

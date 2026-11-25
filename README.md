@@ -1,4 +1,13 @@
-# Fusion Throwdown · v0.65.0
+# Fusion Throwdown · v0.66.0
+
+## v0.66.0 Account access, controls and battle setup
+
+- My Account requires sign-in before showing Overview, Stats, Elemental Mastery, Achievements or Cosmetics. Manage Account adds email/password updates alongside sign-out and account deletion.
+- Quick Match searches open multiplayer lobbies across all modes before creating a new one. Guests can still play online.
+- A larger Settings button opens the same controls as the main menu without leaving the lobby or match. Solo play pauses; online play continues with local input released.
+- Auto-Rotation follows the device. Ability Charging offers Hold & Release or Tap to Charge; Ability Layout offers Standard or Strike Cluster, with saved preferences.
+- Battle setup now has an elemental carousel, large existing character artwork, individual ability cards, passive traits and play-style comparison bars. Combat mechanics and values are unchanged.
+- [Implementation, verification and deployment notes](backend/INTERFACE-UPDATE.md). This release is prepared on a working branch, not published. Deploy Render before the client for global Quick Match; no Supabase migration or new environment variables are needed.
 
 ## v0.65.0 Music, menu sounds and sports countdowns
 

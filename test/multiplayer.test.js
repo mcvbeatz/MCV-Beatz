@@ -239,8 +239,9 @@ test("stale and explicitly released controls cancel movement and held skills", (
 });
 
 test("presentation interpolation never changes authoritative actor positions", async () => {
-  const { samplePresentation, drawNetwork } =
-    await import("../src/network-presentation.js");
+  const { samplePresentation, drawNetwork } = await import(
+    "../src/network-presentation.js"
+  );
   const g = new Combat();
   const a = g.player;
   g.presentationAt = 100;
@@ -265,8 +266,9 @@ test("presentation interpolation never changes authoritative actor positions", a
 });
 
 test("lobbies default to maximum capacity and forced forms cannot be overridden", async () => {
-  const { lobbySizes, forcedLobbyElement } =
-    await import("../src/multiplayer-protocol.js");
+  const { lobbySizes, forcedLobbyElement } = await import(
+    "../src/multiplayer-protocol.js"
+  );
   for (const mode of MULTIPLAYER_MODES) {
     const r = new LobbyRoom(mode);
     r.join("captain", "Captain", "water");
@@ -595,6 +597,58 @@ test("unauthenticated guests share online rooms with verified accounts and canno
     assert.equal(invalid.state.kind, "error");
     assert.equal(service.rooms.get(a.state.roomId).members.size, 3);
   } finally {
+    await service.close();
+  }
+});
+
+test("global Quick Match skips full/started rooms, joins a different mode and only then creates", async () => {
+  const service = createLobbyServer();
+  await new Promise((r) => service.server.listen(0, "127.0.0.1", r));
+  const sockets = [];
+  const join = async (mode, action) => {
+    const socket = new WebSocket(
+      `ws://127.0.0.1:${service.server.address().port}`,
+    );
+    sockets.push(socket);
+    await new Promise((resolve, reject) => {
+      socket.once("open", resolve);
+      socket.once("error", reject);
+    });
+    return new Promise((resolve, reject) => {
+      const timer = setTimeout(() => reject(new Error("Join timed out")), 3000);
+      socket.on("message", (raw) => {
+        const m = JSON.parse(raw);
+        if (m.kind === "error") {
+          clearTimeout(timer);
+          reject(new Error(m.message));
+        }
+        if (m.kind === "state") {
+          clearTimeout(timer);
+          resolve(m);
+        }
+      });
+      socket.send(JSON.stringify({ kind: "join", guest: true, mode, action }));
+    });
+  };
+  try {
+    const full = await join("ffa", "create");
+    const first = service.rooms.get(full.roomId);
+    first.command(first.captain, { kind: "size", size: 2 });
+    const second = await join("war", "quick");
+    assert.equal(second.roomId, full.roomId);
+    const open = await join("gridiron", "create");
+    const third = await join("ctf", "quick");
+    assert.equal(third.roomId, open.roomId);
+    assert.equal(third.mode, "gridiron");
+    const sports = service.rooms.get(open.roomId);
+    sports.command(sports.captain, { kind: "start" });
+    const fresh = await join("war", "quick");
+    assert.equal(fresh.mode, "war");
+    assert.notEqual(fresh.roomId, open.roomId);
+    assert.notEqual(fresh.roomId, full.roomId);
+    assert.equal(service.rooms.size, 3);
+  } finally {
+    sockets.forEach((s) => s.close());
     await service.close();
   }
 });

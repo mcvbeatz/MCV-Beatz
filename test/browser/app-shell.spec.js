@@ -220,6 +220,7 @@ test("portrait orientation stays upright, preserves touch movement and fits all 
     music: 0.1,
     orientation: "portrait",
     charging: "hold",
+    abilityLayout: "standard",
   });
   await page.evaluate(() => __app.chooseMode("fused3"));
   await page.locator('[data-element="demonic"]').click();
@@ -285,10 +286,8 @@ test("guest and unconfigured account views never show invented stats or usable s
   );
   await ready(page);
   await page.locator('[data-screen="account"]').click();
-  await expect(page.locator(".progress-storage")).toContainText(
-    "Sign in to save stats",
-  );
-  await page.locator("[data-auth]").click();
+  await expect(page.locator(".progress-tabs")).toHaveCount(0);
+  await expect(page.locator("#account-form")).toBeVisible();
   await expect(
     page.locator("#account-form button[type=submit]"),
   ).toBeDisabled();

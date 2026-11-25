@@ -1,4 +1,16 @@
 const shapes = {
+  healing: '<path d="M9 3h6v6h6v6h-6v6H9v-6H3V9h6Z"/>',
+  magma:
+    '<ellipse cx="12" cy="17" rx="10" ry="4"/><path d="M5 15c-3-4 4-4 1-8M12 14c-3-4 4-4 1-10M18 15c-3-4 4-4 1-8"/>',
+  portals:
+    '<ellipse cx="6" cy="12" rx="4" ry="9"/><ellipse cx="18" cy="12" rx="4" ry="9"/><path d="M7 12h10m-3-3 3 3-3 3"/>',
+  revival: '<path d="M4 10a8 8 0 1 1 0 5M4 3v7h7M12 9v8m-3-5h6"/>',
+  gravity:
+    '<ellipse cx="12" cy="12" rx="10" ry="5" transform="rotate(-35 12 12)"/><circle cx="12" cy="12" r="3"/>',
+  chasm: '<path d="m14 2-5 7 5 3-6 10M3 10l5 2m9 1 4-3M4 19l3-2"/>',
+  explosion:
+    '<path d="m12 1 2 7 6-4-3 7 6 3-8 1 2 7-6-5-6 5 2-8-6-2 7-3-2-7 6 5Z"/>',
+
   practice:
     '<circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="5"/><path d="m12 12 9-9M16 3h5v5"/>',
   trophy:

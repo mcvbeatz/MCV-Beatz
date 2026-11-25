@@ -53,6 +53,7 @@ export function createApp(api) {
     sfx: 0.6,
     music: 0.25,
     orientation: "landscape",
+    abilityLayout: "standard",
     charging: "hold",
   };
   try {
@@ -62,8 +63,10 @@ export function createApp(api) {
     for (const key of ["sfx", "music"])
       if (Number.isFinite(saved[key]))
         settings[key] = Math.max(0, Math.min(1, saved[key]));
-    if (["portrait", "landscape"].includes(saved.orientation))
+    if (["portrait", "landscape", "auto"].includes(saved.orientation))
       settings.orientation = saved.orientation;
+    if (["standard", "cluster"].includes(saved.abilityLayout))
+      settings.abilityLayout = saved.abilityLayout;
     if (["hold", "tap"].includes(saved.charging))
       settings.charging = saved.charging;
   } catch {}
@@ -178,9 +181,11 @@ export function createApp(api) {
   }
   function enterMode(id) {
     const quick = id === "random";
-    if (quick) id = PLAY_MODES[Math.floor(Math.random() * PLAY_MODES.length)];
+    if (quick)
+      id =
+        MULTIPLAYER_MODES[Math.floor(Math.random() * MULTIPLAYER_MODES.length)];
     return MULTIPLAYER_MODES.includes(id)
-      ? openLobby(id, false, { action: quick ? "auto" : "browse" })
+      ? openLobby(id, false, { action: quick ? "quick" : "browse" })
       : chooseMode(id);
   }
   async function openLobby(id, offline = false, options = {}) {
@@ -290,6 +295,7 @@ export function createApp(api) {
   }
   function receiveLobby(state, client, profile) {
     if (lobby !== client) return;
+    client.mode = state.mode;
     const member = state.members.find((m) => m.id === client.userId);
     if (!member) return;
     const old = api.game();
@@ -466,7 +472,8 @@ export function createApp(api) {
     if (
       screen === "account" &&
       store === progressionStore() &&
-      !account.recovery
+      !account.recovery &&
+      !$("manage-account-forms")
     )
       renderAccount();
     if (api.game().progressReport && matchTicket?.store === store)
@@ -515,7 +522,15 @@ export function createApp(api) {
   change.textContent = "Change mode";
   document.querySelector(".setup-panel").append(change);
   change.onclick = () => show(category);
+  const setupActions = document.createElement("div");
+  setupActions.className = "setup-actions";
+  setupActions.append(change, $("begin-btn"), resume);
+  document.querySelector(".setup-panel").append(setupActions);
   function setScreen(next) {
+    if (next !== "battle" && battleSettings.open) {
+      resumeAfterSettings = false;
+      battleSettings.close();
+    }
     if (next === "battle") dissolve.cancel();
     screen = next;
     document.body.dataset.screen = next;
@@ -585,7 +600,7 @@ export function createApp(api) {
         )}</nav><p class="shell-note">Shared battles. Six origins. Endless possibilities.</p>`;
     else if (next === "play") {
       category = "play";
-      c.innerHTML = `<div class="screen-intro"><h1>Choose your battles.</h1><p>Find your team. Face the arena alone. Or let Quick Match decide.</p></div><nav class="battle-categories"><button data-screen="team-battles"><strong>Multiplayer</strong><span>Join a lobby and face the arena together →</span></button><button data-screen="solo-battles"><strong>Solo</strong><span>Dungeon and Solo Waves →</span></button><button id="quick-match"><strong>Quick Match</strong><span>A random Multiplayer or Solo mode →</span></button></nav>`;
+      c.innerHTML = `<div class="screen-intro"><h1>Choose your battles.</h1><p>Find your team. Face the arena alone. Or let Quick Match decide.</p></div><nav class="battle-categories"><button data-screen="team-battles"><strong>Multiplayer</strong><span>Join a lobby and face the arena together →</span></button><button data-screen="solo-battles"><strong>Solo</strong><span>Dungeon and Solo Waves →</span></button><button id="quick-match"><strong>Quick Match</strong><span>Join an open multiplayer lobby →</span></button></nav>`;
       $("quick-match").onclick = () => enterMode("random");
     } else if (["team-battles", "solo-battles", "practice"].includes(next)) {
       category = next;
@@ -715,6 +730,7 @@ export function createApp(api) {
     setScreen("setup");
     sound.prepareBattle(id);
     $("setup-mode-title").textContent = MODES[id].name;
+    enableOrientedScroll(document.querySelector(".setup-panel"));
     $("setup-how").onclick = () => modeGuide(id);
     $("setup-element-guide").onclick = () => elementSlides(api.selected());
     $("resume-btn").hidden = true;
@@ -846,23 +862,71 @@ export function createApp(api) {
     if (e.key === "ArrowRight") $("slide-next").click();
     if (e.key === "ArrowLeft") $("slide-prev").click();
   });
-  function renderSettings() {
-    $("shell-content").innerHTML =
-      `<div class="screen-intro"><h1>Make it yours.</h1><p>Settings are saved on this device.</p></div><div class="settings-panel"><label for="sfx-volume">SFX volume <output id="sfx-value">${Math.round(settings.sfx * 100)}%</output></label><input id="sfx-volume" type="range" min="0" max="100" value="${settings.sfx * 100}"><label for="music-volume">Music volume <output id="music-value">${Math.round(settings.music * 100)}%</output></label><input id="music-volume" type="range" min="0" max="100" value="${settings.music * 100}"><label for="orientation-setting">Play orientation</label><select id="orientation-setting"><option value="landscape">Landscape</option><option value="portrait">Portrait</option></select><label for="charging-setting">Charging abilities</label><select id="charging-setting"><option value="hold">Hold and release</option><option value="tap">Tap to charge, tap to release</option></select><p>Orientation applies everywhere. Rock shield is always held; instant skills remain a single tap.</p></div>`;
-    $("orientation-setting").value = settings.orientation;
-    $("charging-setting").value = settings.charging;
-    $("charging-setting").onchange = (e) => {
+  const battleSettings = document.createElement("dialog");
+  battleSettings.id = "battle-settings-dialog";
+  battleSettings.setAttribute("aria-label", "Battle settings");
+  battleSettings.innerHTML =
+    '<button data-close aria-label="Close settings">×</button><div data-settings-content></div><button data-resume>Back to battle</button>';
+  document.getElementById("orientation-root").append(battleSettings);
+  let resumeAfterSettings = false;
+  function closeSettings() {
+    battleSettings.close();
+  }
+  battleSettings.querySelector("[data-close]").onclick = closeSettings;
+  battleSettings.querySelector("[data-resume]").onclick = closeSettings;
+  battleSettings.addEventListener("close", () => {
+    api.releaseInput();
+    if (resumeAfterSettings && screen === "battle") api.resume();
+    resumeAfterSettings = false;
+  });
+  function openSettings() {
+    if (battleSettings.open) return closeSettings();
+    sound.menuClick();
+    api.releaseInput();
+    resumeAfterSettings = !api.paused();
+    api.pause();
+    renderSettings(battleSettings.querySelector("[data-settings-content]"));
+    if (api.game().networked) {
+      const notice = document.createElement("p");
+      notice.textContent = "Online play continues while Settings is open.";
+      battleSettings.querySelector("[data-settings-content]").prepend(notice);
+    }
+    battleSettings.showModal();
+    enableOrientedScroll(battleSettings);
+  }
+  function renderSettings(container = $("shell-content")) {
+    const prefix = container === $("shell-content") ? "" : "battle-";
+    const control = (id) => container.querySelector(`#${prefix}${id}`);
+    container.innerHTML = `<div class="screen-intro"><h1>Make it yours.</h1><p>Settings are saved on this device.</p></div><div class="settings-panel"><label for="sfx-volume">SFX volume <output id="sfx-value">${Math.round(settings.sfx * 100)}%</output></label><input id="sfx-volume" type="range" min="0" max="100" value="${settings.sfx * 100}"><label for="music-volume">Music volume <output id="music-value">${Math.round(settings.music * 100)}%</output></label><input id="music-volume" type="range" min="0" max="100" value="${settings.music * 100}"><label for="orientation-setting">Play orientation</label><select id="orientation-setting"><option value="auto">Auto-Rotation</option><option value="landscape">Landscape</option><option value="portrait">Portrait</option></select><label for="charging-setting">Ability Charging</label><select id="charging-setting"><option value="hold">Hold &amp; Release</option><option value="tap">Tap to Charge</option></select><label for="ability-layout-setting">Ability Layout</label><select id="ability-layout-setting"><option value="standard">Standard</option><option value="cluster">Strike Cluster</option></select><p>Standard spreads abilities between Move and Strike. Strike Cluster places them beside and above Strike.</p><p>Orientation applies everywhere. Rock shield is always held; instant skills remain a single tap.</p></div>`;
+    if (prefix) {
+      container
+        .querySelectorAll("[id]")
+        .forEach((node) => (node.id = prefix + node.id));
+      container
+        .querySelectorAll("label[for]")
+        .forEach((node) => (node.htmlFor = prefix + node.htmlFor));
+    }
+    control("ability-layout-setting").value = settings.abilityLayout;
+    control("ability-layout-setting").onchange = (e) => {
+      settings.abilityLayout = e.target.value;
+      document.body.dataset.abilityLayout = settings.abilityLayout;
+      api.releaseInput();
+      saveSettings();
+    };
+    control("orientation-setting").value = settings.orientation;
+    control("charging-setting").value = settings.charging;
+    control("charging-setting").onchange = (e) => {
       settings.charging = e.target.value;
       api.releaseInput();
       saveSettings();
     };
     for (const kind of ["sfx", "music"])
-      $(`${kind}-volume`).oninput = (e) => {
+      control(`${kind}-volume`).oninput = (e) => {
         sound.volume(kind, Number(e.target.value) / 100);
-        $(`${kind}-value`).textContent = `${e.target.value}%`;
+        control(`${kind}-value`).textContent = `${e.target.value}%`;
         saveSettings();
       };
-    $("orientation-setting").onchange = (e) => {
+    control("orientation-setting").onchange = (e) => {
       settings.orientation = e.target.value;
       applyOrientation();
       saveSettings();
@@ -874,15 +938,13 @@ export function createApp(api) {
     } catch {}
   }
   function applyOrientation() {
-    document.body.classList.toggle(
-      "portrait-play",
-      settings.orientation === "portrait",
-    );
+    document.body.dataset.abilityLayout = settings.abilityLayout;
     api.orientationChanged?.(settings.orientation);
   }
   function renderAccount() {
     request++;
     if (account.recovery) return renderAuth("password");
+    if (!account.user) return renderAuth();
     enableOrientedScroll($("shell-content"));
     mountProgression($("shell-content"), progressionStore(), {
       section: accountSection,
@@ -904,9 +966,40 @@ export function createApp(api) {
     const c = $("shell-content");
     if (account.user && !account.recovery) {
       c.innerHTML =
-        '<div class="screen-intro"><h1>My Account</h1><p id="account-name"></p></div><div id="account-stats" class="stats-grid"></div><p id="account-message" role="status"></p><button id="account-signout">Sign out</button><button id="account-delete" class="danger-button">Delete Account</button><div id="account-delete-confirm" hidden><h2>Are you Sure?</h2><p>This permanently deletes your account, account progress and public stats. Guest saves are kept.</p><button id="account-delete-cancel">Cancel</button><button id="account-delete-yes" class="danger-button">Yes, Delete Account</button></div>';
+        '<div class="screen-intro"><h1>Manage Account</h1><p id="account-name"></p></div><div id="manage-account-forms"><form id="change-email-form" class="account-form"><h2>Change email</h2><label>New email<input name="email" type="email" autocomplete="email" required maxlength="254"></label><button type="submit">Update email</button><p role="status"></p></form><form id="change-password-form" class="account-form"><h2>Change password</h2><label>New password<input name="password" type="password" autocomplete="new-password" required minlength="8" maxlength="128"></label><label>Confirm new password<input name="confirmation" type="password" autocomplete="new-password" required minlength="8" maxlength="128"></label><button type="submit">Update password</button><p role="status"></p></form></div><div id="account-stats" class="stats-grid"></div><p id="account-message" role="status"></p><button id="account-signout">Sign out</button><button id="account-delete" class="danger-button">Delete Account</button><div id="account-delete-confirm" hidden><h2>Are you Sure?</h2><p>This permanently deletes your account, account progress and public stats. Guest saves are kept.</p><button id="account-delete-cancel">Cancel</button><button id="account-delete-yes" class="danger-button">Yes, Delete Account</button></div>';
       $("account-name").textContent =
         account.user.user_metadata?.username || "Player";
+      $("change-email-form").elements.email.value = account.user.email || "";
+      for (const kind of ["email", "password"]) {
+        const form = $(`change-${kind}-form`);
+        form.onsubmit = async (event) => {
+          event.preventDefault();
+          const button = form.querySelector("button"),
+            status = form.querySelector("[role=status]");
+          button.disabled = true;
+          status.textContent = "Saving…";
+          try {
+            if (kind === "email") {
+              await account.newEmail(form.elements.email.value.trim());
+              status.textContent =
+                "Check your email for confirmation instructions. Your address changes after confirmation.";
+            } else {
+              if (
+                form.elements.password.value !==
+                form.elements.confirmation.value
+              )
+                throw new Error("Passwords do not match.");
+              await account.newPassword(form.elements.password.value);
+              status.textContent = "Password updated.";
+            }
+          } catch (error) {
+            status.textContent = error.message;
+          } finally {
+            if (kind === "password") form.reset();
+            button.disabled = false;
+          }
+        };
+      }
       $("account-signout").onclick = async () => {
         try {
           await account.signOut();
@@ -985,8 +1078,9 @@ export function createApp(api) {
     };
   }
   function addProfileBack() {
+    if (!account.user || account.recovery) return;
     const back = document.createElement("button");
-    back.textContent = "← My progression";
+    back.textContent = "← My Account";
     back.onclick = () => renderAccount();
     $("shell-content").prepend(back);
   }
@@ -1086,7 +1180,11 @@ export function createApp(api) {
     $("shell-account").textContent =
       account.user?.user_metadata?.username || "Guest";
     if (account.recovery) show("account");
-    else if (screen === "account") renderAccount();
+    else if (
+      screen === "account" &&
+      !(account.user && $("manage-account-forms"))
+    )
+      renderAccount();
     else if (screen === "leaderboard" && $("self-stats-panel"))
       renderSelfStats();
   });
@@ -1122,7 +1220,7 @@ export function createApp(api) {
     "click",
     (event) => {
       const control = event.target.closest?.("button, a, input, select");
-      if (!control || control.disabled) return;
+      if (!control || control.disabled || control.id === "pause-btn") return;
       // Results Next/Back own their click sound through onNext, exactly once.
       if (
         control.closest(".report-actions") &&
@@ -1434,6 +1532,10 @@ export function createApp(api) {
   initialize();
   return {
     show,
+    openSettings,
+    get settingsOpen() {
+      return battleSettings.open;
+    },
     openProgress,
     showResults,
     progressionStore,

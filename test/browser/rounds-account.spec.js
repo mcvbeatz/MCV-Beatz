@@ -43,10 +43,10 @@ test("battle menus have requested ordering and no mode subtitles, sign-in is hig
     "boss",
   ]);
   await page.evaluate(() => __app.show("account"));
-  await expect(page.locator("[data-auth]")).toHaveText("Sign in / Register");
+  await expect(page.locator("#account-form button[type=submit]")).toHaveText("Sign in");
   expect(
     await page
-      .locator("[data-auth]")
+      .locator("#account-form button[type=submit]")
       .evaluate((e) => getComputedStyle(e).backgroundImage),
   ).toContain("linear-gradient");
 });
@@ -153,7 +153,7 @@ test("Manage Account deletion requires explicit confirmation, cancellation does 
     };
   });
   await page.locator("#account-delete-yes").click();
-  await expect(page.locator("[data-auth]")).toHaveText("Sign in / Register");
+  await expect(page.locator("#account-form button[type=submit]")).toHaveText("Sign in");
   expect(await page.evaluate(() => window.deletionCalls)).toBe(2);
 });
 test("Gridiron celebration pauses the visible clock, poses while idle, moves on input, and plays distinct stadium cues", async ({

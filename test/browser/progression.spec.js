@@ -11,18 +11,17 @@ async function ready(page, orientation = "portrait") {
   await page.goto("/");
   await page.waitForFunction(() => window.__app?.screen === "home");
 }
-test("guest account exposes all progression panels, real artwork, filters and locked cosmetics on mobile", async ({
+test("signed-in account exposes all progression panels, real artwork, filters and locked cosmetics on mobile", async ({
   page,
 }) => {
   const errors = [];
   page.on("pageerror", (e) => errors.push(e.message));
   await page.setViewportSize({ width: 390, height: 844 });
   await ready(page);
+  await signedTestAccount(page);
   await page.locator('[data-screen="account"]').click();
   await expect(page.locator(".progress-tabs button")).toHaveCount(5);
-  await expect(page.locator(".progress-storage")).toContainText(
-    "Sign in to save stats",
-  );
+  await expect(page.locator("[data-auth]")).toHaveText("Manage account");
   await page.locator('[data-tab="mastery"]').click();
   await expect(page.locator(".progress-content [data-element]")).toHaveCount(
     25,
@@ -127,6 +126,7 @@ test("account and report scrollers remain usable at narrow portrait and landscap
   page,
 }) => {
   await ready(page);
+  await signedTestAccount(page);
   for (const [width, height, orientation] of [
     [320, 568, "portrait"],
     [568, 320, "landscape"],
@@ -159,6 +159,7 @@ test("mastery milestone cosmetics have visible selectable effects, including the
 }) => {
   await page.setViewportSize({ width: 1100, height: 700 });
   await ready(page, "landscape");
+  await signedTestAccount(page);
   await page.evaluate(async () => {
     const store = __app.progressionStore();
     for (let i = 0; i < 23; i++)
